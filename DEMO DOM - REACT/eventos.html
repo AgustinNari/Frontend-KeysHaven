@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"
+    <title>Document</title>
+    <style>
+        .cuadrado {
+        border: 1px solid black;
+        width: 5em;
+        height: 5em;
+        }
+        .rojo {
+        background-color:red;
+        }
+    </style>
+    </head>
+    <body>
+        <h1>Clase de DOM</h1>
+        <h2>Estamos viendo un ejemplo</h2>
+        
+        <button id = "agregar">Agregar</button>
+
+        <div class="cuadrado rojo"></div>
+
+        <script>
+            const agregar = document.getElementById("agregar")
+            //Podemos capturar elementos por su id
+
+            
+            const body = document.getElementsByTagName("body")[0]
+            //Podemos capturar el body por la etiqueta, porque vamos a tener solo uno
+
+
+            const cb = () => {
+                const nuevoDiv = document.createElement("div")
+                nuevoDiv.classList.add("cuadrado")
+                nuevoDiv.classList.add("rojo")
+                console.log(nuevoDiv)
+
+                nuevoDiv.addEventListener("click", (event) => {
+                    event.target.remove()
+                })
+                nuevoDiv.addEventListener("mouseover", (event) => {
+                    event.target.classList.remove("rojo")
+                    event.target.classList.add("azul")  
+                })
+                nuevoDiv.addEventListener("mouseout", (event) => {
+                    event.target.classList.remove("azul")
+                    event.target.classList.add("rojo")  
+                })
+                //Con event, podemos acceder al div que se hizo click, es decir, el target del evento
+
+                //Aca, se elimina generalmente el último div, aunque hayamos hecho click en otros
+                //Para cambiar esto, se podria ir agregando un id para cada div, para cada cuadrado que se crea
+
+                console.log(body)
+                body.appendChild(nuevoDiv)
+                //Al ser append, se agrega al final
+            }
+            //Agregamos funciones como callback
+
+            agregar.addEventListener("click", cb)
+
+
+        </script>
+
+        <p>Esto es un parrafo</p>
+    </body>
+</html>
