@@ -7,6 +7,7 @@ import Home from './views/Home';
 
 import Navigation from './views/Navigation';
 import Contact from './views/Contact';
+import PostList from './components/PostList';
 
 function App() {
 
@@ -25,6 +26,8 @@ function App() {
             </Routes>
             <button onClick={handleClick}> Ir a contactos </button>
             <p>Estás en la ruta: {location.pathname}</p>
+
+            <PostList  />   
         </>
     );
 }
