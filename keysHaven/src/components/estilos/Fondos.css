@@ -1,0 +1,45 @@
+/* src/overrides.css */
+.btn-primary {
+  background-color: #7f13ec !important;
+  border-color: #7f13ec !important;
+}
+
+.btn-primary:hover {
+  background-color: #6a0fc7 !important;
+  border-color: #6a0fc7 !important;
+}
+
+.text-primary {
+  color: #7f13ec !important;
+}
+
+.bg-primary {
+  background-color: #7f13ec !important;
+}
+
+.border-primary {
+  border-color: #7f13ec !important;
+}
+
+.bg-primary-dark{
+  background-color: #191022;
+}
+
+.bg-primary-light{
+  background-color: #f7f6f8;
+}
+
+/* Para los badges y otros componentes */
+.badge.bg-primary {
+  background-color: #7f13ec !important;
+}
+
+.btn-outline-primary {
+  color: #7f13ec !important;
+  border-color: #7f13ec !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: #7f13ec !important;
+  color: white !important;
+}

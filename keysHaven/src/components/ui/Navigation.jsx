@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
+import "../estilos/Fondos.css";
 //const active = ({ isActive }) => isActive ? 'nav-link active' : 'nav-link';
 
 export default function Navigation() {
@@ -23,7 +24,7 @@ export default function Navigation() {
         </div>
       </div>
     </nav>*/
-    <nav className="navbar navbar-expand-lg sticky-top navbar-dark bg-dark">
+    <nav className="navbar navbar-expand-lg sticky-top  navbar-dark bg-primary-dark">
         <div className="container">
           <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
             <img src="/src/assets/keyLogo.svg" width={55} height={50} />

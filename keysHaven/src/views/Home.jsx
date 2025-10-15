@@ -44,7 +44,7 @@ export default function Home() {
                 className="col-6 col-md-4 col-lg-2 position-relative overflow-hidden rounded shadow"
               >
                 <img
-                  src="https://via.placeholder.com/300x200"
+                  src="/src/assets/keyLogo.svg" width={80} height={70}
                   className="w-100 rounded"
                   alt={cat}
                 />
@@ -62,9 +62,9 @@ export default function Home() {
         <div className="container text-center">
           <h2 className="fw-bold mb-5">Top Sellers</h2>
           <div className="row g-5 justify-content-center">
-            {["SellerOne", "GameStoreX", "PlayHub", "KeyWorld"].map((seller) => (
+            {["ProductOne", "GameStoreX", "PlayHub", "KeyWorld"].map((seller) => (
               <div key={seller} className="col-6 col-md-3">
-                <a href="#" className="text-decoration-none text-body">
+                <a href="product/1" className="text-decoration-none text-body">
                   <img
                     src="https://via.placeholder.com/160"
                     className="rounded-circle border border-primary border-3 mb-3"
