@@ -62,7 +62,7 @@ export default function ProductDetail() {
               </ul>
             </div>
             <div className="card-body">
-              <h5 className="card-title">Acerca del juego</h5>
+              <h5 className="card-title text-primary">Acerca del juego</h5>
               <p className="card-text">
                 Cyberpunk 2077 es un RPG de acción y aventura de mundo abierto ambientado en Night City, 
                 una megalópolis obsesionada con el poder, el glamour y la modificación corporal. 
@@ -75,7 +75,7 @@ export default function ProductDetail() {
           {/* Reseñas */}
           <div className="card shadow-sm mt-4">
             <div className="card-body">
-              <h5 className="card-title">Opiniones de Clientes</h5>
+              <h5 className="card-title text-primary">Opiniones de Clientes</h5>
               
               <div className="d-flex gap-4 mb-4">
                 <div className="text-center" style={{ width: '200px' }}>
@@ -130,16 +130,16 @@ export default function ProductDetail() {
                     <div className="flex-grow-1">
                       <div className="d-flex justify-content-between align-items-start mb-1">
                         <div>
-                          <strong className="text-dark">{review.name}</strong>
+                          <strong className="text-white">{review.name}</strong> 
                           <br />
                           <small className="text-muted">{review.date}</small>
                         </div>
-                        <div className="text-warning">
+                        <div className="text-warning text-primary">
                           {'★'.repeat(review.stars)}
                           {'☆'.repeat(5 - review.stars)}
                         </div>
                       </div>
-                      <p className="mb-0 text-dark">{review.comment}</p>
+                      <p className="mb-0 text-white">{review.comment}</p>
                     </div>
                   </div>
                 ))}
@@ -150,7 +150,7 @@ export default function ProductDetail() {
           {/* Cómo activar */}
           <div className="card shadow-sm mt-4">
             <div className="card-body">
-              <h5 className="card-title">¿Cómo activar?</h5>
+              <h5 className="card-title text-primary">¿Cómo activar?</h5>
               <div className="row">
                 {[
                   {
@@ -179,12 +179,12 @@ export default function ProductDetail() {
                   }
                 ].map((platform, index) => (
                   <div key={index} className="col-4">
-                    <div className="card border-0 bg-light h-100">
+                    <div className="card border h-100">
                       <div className="card-body">
-                        <h6 className="card-title text-primary">{platform.platform}</h6>
+                        <h6 className="card-title text-white ">{platform.platform}</h6>
                         <ol className="ps-3">
                           {platform.steps.map((step, stepIndex) => (
-                            <li key={stepIndex} className="small mb-1 text-dark">
+                            <li key={stepIndex} className="small mb-1 text-muted">
                               {step}
                             </li>
                           ))}
@@ -202,18 +202,19 @@ export default function ProductDetail() {
         <div style={{ width: '350px' }}>
           <div className="card shadow-sm" style={{ top: '20px' }}>
             <div className="card-body">
-              <h4 className="card-title text-white mb-3">Cyberpunk 2077</h4>
+              <h4 className="card-title text-primary fw-bold mb-3">Cyberpunk 2077</h4>
               <p className="text-muted small mb-3">Plataforma: PC | Región: Global | Entrega: Digital</p>
               
               <div className="d-flex justify-content-between align-items-baseline mb-2">
                 <span className="h3 fw-bold text-primary">$49.99</span>
-                <span className="badge bg-primary bg-opacity-25 text-primary">20% OFF</span>
+                <span className="badge bg-primary bg-opacity-25 text-white">20% OFF</span>
               </div>
               
               <p className="text-muted small mb-3">
-                Stock: <span className="fw-bold text-primary">100+</span>
+                Stock: <span className="fw-bold text-white">100+</span>
               </p>
 
+                {/*}
               <div className="mb-3">
                 <label className="form-label small text-muted">Seleccionar vendedor</label>
                 <select className="form-select">
@@ -221,7 +222,7 @@ export default function ProductDetail() {
                   <option>Vendedor B</option>
                   <option>Vendedor C</option>
                 </select>
-              </div>
+              </div> */}
 
               <div className="d-grid gap-2 mb-3">
                 <button className="btn btn-primary btn-lg py-2 fw-bold">
@@ -232,19 +233,14 @@ export default function ProductDetail() {
                 </button>
               </div>
 
-              <div className="text-center">
-                <Link to="/catalog" className="btn btn-link text-decoration-none">
-                  ← Volver al catálogo
-                </Link>
-              </div>
             </div>
           </div>
 
           {/* Juegos relacionados */}
           <div className="card shadow-sm mt-4">
             <div className="card-body">
-              <h6 className="card-title text-dark mb-3">Juegos Relacionados</h6>
-              <div className="d-flex flex-column gap-3">
+              <h6 className="card-title text-primary fw-bold mb-3">Juegos Relacionados</h6>
+              <div className="d-flex flex-column text-white gap-3">
                 {[
                   {
                     name: "The Witcher 3: Wild Hunt",
@@ -265,7 +261,7 @@ export default function ProductDetail() {
                       className="rounded"
                     />
                     <div>
-                      <h6 className="text-dark small mb-1">{game.name}</h6>
+                      <h6 className="text-white small mb-1">{game.name}</h6>
                       <p className="text-primary fw-bold mb-0 small">{game.price}</p>
                     </div>
                   </div>
