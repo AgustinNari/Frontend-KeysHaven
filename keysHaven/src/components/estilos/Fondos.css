@@ -12,6 +12,9 @@
 .text-primary {
   color: #7f13ec !important;
 }
+.text-primary-light {
+  color: #a85ef1ff !important;
+}
 
 .bg-primary {
   background-color: #7f13ec !important;
@@ -27,6 +30,10 @@
 
 .bg-primary-light{
   background-color: #f7f6f8;
+}
+
+.bg-primary-mid{
+  background-color: #341d4b;
 }
 
 /* Para los badges y otros componentes */
