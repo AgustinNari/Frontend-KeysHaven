@@ -11,7 +11,6 @@ import Cart from './views/Cart';
 import Login from './views/Login';
 import Register from './views/Register';
 import NotFound from './views/NotFound';
-import CatalogPage from './components/catalog/CatalogPage';
 
 export default function App() {
   return (
