@@ -77,3 +77,39 @@ useEffect(() => {
 //PORQUE SE PUEDE ACCEDER A TODO ESTO DESDE LA CONSOLA
 //GUARDAR SOLO EL TOKEN, Y POSIBLEMENTE TAMBIEN EL ROL, Y QUIZAS EL ID
 //PERO NUNCA LA PASSWORD, NI OTROS DATOS SENSIBLES
+
+
+
+//EXTRA DIRECTO DE CLASE:
+
+// localStorage.setItem('jwtToken', data.token)
+// const token  = localStorage.getItem('jwtToken')
+// const [name, setName] = useState("");
+// const [description, setDescription] = useState("");
+// const [products, setProducts] = useState([]);
+// const [token, setToken] = useState("");
+// const URL = "localhost:8080/products";
+// const datosAEnviar ={
+//     name: name,
+//     description: description
+// }
+
+// const options = {
+//   method: "POST",
+//   header: {
+//     "Content-Type": "application/json",
+//     Authorization: `Bearer ${token}`,
+//   },
+//   body: JSON.stringify(datosAEnviar),
+// };
+
+// useEffect(() => {
+//   fetch(URL, options)
+//     .then((response) => response.json())
+//     .then((data) => {
+//       setProducts([...products, {data}]);
+//     })
+//     .catch((error) => {
+//         console.error("Error al obtener los datos: ", error);
+//       });
+// }, [products]);
