@@ -25,7 +25,7 @@ export default function Navigation() {
       </div>
     </nav>*/
     <nav className="navbar navbar-expand-lg sticky-top  navbar-dark bg-primary-dark">
-        <div className="container">
+        <div className="container-fluid">
           <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
             <img src="/src/assets/keyLogo.svg" width={55} height={35} />
             KeysHaven</Link>
