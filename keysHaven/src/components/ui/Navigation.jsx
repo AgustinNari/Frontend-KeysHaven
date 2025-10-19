@@ -52,9 +52,13 @@ export default function Navigation() {
                 <span className="material-symbols-outlined">shopping_cart</span>
                 </button>
               </NavLink>
+
+              <NavLink to="/profile" className="nav-link">
               <button className="btn btn-outline-secondary rounded-circle p-2">
                 <span className="material-symbols-outlined">person</span>
               </button>
+              </NavLink>
+              
             </div>
           </div>
         </div>

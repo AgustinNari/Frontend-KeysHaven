@@ -11,6 +11,7 @@ import Cart from './views/Cart';
 import Login from './views/Login';
 import Register from './views/Register';
 import NotFound from './views/NotFound';
+import Profile from './views/Profile';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
