@@ -228,3 +228,10 @@ html, body, #root { overflow-x: hidden; }
   .product-card .action-buttons { justify-content: flex-start; }
   .product-card .action-buttons { flex-wrap: wrap; }
 }
+
+.product-card .discount-placeholder {
+  min-height: 24px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
