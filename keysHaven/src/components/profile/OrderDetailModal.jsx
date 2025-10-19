@@ -69,7 +69,7 @@ export default function OrderDetailModal({ show, order, userReviews, onClose, on
           </div>
         </div>
 
-        <div className="mt-2 text-muted">Creada: {new Date(order.createdAt).toLocaleString()}</div>
+        <div style = {{ color: "#e6dbff" }} className="mt-2">Creada: {new Date(order.createdAt).toLocaleString()}</div>
         <div className="mt-3">
           <h5>Items</h5>
           {order.items.map(item => (
@@ -77,7 +77,7 @@ export default function OrderDetailModal({ show, order, userReviews, onClose, on
               <div className="d-flex justify-content-between align-items-start">
                 <div>
                   <strong>{item.productTitle}</strong>
-                  <div className="text-muted">Cantidad: {item.quantity} — Precio unitario: ${item.unitPrice}</div>
+                  <div style = {{ color: "#e6dbff" }}>Cantidad: {item.quantity} — Precio unitario: ${item.unitPrice}</div>
                 </div>
                 <div className="text-end">
                   <div><strong>${item.lineTotal}</strong></div>
@@ -125,7 +125,7 @@ export default function OrderDetailModal({ show, order, userReviews, onClose, on
                 {activeItem.digitalKeys.map((k, i) => (
                   <li key={i} className="list-group-item d-flex justify-content-between align-items-center">
                     <div>
-                      <div className="small text-muted">Clave {i+1}</div>
+                      <div style = {{ color: "#646cff" }}className="small text">Clave {i+1}</div>
                       <div>{k.keyMask}</div>
                     </div>
                     <div>

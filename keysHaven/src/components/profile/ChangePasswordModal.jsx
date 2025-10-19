@@ -33,7 +33,7 @@ export default function ChangePasswordModal({ show, onClose, onChangePassword })
     <div className="modal-backdrop-fixed">
       <div className="confirm-modal card">
         <h4>Cambiar contraseña</h4>
-        <p className="text-muted">Ingresa tu contraseña actual y la nueva (dos veces).</p>
+        <p style = {{ color: "#646cff" }} className="text small">Ingresa tu contraseña actual y la nueva (dos veces).</p>
 
         <div className="mt-2">
           <label className="form-label">Contraseña actual</label>

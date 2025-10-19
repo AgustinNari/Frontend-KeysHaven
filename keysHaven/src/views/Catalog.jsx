@@ -115,6 +115,7 @@ export default function Catalog() {
                   onSearch={() => { setAppliedFilters(prev => ({ ...prev, title: searchText })); setPage(1); }}
                 />
               </div>
+              <text-muted>Ordenar:</text-muted>
               <div className="sort-dropdown-wrapper">
                 <SortDropdown value={sortBy} onChange={setSortBy} />
               </div>
@@ -125,7 +126,7 @@ export default function Catalog() {
 
           {}
           <div className="mt-3">
-            <div className="text-muted mb-2">Mostrando {items.length} de {totalItems} resultados</div>
+            <div style = {{ color: "#e6dbff" }} className="mb-2">Mostrando {items.length} de {totalItems} resultados</div>
             <div className="pagination-center">
               <PaginationBar page={page} setPage={setPage} totalPages={totalPages} />
             </div>

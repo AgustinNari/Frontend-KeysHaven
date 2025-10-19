@@ -16,7 +16,7 @@ export default function OrdersTab({ orders, userReviews, onSaveReview, onDeleteR
             <div className="d-flex justify-content-between align-items-center">
               <div>
                 <strong>Orden #{o.id}</strong>
-                <div className="text-muted">Creada: {new Date(o.createdAt).toLocaleString()}</div>
+                <div style = {{ color: "#e6dbff" }}>Creada: {new Date(o.createdAt).toLocaleString()}</div>
                 <div className="small">Estado: {o.status}</div>
               </div>
               <div className="text-end">

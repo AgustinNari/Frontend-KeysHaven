@@ -130,7 +130,7 @@ export default function Profile() {
                 </div>
                 <div style={{ marginTop: 8 }}>
                   <div style={{ fontWeight: 700 }}>{user.displayName}</div>
-                  <div className="text-muted small">{user.email}</div>
+                  <div className="text small">{user.email}</div>
                 </div>
               </div>
 
@@ -140,9 +140,9 @@ export default function Profile() {
               </div>
 
               <div style={{ marginTop: 10, fontSize: 13 }}>
-                <div className="small">Miembro desde: <span className="text-muted">{new Date(user.createdAt).toLocaleDateString()}</span></div>
-                <div className="small">Último login: <span className="text-muted">{new Date(user.lastLogin).toLocaleString()}</span></div>
-                <div className="small">Saldo: <span className="text-muted">${user.buyerBalance}</span></div>
+                <div className="small">Miembro desde: <span style = {{ color: "#e6dbff" }}>{new Date(user.createdAt).toLocaleDateString()}</span></div>
+                <div className="small">Último login: <span style = {{ color: "#e6dbff" }}>{new Date(user.lastLogin).toLocaleString()}</span></div>
+                <div className="small">Saldo: <span style = {{ color: "#e6dbff" }}>${user.buyerBalance}</span></div>
               </div>
             </div>
 
@@ -154,7 +154,7 @@ export default function Profile() {
 
             <div>
               <div className="card p-2">
-                <div className="small">Rol: <span className="text-muted">{user.role}</span></div>
+                <div className="small">Rol: <span style = {{ color: "#e6dbff" }}>{user.role}</span></div>
               </div>
             </div>
           </aside>
@@ -174,7 +174,7 @@ export default function Profile() {
                       onDelete={handleDeleteAvatar}
                     />
                     <div style={{ flex: 1 }}>
-                      <p className="text-muted">Subí o reemplazá tu avatar. El archivo debe ser imagen y preferentemente cuadrado para mejor visual.</p>
+                      <p style = {{ color: "#e6dbff" }}>Subí o reemplazá tu avatar. El archivo debe ser imagen y preferentemente cuadrado para mejor visual.</p>
                     </div>
                   </div>
                 </div>
