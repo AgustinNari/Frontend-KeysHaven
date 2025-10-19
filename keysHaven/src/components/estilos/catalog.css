@@ -235,3 +235,16 @@ html, body, #root { overflow-x: hidden; }
   justify-content: flex-end;
   align-items: center;
 }
+
+.product-card .media.no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.6);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  padding: 0.5rem;
+  text-wrap: balance;
+}

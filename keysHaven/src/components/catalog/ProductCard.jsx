@@ -7,10 +7,18 @@ export default function ProductCard({ product }) {
 
   return (
     <div className="product-card card">
-  <div className="media" style={{
-    backgroundImage: `url(${product.primaryImageUrl || '/images/placeholder.png'})`,
-  }} />
-
+  {product.primaryImageUrl ? (
+    <div
+      className="media"
+      style={{
+        backgroundImage: `url(${product.primaryImageUrl})`,
+      }}
+    />
+  ) : (
+    <div className="media no-image">
+      <span>Imagen no disponible</span>
+    </div>
+  )}
   <div className="card-body">
     <div className="d-flex justify-content-between align-items-start mb-2">
       <div style={{ minWidth: 0 }}>
