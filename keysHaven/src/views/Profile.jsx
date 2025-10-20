@@ -1,112 +1,239 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "../components/estilos/profile.css";
+
 import AvatarUploader from "../components/profile/AvatarUploader";
 import AccountSettings from "../components/profile/AccountSettings";
 import OrdersTab from "../components/profile/OrdersTab";
 import ConfirmModal from "../components/profile/ConfirmModal";
 import ChangePasswordModal from "../components/profile/ChangePasswordModal";
 
-import { MOCK_USER } from "../data/mockUser";
-import { MOCK_ORDERS } from "../data/mockOrders";
-import { MOCK_REVIEWS } from "../data/mockReviews";
+import { useAuth } from "../context/AuthContext";
+import * as usersApi from "../api/users";
+import * as ordersApi from "../api/orders";
+import * as reviewsApi from "../api/reviews";
+import * as authApi from "../api/auth";
+import apiClient from "../api/apiClient";
+
+
 
 export default function Profile() {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("profile_user");
-    return saved ? JSON.parse(saved) : MOCK_USER;
-  });
-  const [orders, setOrders] = useState(() => {
-    const saved = localStorage.getItem("profile_orders");
-    return saved ? JSON.parse(saved) : MOCK_ORDERS;
-  });
-  const [reviews, setReviews] = useState(() => {
-    const saved = localStorage.getItem("profile_reviews");
-    return saved ? JSON.parse(saved) : MOCK_REVIEWS;
-  });
+  const { user: ctxUser, refreshProfile, logout } = useAuth();
+  const [profile, setProfile] = useState(ctxUser ?? null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
+  const [ordersPage, setOrdersPage] = useState(null);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
+  const [userReviews, setUserReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState("account");
-
   const [showProfileDeleteConfirm, setShowProfileDeleteConfirm] = useState(false);
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
 
-  useEffect(() => { localStorage.setItem("profile_user", JSON.stringify(user)); }, [user]);
-  useEffect(() => { localStorage.setItem("profile_orders", JSON.stringify(orders)); }, [orders]);
-  useEffect(() => { localStorage.setItem("profile_reviews", JSON.stringify(reviews)); }, [reviews]);
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    async function loadProfile() {
+      setLoadingProfile(true);
+      try {
+        const p = await usersApi.getMyProfile();
+        setProfile(p);
+      } catch (err) {
+        console.error("No se pudo cargar perfil:", err);
+      } finally {
+        setLoadingProfile(false);
+      }
+    }
+
+    if (!profile) {
+      loadProfile();
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrders(0, 20);
+    loadMyReviews(0, 100);
+  }, []);
 
 
-  function handleUploadAvatar(file) {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setUser(prev => ({ ...prev, avatarContentType: file.type, avatarDataUrl: ev.target.result }));
-    };
-    reader.readAsDataURL(file);
-  }
-  function handleReplaceAvatar(file) { handleUploadAvatar(file); }
-  function handleDeleteAvatar() { setUser(prev => ({ ...prev, avatarContentType: null, avatarDataUrl: null })); }
-
-
-  function handleSaveAccount(updated) {
-    setUser(prev => ({ ...prev, ...updated }));
-    alert("Perfil actualizado (simulado).");
-  }
-
-
-  function handleChangePassword(dto) {
-
-    console.log("Change password DTO", dto);
-    alert("Contraseña cambiada (simulado).");
-  }
-
-
-  function handleSaveReview(orderId, orderItemId, data, existingReview = null) {
-    if (existingReview) {
-      setReviews(prev => prev.map(r => r.id === existingReview.id ? { ...r, ...data, createdAt: new Date().toISOString() } : r));
-      alert("Reseña actualizada (simulado).");
-    } else {
-      const newReview = {
-        id: Date.now(),
-        productId: null,
-        buyerId: user.id,
-        rating: data.rating,
-        title: data.title,
-        comment: data.comment,
-        visible: true,
-        createdAt: new Date().toISOString(),
-        orderItemId
-      };
-      setReviews(prev => [newReview, ...prev]);
-      alert("Reseña publicada (simulado).");
+  async function loadOrders(page = 0, size = 20) {
+    setOrdersLoading(true);
+    try {
+      const pageRes = await ordersApi.getMyOrders(page, size);
+      setOrdersPage(pageRes);
+    } catch (err) {
+      console.error("Error cargando órdenes:", err);
+      setMessage({ type: "error", text: "No se pudieron cargar las órdenes." });
+      setTimeout(() => setMessage(null), 3500);
+    } finally {
+      setOrdersLoading(false);
     }
   }
 
-  function handleDeleteReview(reviewId) {
-    setReviews(prev => prev.filter(r => r.id !== reviewId));
-    alert("Reseña eliminada (simulado).");
+  async function loadMyReviews(page = 0, size = 100) {
+    setReviewsLoading(true);
+    try {
+      const resp = await apiClient.apiFetch(`/reviews/me?page=${page}&size=${size}`, { method: "GET" });
+      const list = resp?.content ?? resp ?? [];
+      setUserReviews(list);
+    } catch (err) {
+      console.error("Error cargando reseñas del usuario:", err);
+      setMessage({ type: "error", text: "No se pudieron cargar tus reseñas." });
+      setTimeout(() => setMessage(null), 3500);
+    } finally {
+      setReviewsLoading(false);
+    }
   }
 
-  function getUserReviewsForUI() { return reviews; }
+
+  async function handleSaveAccount(updated) {
+    if (!profile) return;
+    try {
+      await usersApi.updateUser(profile.id, updated);
+      await refreshProfile();
+      const p = await usersApi.getMyProfile();
+      setProfile(p);
+      setMessage({ type: "success", text: "Perfil actualizado correctamente." });
+    } catch (err) {
+      console.error("Error actualizando perfil:", err);
+      setMessage({ type: "error", text: err?.message || "Error al actualizar perfil." });
+    } finally {
+      setTimeout(() => setMessage(null), 3500);
+    }
+  }
+
+  async function handleUploadAvatar(file) {
+    if (!profile) return;
+    try {
+      await usersApi.uploadAvatar(profile.id, file);
+      await refreshProfile();
+      const p = await usersApi.getMyProfile();
+      setProfile(p);
+      setMessage({ type: "success", text: "Avatar subido." });
+    } catch (err) {
+      console.error("Error subiendo avatar:", err);
+      setMessage({ type: "error", text: "Error subiendo avatar." });
+    } finally {
+      setTimeout(() => setMessage(null), 3000);
+    }
+  }
+
+  async function handleReplaceAvatar(file) {
+    if (!profile) return;
+    try {
+      await usersApi.replaceAvatar(profile.id, file);
+      await refreshProfile();
+      const p = await usersApi.getMyProfile();
+      setProfile(p);
+      setMessage({ type: "success", text: "Avatar reemplazado." });
+    } catch (err) {
+      console.error("Error reemplazando avatar:", err);
+      setMessage({ type: "error", text: "Error reemplazando avatar." });
+    } finally {
+      setTimeout(() => setMessage(null), 3000);
+    }
+  }
+
+  async function handleDeleteAvatar() {
+    if (!profile) return;
+    try {
+      await usersApi.deleteAvatar(profile.id);
+      await refreshProfile();
+      const p = await usersApi.getMyProfile();
+      setProfile(p);
+      setMessage({ type: "success", text: "Avatar eliminado." });
+    } catch (err) {
+      console.error("Error eliminando avatar:", err);
+      setMessage({ type: "error", text: "Error eliminando avatar." });
+    } finally {
+      setTimeout(() => setMessage(null), 3000);
+    }
+  }
+
+
+  async function handleChangePassword(dto) {
+    try {
+      await authApi.changePassword(dto);
+      setMessage({ type: "success", text: "Contraseña cambiada correctamente." });
+    } catch (err) {
+      console.error("Error al cambiar contraseña:", err);
+      setMessage({ type: "error", text: err?.message || "Error cambiando contraseña." });
+    } finally {
+      setTimeout(() => setMessage(null), 3500);
+    }
+  }
+
+  async function handleSaveReview(orderId, orderItemId, data, existingReview = null) {
+    try {
+      if (existingReview) {
+        await reviewsApi.updateReview(existingReview.id, {
+          rating: data.rating,
+          title: data.title,
+          comment: data.comment
+        });
+        setMessage({ type: "success", text: "Reseña actualizada." });
+      } else {
+
+        await reviewsApi.createReview({
+          productId: data.productId ?? null,
+          rating: data.rating,
+          title: data.title,
+          comment: data.comment,
+          orderItemId: orderItemId
+        });
+        setMessage({ type: "success", text: "Reseña publicada." });
+      }
+
+      await loadMyReviews(0, 200);
+    } catch (err) {
+      console.error("Error guardando reseña:", err);
+      setMessage({ type: "error", text: err?.message || "Error guardando reseña." });
+    } finally {
+      setTimeout(() => setMessage(null), 3500);
+    }
+  }
+
+  async function handleDeleteReview(reviewId) {
+    try {
+      await reviewsApi.deleteReview(reviewId);
+      await loadMyReviews(0, 200);
+      setMessage({ type: "success", text: "Reseña eliminada." });
+    } catch (err) {
+      console.error("Error eliminando reseña:", err);
+      setMessage({ type: "error", text: "Error eliminando reseña." });
+    } finally {
+      setTimeout(() => setMessage(null), 3500);
+    }
+  }
 
 
   function handleConfirmDeleteProfile() {
-    localStorage.removeItem("profile_user");
-    localStorage.removeItem("profile_orders");
-    localStorage.removeItem("profile_reviews");
-    setUser(null);
-    setOrders([]);
-    setReviews([]);
+    localStorage.removeItem("jwtToken");
+    localStorage.removeItem("userProfile");
     setShowProfileDeleteConfirm(false);
-    alert("Perfil eliminado (simulado).");
+    setProfile(null);
+    setOrdersPage(null);
+    setUserReviews([]);
+    logout();
   }
 
-  if (!user) {
+  function formatDate(iso) {
+    try {
+      return new Date(iso).toLocaleDateString();
+    } catch {
+      return "-";
+    }
+  }
+
+  if (!profile) {
     return (
       <div className="full-center">
         <div className="card p-4">
-          <h3>Perfil eliminado / no disponible</h3>
-          <p className="text-muted">En la demo el perfil fue eliminado. Recarga la página para restaurar mocks.</p>
+          <h3>Perfil no disponible</h3>
+          <p style={{ color : "#7f13ec"}}>No se encontró tu perfil. Asegurate de haber iniciado sesión.</p>
           <div>
-            <button className="btn btn-primary" onClick={() => { localStorage.removeItem("profile_user"); location.reload(); }}>Restaurar mocks</button>
+            <button className="btn btn-primary" onClick={() => window.location.reload()}>Recargar</button>
           </div>
         </div>
       </div>
@@ -118,19 +245,29 @@ export default function Profile() {
       <main className="app-container">
         <h1>Mi perfil</h1>
 
+        {message && (
+          <div className={`alert ${message.type === "success" ? "alert-success" : "alert-danger"}`}>
+            {message.text}
+          </div>
+        )}
+
         <div className="profile-layout">
-          {}
+          
           <aside className="profile-sidebar">
             <div className="sidebar-avatar card">
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <div className="avatar-box">
                   <div className="avatar-preview">
-                    <img src={user.avatarDataUrl ?? "/src/assets/doppyKnight/homeImage.png"} alt="avatar" style={{ width: 120, height: 120, borderRadius: 8 }} />
+                    <img
+                      src={profile.avatarDataUrl ?? "/src/assets/doppyKnight/homeImage.png"}
+                      alt="avatar"
+                      style={{ width: 120, height: 120, borderRadius: 8 }}
+                    />
                   </div>
                 </div>
                 <div style={{ marginTop: 8 }}>
-                  <div style={{ fontWeight: 700 }}>{user.displayName}</div>
-                  <div className="text small">{user.email}</div>
+                  <div style={{ fontWeight: 700 }}>{profile.displayName}</div>
+                  <div className="text small">{profile.email}</div>
                 </div>
               </div>
 
@@ -140,9 +277,9 @@ export default function Profile() {
               </div>
 
               <div style={{ marginTop: 10, fontSize: 13 }}>
-                <div className="small">Miembro desde: <span style = {{ color: "#e6dbff" }}>{new Date(user.createdAt).toLocaleDateString()}</span></div>
-                <div className="small">Último login: <span style = {{ color: "#e6dbff" }}>{new Date(user.lastLogin).toLocaleString()}</span></div>
-                <div className="small">Saldo: <span style = {{ color: "#e6dbff" }}>${user.buyerBalance}</span></div>
+                <div className="small">Miembro desde: <span style={{ color: "#e6dbff" }}>{formatDate(profile.createdAt)}</span></div>
+                <div className="small">Último login: <span style={{ color: "#e6dbff" }}>{new Date(profile.lastLogin).toLocaleString()}</span></div>
+                <div className="small">Saldo: <span style={{ color: "#e6dbff" }}>${profile.buyerBalance ?? 0}</span></div>
               </div>
             </div>
 
@@ -154,43 +291,47 @@ export default function Profile() {
 
             <div>
               <div className="card p-2">
-                <div className="small">Rol: <span style = {{ color: "#e6dbff" }}>{user.role}</span></div>
+                <div className="small">Rol: <span style={{ color: "#e6dbff" }}>{profile.role}</span></div>
               </div>
             </div>
           </aside>
 
-          {}
+          
           <section className="profile-content">
-            {}
             {activeTab === "account" && (
               <>
                 <div className="card p-3 mb-3">
                   <h3>Avatar</h3>
                   <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                     <AvatarUploader
-                      avatarDataUrl={user.avatarDataUrl}
+                      avatarDataUrl={profile.avatarDataUrl}
                       onUpload={handleUploadAvatar}
                       onReplace={handleReplaceAvatar}
                       onDelete={handleDeleteAvatar}
                     />
                     <div style={{ flex: 1 }}>
-                      <p style = {{ color: "#e6dbff" }}>Subí o reemplazá tu avatar. El archivo debe ser imagen y preferentemente cuadrado para mejor visual.</p>
+                      <p style={{ color: "#e6dbff" }}>Subí o reemplazá tu avatar. El archivo debe ser imagen y preferentemente cuadrado para mejor visual.</p>
                     </div>
                   </div>
                 </div>
 
-                <AccountSettings user={user} onSave={handleSaveAccount} />
+                <AccountSettings user={profile} onSave={handleSaveAccount} />
               </>
             )}
 
-            {}
             {activeTab === "orders" && (
-              <OrdersTab
-                orders={orders}
-                userReviews={getUserReviewsForUI()}
-                onSaveReview={handleSaveReview}
-                onDeleteReview={handleDeleteReview}
-              />
+              <>
+                {ordersLoading && <div className="text-muted">Cargando órdenes...</div>}
+                {!ordersLoading && ordersPage && (
+                  <OrdersTab
+                    orders={ordersPage.content ?? []}
+                    userReviews={userReviews}
+                    onSaveReview={handleSaveReview}
+                    onDeleteReview={handleDeleteReview}
+                  />
+                )}
+                {!ordersLoading && !ordersPage && <div className="text-muted">No se encontraron órdenes.</div>}
+              </>
             )}
           </section>
         </div>

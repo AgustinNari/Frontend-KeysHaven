@@ -1,33 +1,15 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import "../estilos/Fondos.css";
+import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../store/cart.jsx";
-//const active = ({ isActive }) => isActive ? 'nav-link active' : 'nav-link';
 
 export default function Navigation() {
+  const { user, isAuthenticated, logout } = useAuth();
   const { items } = useCart();
   const cartCount = items.reduce((acc, it) => acc + (it.qty ?? 0), 0);
 
   return (
-    // <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
-    //   <div className="container app-container d-flex justify-content-between align-items-center">
-    //     <Link className="navbar-brand" to="/">KeysHaven</Link>
-    //
-    //     <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
-    //       <span className="navbar-toggler-icon" />
-    //     </button>
-    //
-    //     <div className="collapse navbar-collapse" id="navMenu">
-    //       <ul className="navbar-nav me-auto">
-    //         <li className="nav-item"><NavLink to="/home" className={active}>Home</NavLink></li>
-    //         <li className="nav-item"><NavLink to="/catalog" className={active}>Catálogo</NavLink></li>
-    //         <li className="nav-item"><NavLink to="/cart" className={active}>Carrito</NavLink></li>
-    //         <li className="nav-item"><NavLink to="/login" className={active}>Login</NavLink></li>
-    //         <li className="nav-item"><NavLink to="/register" className={active}>Registro</NavLink></li>
-    //       </ul>
-    //     </div>
-    //   </div>
-    // </nav>
     <nav className="navbar navbar-expand-lg sticky-top navbar-dark bg-primary-dark">
       <div className="container-fluid">
         <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
@@ -35,12 +17,7 @@ export default function Navigation() {
           KeysHaven
         </Link>
 
-        <button
-          className="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#nav"
-        >
+        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
           <span className="navbar-toggler-icon"></span>
         </button>
 
@@ -48,10 +25,23 @@ export default function Navigation() {
           <ul className="navbar-nav ms-auto me-3">
             <li className="nav-item"><NavLink to="/catalog" className="nav-link">Catálogo</NavLink></li>
             <li className="nav-item"><NavLink to="/cart" className="nav-link">Carrito</NavLink></li>
-            <li className="nav-item"><NavLink to="/login" className="nav-link">Login</NavLink></li>
-            <li className="nav-item"><NavLink to="/register" className="nav-link">Registro</NavLink></li>
+
+            {!isAuthenticated && (
+              <>
+                <li className="nav-item"><NavLink to="/login" className="nav-link">Login</NavLink></li>
+                <li className="nav-item"><NavLink to="/register" className="nav-link">Registro</NavLink></li>
+              </>
+            )}
+
+            {isAuthenticated && (
+              <>
+                {user?.role === "SELLER" && <li className="nav-item"><NavLink to="/sellerdashboard" className="nav-link">Dashboard</NavLink></li>}
+                {user?.role === "ADMIN" && <li className="nav-item"><NavLink to="/adminpanel" className="nav-link">Admin</NavLink></li>}
+              </>
+            )}
           </ul>
-          <div className="d-flex gap-2">
+
+          <div className="d-flex gap-2 align-items-center">
             <NavLink to="/cart" className="nav-link">
               <button className="btn btn-outline-primary rounded-circle p-2 position-relative">
                 <span className="material-symbols-outlined">shopping_cart</span>
@@ -63,11 +53,31 @@ export default function Navigation() {
               </button>
             </NavLink>
 
-            <NavLink to="/profile" className="nav-link">
-              <button className="btn btn-outline-secondary rounded-circle p-2">
-                <span className="material-symbols-outlined">person</span>
-              </button>
-            </NavLink>
+            {isAuthenticated ? (
+              <>
+                <NavLink to="/profile" className="nav-link" title="Perfil">
+                  <button className="btn btn-outline-secondary rounded-circle p-2">
+                    <span className="material-symbols-outlined">person</span>
+                  </button>
+                </NavLink>
+
+                
+                <div style={{color : "#7f13ec"}}>
+                  {user?.displayName ?? user?.email}
+                </div>
+
+                
+                <button className="btn btn-outline-danger rounded-circle p-2" onClick={logout} title="Cerrar sesión">
+                  <span className="material-symbols-outlined">logout</span>
+                </button>
+              </>
+            ) : (
+              <NavLink to="/login" className="nav-link">
+                <button className="btn btn-outline-secondary rounded-circle p-2">
+                  <span className="material-symbols-outlined">person</span>
+                </button>
+              </NavLink>
+            )}
           </div>
         </div>
       </div>

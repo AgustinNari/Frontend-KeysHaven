@@ -9,7 +9,7 @@ export default function OrdersTab({ orders, userReviews, onSaveReview, onDeleteR
   return (
     <div>
       <h3>Mis órdenes</h3>
-      {orders.length === 0 && <div className="text-muted">No hay órdenes.</div>}
+      {orders.length === 0 && <div style={{color : "#7f13ec"}}>No hay órdenes.</div>}
       <div className="mt-2">
         {orders.map(o => (
           <div key={o.id} className="card p-3 mb-2">

@@ -92,7 +92,7 @@ export default function OrderDetailModal({ show, order, userReviews, onClose, on
                 </div>
               </div>
 
-              {}
+              
               <div className="mt-2">
                 {userReviews.filter(r => r.orderItemId === item.id).map(r => (
                   <div key={r.id} className="review-box card p-2">
@@ -116,7 +116,7 @@ export default function OrderDetailModal({ show, order, userReviews, onClose, on
           ))}
         </div>
 
-        {}
+        
         <div className="mt-3">
           {viewMode === "keys" && activeItem && (
             <div className="card p-3">
