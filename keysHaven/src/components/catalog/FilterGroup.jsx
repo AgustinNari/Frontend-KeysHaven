@@ -29,7 +29,7 @@ export default function FilterGroup({ title, options = [], selected = [], onTogg
       <div className="d-flex justify-content-between align-items-center">
         <h6 className="mb-1">{title}</h6>
         {singleSelect && (selected && selected.length > 0) && (
-          <button type="button" className="btn btn-sm btn-link p-0" onClick={() => { onToggle([]); if (onClear) onClear(); }}>Borrar</button>
+          <button type="button" style = {{ color: "#8a4ff0" }} onClick={() => { onToggle([]); if (onClear) onClear(); }}>Borrar</button>
         )}
       </div>
 
@@ -47,7 +47,7 @@ export default function FilterGroup({ title, options = [], selected = [], onTogg
         ))}
 
         {opts.length > showLimit &&
-          <button className="btn btn-sm btn-link p-0 mt-1" onClick={() => setExpanded(!expanded)} type="button">
+          <button style = {{ color: "#8a4ff0" }} onClick={() => setExpanded(!expanded)} type="button">
             {expanded ? "Ver menos" : `Ver ${opts.length - showLimit} más`}
           </button>
         }

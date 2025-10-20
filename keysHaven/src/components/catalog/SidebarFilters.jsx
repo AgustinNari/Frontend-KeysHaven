@@ -31,7 +31,7 @@ export default function SidebarFilters({ workingFilters, setWorkingFilters, onAp
     <div className="filters-panel p-3">
       <div className="d-flex justify-content-between align-items-center mb-2">
         <h5 className="m-0">Filtros</h5>
-        <button className="btn btn-sm btn-link" onClick={onClearAll}>Limpiar todo</button>
+        <button style = {{ color: "#8a4ff0" }}  onClick={onClearAll}>Limpiar todo</button>
       </div>
 
       <div className="mb-3">
