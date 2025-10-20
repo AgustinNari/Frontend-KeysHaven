@@ -248,3 +248,40 @@ html, body, #root { overflow-x: hidden; }
   padding: 0.5rem;
   text-wrap: balance;
 }
+
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  accent-color: var(--accent-strong);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  background-color: var(--accent-strong);
+}
+input[type="range"]::-moz-range-thumb {
+  background-color: var(--accent-strong);
+}
+input[type="range"] {
+  accent-color: var(--accent-strong);
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: white;
+}
+
+.form-check-input:checked {
+  background-color: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.catalog-sort {
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  background-color: #0b0710;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 0.5rem 0.5rem;
+}
+

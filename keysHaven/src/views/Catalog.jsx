@@ -105,13 +105,13 @@ export default function Catalog() {
         </aside>
 
         <main className="catalog-content">
-          <div className="catalog-header mb-3">
+          <div className="d-flex justify-content-space-between catalog-header mb-3">
             <div className="titles">
               <h1>Catálogo de Juegos</h1>
               <p className="lead">Explora nuestra amplia selección — usa filtros para afinar resultados.</p>
             </div>
 
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center justify-content-space-between gap-2">
               <div className="search-bar-wrapper">
                 <SearchBar
                   value={searchText}

@@ -13,7 +13,7 @@ const options = [
 
 export default function SortDropdown({ value, onChange }) {
   return (
-    <select className="form-select" value={value} onChange={e => onChange(e.target.value)}>
+    <select className="form-select catalog-sort" value={value} onChange={e => onChange(e.target.value)}>
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
