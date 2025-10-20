@@ -12,8 +12,12 @@ import Login from './views/Login';
 import Register from './views/Register';
 import NotFound from './views/NotFound';
 import Profile from './views/Profile';
+
 import SellerDashboard from './views/SellerDashboard';
 import AdminPanel from './views/AdminPanel';
+
+import Checkout from './views/Checkout';
+import OrderConfirmation from './views/OrderConfirmation';
 
 export default function App() {
   return (
@@ -26,12 +30,18 @@ export default function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/product/:id" element={<ProductDetail />} />
+
           <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/order-confirmation" element={<OrderConfirmation />} />
+
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<Profile />} />
+
           <Route path="/sellerdashboard" element={<SellerDashboard />} />
           <Route path="/adminpanel" element={<AdminPanel />} />
+
           <Route path="/404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>

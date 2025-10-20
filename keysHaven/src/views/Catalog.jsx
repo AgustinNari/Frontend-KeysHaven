@@ -7,6 +7,8 @@ import PaginationBar from "../components/catalog/PaginationBar";
 import { PRODUCTS as MOCK_PRODUCTS } from "../data/products";
 import "../components/estilos/catalog.css";
 
+import { useCart } from "../store/cart.jsx";
+
 export default function Catalog() {
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
@@ -18,6 +20,8 @@ export default function Catalog() {
   const [appliedFilters, setAppliedFilters] = useState({});
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+
+  const { add } = useCart();
 
   const simulateServerFetch = useCallback((filters, pageNum, pageSizeNum, sort) => {
     let arr = MOCK_PRODUCTS.slice();
@@ -122,11 +126,12 @@ export default function Catalog() {
             </div>
           </div>
 
-          <ProductGrid products={items} />
+          <ProductGrid products={items} onAdd={add} />
 
-          {}
           <div className="mt-3">
-            <div style = {{ color: "#e6dbff" }} className="mb-2">Mostrando {items.length} de {totalItems} resultados</div>
+            <div style={{ color: "#e6dbff" }} className="mb-2">
+              Mostrando {items.length} de {totalItems} resultados
+            </div>
             <div className="pagination-center">
               <PaginationBar page={page} setPage={setPage} totalPages={totalPages} />
             </div>

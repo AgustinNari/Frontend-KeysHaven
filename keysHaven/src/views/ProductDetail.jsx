@@ -1,10 +1,24 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useCart } from '../store/cart.jsx';
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const { add } = useCart();
   const [activeTab, setActiveTab] = useState('descripcion'); // Estado para controlar la pestaña activa
-  
+
+  const heroImage = "https://lh3.googleusercontent.com/aida-public/AB6AXuAVWC1WdCxdBzHeZT3DJolmRqzsTLVQnXlXP8lpKMaH7IhkQJ9Ks6HLugU9EVuQfMnZi_op-B0cds6n9cUnVKslipU1ENpFzWarv2WkzsRaz-yiOviXGhYhKnErU0NmuQicpMz1UaDeQ3yz67Zo8bkUL-vgt1z6jm0XPrORBhcueGXAdbKGCGB1NXy6E5ikWU0BryGjlnYLdKP9SVa9Z1sfV-hsXNEWWE5GOSxXF59wDBUlHFs3P8UprVyFhPsYOUcuBaFd7iBKqXM";
+
+  const product = {
+    id,                 
+    title: "Cyberpunk 2077",
+    price: 49.99,
+    currency: "$",
+    imageUrl: heroImage,
+    platform: "PC",
+    region: "Global",
+  };
+
   return (
     <div data-bs-theme="dark" className="bg-body text-body">
       <div data-bs-theme="dark" className="bg-body text-body" style={{ width: '1200px', margin: '0 auto', padding: '20px' }}>
@@ -25,7 +39,7 @@ export default function ProductDetail() {
               className="card shadow-sm mb-4"
               style={{ 
                 height: '400px',
-                background: 'linear-gradient(to top, rgba(25, 16, 34, 0.7) 0%, rgba(25, 16, 34, 0) 40%), url(https://lh3.googleusercontent.com/aida-public/AB6AXuAVWC1WdCxdBzHeZT3DJolmRqzsTLVQnXlXP8lpKMaH7IhkQJ9Ks6HLugU9EVuQfMnZi_op-B0cds6n9cUnVKslipU1ENpFzWarv2WkzsRaz-yiOviXGhYhKnErU0NmuQicpMz1UaDeQ3yz67Zo8bkUL-vgt1z6jm0XPrORBhcueGXAdbKGCGB1NXy6E5ikWU0BryGjlnYLdKP9SVa9Z1sfV-hsXNEWWE5GOSxXF59wDBUlHFs3P8UprVyFhPsYOUcuBaFd7iBKqXM) center/cover'
+                background: `linear-gradient(to top, rgba(25, 16, 34, 0.7) 0%, rgba(25, 16, 34, 0) 40%), url(${heroImage}) center/cover`
               }}
             >
               <div className="d-flex justify-content-center gap-2" style={{ position: 'absolute', bottom: '15px', left: '50%', transform: 'translateX(-50%)' }}>
@@ -330,10 +344,17 @@ export default function ProductDetail() {
                 */}
 
                 <div className="d-grid gap-2 mb-3">
-                  <button className="btn btn-primary btn-lg py-2 fw-bold">
+                  <Link
+                    to="/cart"
+                    className="btn btn-primary btn-lg py-2 fw-bold"
+                    onClick={() => add(product)}
+                  >
                     Comprar ahora
-                  </button>
-                  <button className="btn btn-outline-primary btn-lg py-2 fw-bold">
+                  </Link>
+                  <button
+                    className="btn btn-outline-primary btn-lg py-2 fw-bold"
+                    onClick={() => add(product)}
+                  >
                     Agregar al carrito
                   </button>
                 </div>

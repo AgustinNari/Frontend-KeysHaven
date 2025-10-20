@@ -45,21 +45,14 @@ export default function Cart() {
             {items.map((it) => (
               <tr key={it.id}>
                 <td>
-                  {it.imageUrl ? (
+                  {(it.image || it.imageUrl) ? (
                     <img
-                      src={it.imageUrl}
+                      src={it.image || it.imageUrl}
                       alt={it.title}
                       style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6 }}
                     />
                   ) : (
-                    <div
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 6,
-                        background: "#eee",
-                      }}
-                    />
+                    <div style={{ width: 48, height: 48, borderRadius: 6, background: "#eee" }} />
                   )}
                 </td>
                 <td>
@@ -113,7 +106,9 @@ export default function Cart() {
         <Link to="/catalog" className="btn btn-light">
           Seguir comprando
         </Link>
-        <button className="btn btn-primary ms-auto">Confirmar compra</button>
+        <Link to="/checkout" className="btn btn-primary ms-auto">
+          Continuar compra
+        </Link>
       </div>
     </div>
   );
