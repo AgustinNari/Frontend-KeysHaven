@@ -1,7 +1,7 @@
 export const MOCK_REVIEWS = [
   {
     id: 9001,
-    productId: 2,
+    productId: 1,
     buyerId: 42,
     rating: 8,
     title: "Buen juego",
