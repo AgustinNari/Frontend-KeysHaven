@@ -48,6 +48,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<Profile />} />
 
+          <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="/adminpanel/*" element={<AdminPanel />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/categories" element={<CategoryManagement />} />
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/admin/products" element={<ProductManagement />} />
           <Route path="/admin/users" element={<UserManagement />} />
 
+          <Route path="/seller/*" element={<SellerDashboard />} />
           <Route path="/sellerdashboard/*" element={<SellerDashboard />} />
           <Route path="/seller/products" element={<ProductList />} />
           <Route path="/seller/products/new" element={<ProductForm />} />
