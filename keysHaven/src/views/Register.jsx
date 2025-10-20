@@ -8,7 +8,7 @@ export default function Register() {
             {/* Card de login */}
             <div className="card w-50 shadow-lg border-secondary">
               <div className="card-body p-5">
-                <h2 className="card-title text-primary text-center mb-4 fw-bold">Iniciar Sesion</h2>
+                <h2 className="card-title text-primary text-center mb-4 fw-bold">Crear una nueva cuenta</h2>
                 
                 {/* Formulario de email */}
                 <div className="mb-4">
@@ -19,7 +19,7 @@ export default function Register() {
                       id="usernameInput"
                       placeholder="Username"
                     />
-                    <label htmlFor="passwordInput" className="text-muted">Username</label>
+                    <label htmlFor="passwordInput" className="text-muted">Nombre de Usuario</label>
                   </div>
 
                   <div className="form-floating m-1">
@@ -29,7 +29,7 @@ export default function Register() {
                       id="emailInput"
                       placeholder="Email address"
                     />
-                    <label htmlFor="emailInput" className="text-muted">Email address</label>
+                    <label htmlFor="emailInput" className="text-muted">Dirección de Email</label>
                   </div>
 
                   <div className="form-floating m-1">
@@ -39,14 +39,14 @@ export default function Register() {
                       id="passwordInput"
                       placeholder="Password"
                     />
-                    <label htmlFor="passwordInput" className="text-muted">Password</label>
+                    <label htmlFor="passwordInput" className="text-muted">Contraseña</label>
                   </div>
 
                   <div className="mx-2 mt-3">
-                    <label className="form-label small text-muted">Seleccionar Region</label>
+                    <label className="form-label small text-muted">Seleccionar Región</label>
                     <select className="form-select">
-                      <option>Sudamerica</option>
-                      <option>Norteamerica</option>
+                      <option>Sudamérica</option>
+                      <option>Norteamérica</option>
                       <option>Europa</option>
                       <option>Asia</option>
                     </select>
@@ -74,8 +74,8 @@ export default function Register() {
               <div className="text-center mb-4 d-flex flex-column">
                 <p className="text-muted">
                 ¿Ya tienes una cuenta?{' '}
-                <div><Link to="/register" className="text-primary text-decoration-none fw-bold">
-                  Inicia Sesion
+                <div><Link to="/login" className="text-primary text-decoration-none fw-bold">
+                  Iniciar Sesión
                   </Link></div>
                 </p>
               </div>
