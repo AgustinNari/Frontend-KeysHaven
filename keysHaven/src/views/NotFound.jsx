@@ -14,7 +14,7 @@ export default function NotFound() {
           backgroundRepeat: "no-repeat",
           backgroundSize: "cover",
           backgroundPosition: "center",
-          minHeight: "100vh",
+          minHeight: "90vh",
         }}>
           <div style={{ position: "relative", zIndex: 2 }}>
           <h2 className="text-primary">404 - Página no encontrada</h2>
@@ -28,7 +28,7 @@ export default function NotFound() {
               src=  {DoppyBoard}
               alt= "Doppy Message Board"
               width={550}
-              height={1000}
+              height={700}
               style={{ display: "block", margin: "0 auto", marginTop: "-90px" }}
             />
             <div style={{ position: "relative", zIndex: 3 }}>
