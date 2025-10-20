@@ -1,17 +1,99 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import "../components/estilos/Fondos.css";
 import HomeBanner from '/src/assets/homeImage.png'
 export default function Home() {
   const [theme, setTheme] = useState("bg-primary-dark");
+  const [active, setActive] = useState("all");
+  const [searchMode, setSearchMode] = useState(false);
+  const inputRef = useRef(null);
 
-  /*const toggleTheme = () => {
-    const next = theme === "dark" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-bs-theme", next);
-  };*/
+  const icons = [
+    { id: "pc", icon: "fab fa-windows" },
+    { id: "ps", icon: "fab fa-playstation" },
+    { id: "xbox", icon: "fab fa-xbox" },
+    { id: "all", icon: "fas fa-gamepad" },
+  ];
+
+  // focus input when search opens
+  useEffect(() => {
+    if (searchMode && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [searchMode]);
+
+  // close search when clicking outside
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (inputRef.current && !inputRef.current.contains(e.target)) {
+        setSearchMode(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+  }, []);
 
   return (
-    <div data-bs-theme={theme} className="bg-body text-body">     
+    <div data-bs-theme={theme} className="bg-body text-body">
+
+      {/* Floating Icon Bar */}
+      <div
+      className="position-fixed top-5 start-50 translate-middle-x z-3 mt-3"
+      style={{ zIndex: 1055 }}
+    >
+      <div
+        className="d-inline-flex align-items-center rounded-pill bg-primary-dark bg-opacity-75 p-3 shadow-lg"
+        style={{ backdropFilter: "blur(8px)", minWidth: "280px" }}
+      >
+        {/* If NOT in search mode → show platform icons */}
+        {!searchMode && (
+          <>
+            <div className="d-flex align-items-center gap-4 pe-4">
+              {icons.map(({ id, icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActive(id)}
+                  className={`btn border-0 bg-transparent p-0 text-center transition-all ${
+                    active === id
+                      ? "text-primary opacity-100 scale-110"
+                      : "text-secondary opacity-50"
+                  }`}
+                >
+                  <i className={`${icon} fs-3`}></i>
+                </button>
+              ))}
+            </div>
+
+            {/* search button */}
+            <div className="d-flex align-items-center bg-primary rounded-pill px-4 ms-2">
+              <button
+                className="btn btn-link text-white fs-5 p-0"
+                onClick={() => setSearchMode(true)}
+              >
+                <i className="fas fa-search"></i>
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* If in search mode → show input */}
+        {searchMode && (
+          <div className="flex-grow-1 d-flex align-items-center px-2" ref={inputRef}>
+            <i className="fas fa-search text-white me-2"></i>
+            <input
+              type="text"
+              className="form-control bg-dark text-light border-0 shadow-sm"
+              placeholder="Search for games..."
+              style={{ width: "220px" }}
+            />
+            <button
+              className="btn btn-link text-white ms-2 fs-5"
+              onClick={() => setSearchMode(false)}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
 
       {/* Hero */}
       <section
@@ -118,4 +200,10 @@ export default function Home() {
                 <button className="btn btn-primary">Subscribe</button>
               </form>
             </div>*/
+
+  /*const toggleTheme = () => {
+    const next = theme === "dark" ? "dark" : "light";
+    setTheme(next);
+    document.documentElement.setAttribute("data-bs-theme", next);
+  };*/
 
