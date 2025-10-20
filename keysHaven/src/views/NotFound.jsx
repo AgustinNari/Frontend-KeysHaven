@@ -17,31 +17,31 @@ export default function NotFound() {
           minHeight: "90vh",
         }}>
           <div style={{ position: "relative", zIndex: 2 }}>
-          <h2 className="text-primary">404 - Página no encontrada</h2>
-          <p>
-            <Link to="/" className="text-primary"  style={{textDecoration: "underline" }}>
-              Volver al Home
-            </Link>
-          </p>
-          <div style={{position: "relative", zIndex: 2}}>
-            <img
-              src=  {DoppyBoard}
-              alt= "Doppy Message Board"
-              width={550}
-              height={700}
-              style={{ display: "block", margin: "0 auto", marginTop: "-90px" }}
-            />
-            <div style={{ position: "relative", zIndex: 3 }}>
+            <h2 className="text-primary">404 - Página no encontrada</h2>
+            <p>
+              <Link to="/" className="text-primary"  style={{textDecoration: "underline" }}>
+                Volver al Home
+              </Link>
+            </p>
+            <div style={{position: "relative", zIndex: 2}}>
               <img
-                src={Number404}
-                alt="Number 404"
-                width={350}
-                height={170}
-                style={{ display: "block", margin: "0 auto", marginTop: "-730px" }}
+                src=  {DoppyBoard}
+                alt= "Doppy Message Board"
+                width={550}
+                height={700}
+                style={{ display: "block", margin: "0 auto", marginTop: "-90px" }}
               />
+              <div style={{ position: "relative", zIndex: 3 }}>
+                <img
+                  src={Number404}
+                  alt="Number 404"
+                  width={350}
+                  height={170}
+                  style={{ display: "block", margin: "0 auto", marginTop: "-805px"}}
+                />
+              </div>
             </div>
           </div>
-        </div>
       </section>
       /*<div className="text-center">
         <h2>404 - Página no encontrada</h2>
