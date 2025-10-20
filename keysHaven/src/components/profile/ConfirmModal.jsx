@@ -7,7 +7,7 @@ export default function ConfirmModal({ show, title, message, onConfirm, onCancel
     <div className="modal-backdrop-fixed">
       <div className="confirm-modal card">
         <h4>{title}</h4>
-        <p className="text-muted">{message}</p>
+        <p style = {{ color: "#e6dbff" }}>{message}</p>
         <div className="d-flex gap-2 justify-content-end">
           <button className="btn btn-outline-secondary" onClick={onCancel}>{cancelText}</button>
           <button className="btn btn-danger" onClick={onConfirm}>{confirmText}</button>

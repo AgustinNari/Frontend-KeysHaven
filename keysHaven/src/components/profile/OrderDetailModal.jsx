@@ -96,8 +96,8 @@ export default function OrderDetailModal({ show, order, userReviews, onClose, on
               <div className="mt-2">
                 {userReviews.filter(r => r.orderItemId === item.id).map(r => (
                   <div key={r.id} className="review-box card p-2">
-                    <div><strong>{r.title}</strong> — <span className="text-muted">{r.rating}/10</span></div>
-                    <div className="text-muted small">{new Date(r.createdAt).toLocaleString()}</div>
+                    <div><strong style = {{ color: "#646cff" }} >{r.title}</strong> — <span style = {{ color: "#646cff" }}>{r.rating}/10</span></div>
+                    <div style = {{ color: "#646cff" }}>{new Date(r.createdAt).toLocaleString()}</div>
                     <div>{r.comment}</div>
                     <div className="mt-2 d-flex gap-2 justify-content-end">
                       <button className="btn btn-sm btn-outline-primary" onClick={() => {
@@ -126,7 +126,7 @@ export default function OrderDetailModal({ show, order, userReviews, onClose, on
                   <li key={i} className="list-group-item d-flex justify-content-between align-items-center">
                     <div>
                       <div style = {{ color: "#646cff" }}className="small text">Clave {i+1}</div>
-                      <div>{k.keyMask}</div>
+                      <div>{k.keyCode}</div>
                     </div>
                     <div>
                       <button className="btn btn-sm btn-outline-secondary me-2" onClick={() => navigator.clipboard?.writeText(k.keyCode)}>Copiar</button>
