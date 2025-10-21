@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getAllProducts, updateProduct, deleteProduct } from '../../services/adminService';
+import { getAllProducts, updateProduct } from '../../services/adminService';
+import { mockProducts } from '../../data/mockData'; 
 
 export default function ProductManagement() {
   const [products, setProducts] = useState([]);
@@ -7,6 +8,23 @@ export default function ProductManagement() {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [imageManagerMode, setImageManagerMode] = useState(false);
+  const [newImage, setNewImage] = useState({ name: '', url: '' });
+  const [actionLoading, setActionLoading] = useState(null);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [imageError, setImageError] = useState('');
+
+  // Categorías disponibles
+  const imageCategories = [
+    'Portada principal',
+    'Gameplay 1', 
+    'Gameplay 2',
+    'Gameplay 3',
+    'Tráiler',
+    'Captura de pantalla',
+    'Arte conceptual'
+  ];
 
   useEffect(() => {
     loadProducts();
@@ -15,8 +33,9 @@ export default function ProductManagement() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const productsData = await getAllProducts();
-      setProducts(productsData);
+      // Usar datos mock importados desde mockData.js
+      await new Promise(resolve => setTimeout(resolve, 800)); // Simular delay de red
+      setProducts(mockProducts);
     } catch (err) {
       console.error('Error cargando productos:', err);
       setError('Error al cargar productos');
@@ -25,25 +44,240 @@ export default function ProductManagement() {
     }
   };
 
-  const handleToggleStatus = async (product) => {
+  // Función para validar URL de imagen
+  const isValidImageUrl = (url) => {
     try {
-      await updateProduct(product.id, { active: !product.active });
-      await loadProducts(); // Recargar lista
-    } catch (err) {
-      console.error('Error actualizando producto:', err);
-      setError('Error al actualizar producto');
+      const parsedUrl = new URL(url);
+      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
+    } catch {
+      return false;
     }
   };
 
-  const handleDeleteProduct = async (productId) => {
-    if (!window.confirm('¿Estás seguro de eliminar este producto?')) return;
-    
+  // Función para verificar si la imagen existe
+  const checkImageExists = (url) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = url;
+    });
+  };
+
+  const handleToggleStatus = async (product) => {
+    setActionLoading(`status-${product.id}`);
     try {
-      await deleteProduct(productId);
-      await loadProducts(); // Recargar lista
+      // Simular llamada al API
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Actualización optimista
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p.id === product.id 
+            ? { ...p, active: !p.active }
+            : p
+        )
+      );
+      
+      console.log(`Producto ${product.id} - Estado actualizado: ${!product.active}`);
+      
     } catch (err) {
-      console.error('Error eliminando producto:', err);
-      setError('Error al eliminar producto');
+      console.error('Error actualizando producto:', err);
+      setError('Error al actualizar producto');
+      
+      // Revertir en caso de error
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p.id === product.id 
+            ? { ...p, active: product.active }
+            : p
+        )
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleToggleFeatured = async (product) => {
+    setActionLoading(`featured-${product.id}`);
+    try {
+      // Simular llamada al API
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Actualización optimista
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p.id === product.id 
+            ? { ...p, featured: !p.featured }
+            : p
+        )
+      );
+      
+      console.log(`Producto ${product.id} - Destacado actualizado: ${!product.featured}`);
+      
+    } catch (err) {
+      console.error('Error actualizando producto:', err);
+      setError('Error al actualizar producto');
+      
+      // Revertir en caso de error
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p.id === product.id 
+            ? { ...p, featured: product.featured }
+            : p
+        )
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const openImageManager = (product) => {
+    setSelectedProduct({
+      ...product,
+      images: product.imageUrls ? product.imageUrls.map((url, index) => ({
+        name: `Imagen ${index + 1}`,
+        url: url,
+        isPrimary: index === 0,
+        categories: []
+      })) : []
+    });
+    setImageManagerMode(true);
+    setError('');
+    setNewImage({ name: '', url: '' });
+    setSelectedCategories([]);
+    setImageError('');
+  };
+
+  const closeImageManager = () => {
+    setImageManagerMode(false);
+    setSelectedProduct(null);
+    setError('');
+    setImageError('');
+  };
+
+  // Función para manejar categorías
+  const handleCategoryToggle = (category) => {
+    setSelectedCategories(prev => 
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  // Función mejorada para agregar imagen
+  const addImage = async () => {
+    if (!newImage.name.trim()) {
+      setImageError('El nombre de la imagen es requerido');
+      return;
+    }
+
+    if (!newImage.url.trim()) {
+      setImageError('La URL de la imagen es requerida');
+      return;
+    }
+
+    if (!isValidImageUrl(newImage.url)) {
+      setImageError('La URL de la imagen no es válida');
+      return;
+    }
+
+    // Verificar si la URL ya existe
+    if (selectedProduct.images.some(img => img.url === newImage.url.trim())) {
+      setImageError('Esta URL de imagen ya está agregada');
+      return;
+    }
+
+    setLoading(true);
+    setImageError('');
+
+    try {
+      // Verificar si la imagen existe
+      const imageExists = await checkImageExists(newImage.url);
+      if (!imageExists) {
+        setImageError('No se pudo cargar la imagen desde la URL proporcionada');
+        setLoading(false);
+        return;
+      }
+
+      // Agregar la imagen
+      setSelectedProduct(prev => ({
+        ...prev,
+        images: [...prev.images, {
+          name: newImage.name.trim(),
+          url: newImage.url.trim(),
+          isPrimary: prev.images.length === 0,
+          categories: [...selectedCategories]
+        }]
+      }));
+      
+      setNewImage({ name: '', url: '' });
+      setSelectedCategories([]);
+    } catch (err) {
+      setImageError('Error al verificar la imagen');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeImage = (index) => {
+    if (selectedProduct.images.length > 1) {
+      const newImages = selectedProduct.images.filter((_, i) => i !== index);
+      if (selectedProduct.images[index].isPrimary && newImages.length > 0) {
+        newImages[0].isPrimary = true;
+      }
+      setSelectedProduct(prev => ({ ...prev, images: newImages }));
+    }
+  };
+
+  const setPrimaryImage = (index) => {
+    const newImages = selectedProduct.images.map((img, i) => ({
+      ...img,
+      isPrimary: i === index
+    }));
+    setSelectedProduct(prev => ({ ...prev, images: newImages }));
+  };
+
+  const updateImageName = (index, newName) => {
+    const newImages = [...selectedProduct.images];
+    newImages[index] = { ...newImages[index], name: newName };
+    setSelectedProduct(prev => ({ ...prev, images: newImages }));
+  };
+
+  const updateImageUrl = (index, newUrl) => {
+    const newImages = [...selectedProduct.images];
+    newImages[index] = { ...newImages[index], url: newUrl };
+    setSelectedProduct(prev => ({ ...prev, images: newImages }));
+  };
+
+  const saveImageChanges = async () => {
+    if (!selectedProduct) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const imageUrls = selectedProduct.images.map(img => img.url);
+      
+      // Simular llamada al API
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Actualizar el producto en la lista
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p.id === selectedProduct.id 
+            ? { ...p, imageUrls: imageUrls }
+            : p
+        )
+      );
+
+      console.log(`Imágenes actualizadas para producto ${selectedProduct.id}`);
+      closeImageManager();
+    } catch (err) {
+      console.error('Error actualizando imágenes:', err);
+      setError('Error al actualizar imágenes');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,10 +297,324 @@ export default function ProductManagement() {
     return { class: 'bg-danger', text: 'Sin stock' };
   };
 
+  // Renderizar gestor de imágenes
+  if (imageManagerMode && selectedProduct) {
+    return (
+      <div className="card bg-primary-dark border-0">
+        <div className="card-header bg-primary-mid d-flex justify-content-between align-items-center">
+          <h5 className="text-primary-light mb-0">
+            <i className="fas fa-images me-2"></i>
+            Gestión de Imágenes - {selectedProduct.title}
+          </h5>
+          <button 
+            className="btn btn-outline-secondary btn-sm"
+            onClick={closeImageManager}
+            disabled={loading}
+          >
+            <i className="fas fa-arrow-left me-1"></i>
+            Volver a Productos
+          </button>
+        </div>
+        <div className="card-body">
+          {error && (
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
+
+          {/* Información del producto */}
+          <div className="card bg-dark border-secondary mb-4">
+            <div className="card-body">
+              <div className="row">
+                <div className="col-md-6">
+                  <h6 className="text-primary-light">
+                    <i className="fas fa-gamepad me-2"></i>
+                    {selectedProduct.title}
+                  </h6>
+                  <p className="text-muted mb-0">
+                    <i className="fas fa-user me-1"></i>
+                    Vendedor: {selectedProduct.sellerDisplayName}
+                  </p>
+                </div>
+                <div className="col-md-6 text-end">
+                  <span className={`badge ${selectedProduct.active ? 'bg-success' : 'bg-danger'}`}>
+                    {selectedProduct.active ? 'Activo' : 'Inactivo'}
+                  </span>
+                  <span className={`badge ${selectedProduct.featured ? 'bg-warning ms-2' : 'bg-secondary ms-2'}`}>
+                    {selectedProduct.featured ? 'Destacado' : 'Normal'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Gestión de imágenes */}
+          <div className="row mb-4">
+            {selectedProduct.images.map((image, index) => (
+              <div key={index} className="col-md-4 mb-3">
+                <div className="card bg-dark border-secondary h-100">
+                  <div className="card-img-top position-relative">
+                    <img 
+                      src={image.url} 
+                      alt={image.name}
+                      style={{ height: '200px', objectFit: 'cover', width: '100%' }}
+                      onError={(e) => {
+                        e.target.src = 'https://via.placeholder.com/300x200/333/666?text=Imagen+No+Disponible';
+                      }}
+                    />
+                    {image.isPrimary && (
+                      <span className="position-absolute top-0 start-0 badge bg-warning m-2">
+                        <i className="fas fa-star me-1"></i>
+                        Principal
+                      </span>
+                    )}
+                  </div>
+                  <div className="card-body">
+                    <div className="mb-2">
+                      <label className="form-label text-primary-light small mb-1">
+                        <i className="fas fa-tag me-1"></i>
+                        Nombre
+                      </label>
+                      <input 
+                        type="text" 
+                        className="form-control bg-dark border-secondary text-white"
+                        value={image.name}
+                        onChange={(e) => updateImageName(index, e.target.value)}
+                        disabled={loading}
+                      />
+                    </div>
+                    <div className="mb-2">
+                      <label className="form-label text-primary-light small mb-1">
+                        <i className="fas fa-link me-1"></i>
+                        URL
+                      </label>
+                      <input 
+                        type="text" 
+                        className="form-control bg-dark border-secondary text-white"
+                        value={image.url}
+                        onChange={(e) => updateImageUrl(index, e.target.value)}
+                        disabled={loading}
+                      />
+                    </div>
+                    {image.categories && image.categories.length > 0 && (
+                      <div className="mb-2">
+                        <label className="form-label text-primary-light small mb-1">
+                          <i className="fas fa-tags me-1"></i>
+                          Categorías
+                        </label>
+                        <div className="d-flex flex-wrap gap-1">
+                          {image.categories.map(cat => (
+                            <span key={cat} className="badge bg-info me-1">
+                              {cat}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="btn-group w-100">
+                      {!image.isPrimary && (
+                        <button 
+                          type="button"
+                          className="btn btn-outline-warning btn-sm"
+                          onClick={() => setPrimaryImage(index)}
+                          disabled={loading}
+                        >
+                          <i className="fas fa-star me-1"></i>
+                          Principal
+                        </button>
+                      )}
+                      {selectedProduct.images.length > 1 && (
+                        <button 
+                          type="button"
+                          className="btn btn-outline-danger btn-sm"
+                          onClick={() => removeImage(index)}
+                          disabled={loading}
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Agregar nueva imagen - SECCIÓN CORREGIDA */}
+          <div className="card bg-dark border-secondary mb-4">
+            <div className="card-header">
+              <h6 className="text-primary-light mb-0">
+                <i className="fas fa-plus me-1"></i>
+                Agregar Nueva Imagen
+              </h6>
+            </div>
+            <div className="card-body">
+              {imageError && (
+                <div className="alert alert-warning py-2 mb-3" role="alert">
+                  <small>
+                    <i className="fas fa-exclamation-triangle me-1"></i>
+                    {imageError}
+                  </small>
+                </div>
+              )}
+
+              <div className="row mb-3">
+                <div className="col-md-6">
+                  <label className="form-label text-primary-light small mb-1">
+                    <i className="fas fa-tag me-1"></i>
+                    Nombre de la imagen *
+                  </label>
+                  <input 
+                    type="text" 
+                    className="form-control bg-dark border-secondary text-white"
+                    value={newImage.name}
+                    onChange={(e) => {
+                      setNewImage({...newImage, name: e.target.value});
+                      setImageError('');
+                    }}
+                    placeholder="Portada principal, Gameplay 1, etc."
+                    disabled={loading}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label text-primary-light small mb-1">
+                    <i className="fas fa-link me-1"></i>
+                    URL de la imagen *
+                  </label>
+                  <input 
+                    type="text" 
+                    className="form-control bg-dark border-secondary text-white"
+                    value={newImage.url}
+                    onChange={(e) => {
+                      setNewImage({...newImage, url: e.target.value});
+                      setImageError('');
+                    }}
+                    placeholder="https://ejemplo.com/imagen.jpg"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Selector de categorías - CORREGIDO */}
+              <div className="mb-3">
+                <label className="form-label text-primary-light small mb-2">
+                  <i className="fas fa-tags me-1"></i>
+                  Tipo de imagen (selecciona al menos una)
+                </label>
+                <div className="card bg-dark border-secondary">
+                  <div className="card-body py-2">
+                    <div className="row">
+                      {imageCategories.map(category => (
+                        <div key={category} className="col-md-6 mb-1">
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              id={`category-${category.replace(/\s+/g, '-')}`}
+                              checked={selectedCategories.includes(category)}
+                              onChange={() => handleCategoryToggle(category)}
+                              disabled={loading}
+                            />
+                            <label 
+                              className="form-check-label text-white small" 
+                              htmlFor={`category-${category.replace(/\s+/g, '-')}`}
+                            >
+                              {category}
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                {selectedCategories.length === 0 && (
+                  <div className="alert alert-warning mt-2 py-2" role="alert">
+                    <small>
+                      <i className="fas fa-exclamation-circle me-1"></i>
+                      Debes seleccionar al menos una categoría para la imagen
+                    </small>
+                  </div>
+                )}
+              </div>
+
+              {/* Botón agregar - CORREGIDO */}
+              <div className="d-flex justify-content-between align-items-center">
+                <button 
+                  type="button" 
+                  className="btn btn-primary"
+                  onClick={addImage}
+                  disabled={
+                    loading || 
+                    !newImage.name.trim() || 
+                    !newImage.url.trim() || 
+                    selectedCategories.length === 0
+                  }
+                >
+                  {loading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Verificando...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-plus me-1"></i>
+                      Agregar Imagen
+                    </>
+                  )}
+                </button>
+
+                {selectedProduct.images.length === 0 && (
+                  <small className="text-warning">
+                    <i className="fas fa-exclamation-triangle me-1"></i>
+                    No hay imágenes agregadas. Agrega al menos una imagen para el producto.
+                  </small>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Botones de acción */}
+          <div className="d-flex gap-2">
+            <button 
+              className="btn btn-primary"
+              onClick={saveImageChanges}
+              disabled={loading || selectedProduct.images.length === 0}
+            >
+              {loading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-save me-1"></i>
+                  Guardar Cambios
+                </>
+              )}
+            </button>
+            <button 
+              className="btn btn-secondary"
+              onClick={closeImageManager}
+              disabled={loading}
+            >
+              <i className="fas fa-times me-1"></i>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Renderizar lista normal de productos
   return (
     <div className="card bg-primary-dark border-0">
       <div className="card-header bg-primary-mid">
-        <h5 className="text-primary-light mb-0">Gestión Global de Productos</h5>
+        <h5 className="text-primary-light mb-0">
+          <i className="fas fa-gamepad me-2"></i>
+          Gestión Global de Productos
+        </h5>
       </div>
       <div className="card-body">
         {error && (
@@ -78,7 +626,10 @@ export default function ProductManagement() {
         {/* Filtros y Búsqueda */}
         <div className="row mb-4">
           <div className="col-md-6">
-            <label className="form-label text-primary-light">Buscar</label>
+            <label className="form-label text-primary-light">
+              <i className="fas fa-search me-1"></i>
+              Buscar
+            </label>
             <input
               type="text"
               className="form-control bg-dark border-secondary text-white"
@@ -88,7 +639,10 @@ export default function ProductManagement() {
             />
           </div>
           <div className="col-md-4">
-            <label className="form-label text-primary-light">Estado</label>
+            <label className="form-label text-primary-light">
+              <i className="fas fa-filter me-1"></i>
+              Estado
+            </label>
             <select
               className="form-select bg-dark border-secondary text-white"
               value={statusFilter}
@@ -107,6 +661,7 @@ export default function ProductManagement() {
                 setStatusFilter('all');
               }}
             >
+              <i className="fas fa-eraser me-1"></i>
               Limpiar
             </button>
           </div>
@@ -121,39 +676,44 @@ export default function ProductManagement() {
                 <th>Vendedor</th>
                 <th>Precio</th>
                 <th>Stock</th>
-                <th>Plataforma</th>
+                <th>Imágenes</th>
                 <th>Estado</th>
+                <th>Destacado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="text-center text-muted py-4">
+                  <td colSpan="8" className="text-center text-muted py-4">
+                    <div className="spinner-border spinner-border-sm me-2" role="status"></div>
                     Cargando productos...
                   </td>
                 </tr>
               ) : filteredProducts.map(product => {
                 const stockStatus = getStockStatus(product.availableStock);
+                const isStatusLoading = actionLoading === `status-${product.id}`;
+                const isFeaturedLoading = actionLoading === `featured-${product.id}`;
+                
                 return (
                   <tr key={product.id}>
                     <td>
-                      <div>
-                        <div className="text-primary-light fw-bold">{product.title}</div>
-                        {product.categories && (
-                          <div className="d-flex flex-wrap gap-1 mt-1">
-                            {Array.from(product.categories).slice(0, 2).map(category => (
-                              <span key={category.id} className="badge bg-secondary small">
-                                {category.description}
-                              </span>
-                            ))}
-                            {product.categories.size > 2 && (
-                              <span className="badge bg-secondary small">
-                                +{product.categories.size - 2}
-                              </span>
-                            )}
-                          </div>
+                      <div className="d-flex align-items-center">
+                        {product.imageUrls && product.imageUrls.length > 0 && (
+                          <img 
+                            src={product.imageUrls[0]} 
+                            alt={product.title}
+                            className="rounded me-3"
+                            style={{ width: '50px', height: '50px', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.target.src = 'https://via.placeholder.com/50x50/333/666?text=Imagen';
+                            }}
+                          />
                         )}
+                        <div>
+                          <div className="text-primary-light fw-bold">{product.title}</div>
+                          <small className="text-muted">{product.platform} • {product.region}</small>
+                        </div>
                       </div>
                     </td>
                     <td>
@@ -162,7 +722,7 @@ export default function ProductManagement() {
                     </td>
                     <td>
                       <div className="text-primary-light fw-bold">
-                        {product.currency} {product.price}
+                        USD {product.price}
                       </div>
                     </td>
                     <td>
@@ -171,7 +731,10 @@ export default function ProductManagement() {
                       </span>
                     </td>
                     <td>
-                      <span className="badge bg-info">{product.platform}</span>
+                      <span className="badge bg-info">
+                        <i className="fas fa-image me-1"></i>
+                        {product.imageUrls?.length || 0}
+                      </span>
                     </td>
                     <td>
                       <span className={`badge ${product.active ? 'bg-success' : 'bg-danger'}`}>
@@ -179,18 +742,47 @@ export default function ProductManagement() {
                       </span>
                     </td>
                     <td>
+                      <span className={`badge ${product.featured ? 'bg-warning' : 'bg-secondary'}`}>
+                        {product.featured ? 'Sí' : 'No'}
+                      </span>
+                    </td>
+                    <td>
                       <div className="btn-group btn-group-sm">
                         <button 
-                          className="btn btn-outline-warning"
-                          onClick={() => handleToggleStatus(product)}
+                          className="btn btn-outline-primary"
+                          onClick={() => openImageManager(product)}
+                          title="Gestionar imágenes"
+                          disabled={actionLoading}
                         >
-                          {product.active ? 'Desactivar' : 'Activar'}
+                          <i className="fas fa-images"></i>
                         </button>
                         <button 
-                          className="btn btn-outline-danger"
-                          onClick={() => handleDeleteProduct(product.id)}
+                          className="btn btn-outline-warning"
+                          onClick={() => handleToggleFeatured(product)}
+                          title={product.featured ? 'Quitar destacado' : 'Destacar'}
+                          disabled={isFeaturedLoading}
                         >
-                          Eliminar
+                          {isFeaturedLoading ? (
+                            <div className="spinner-border spinner-border-sm" role="status">
+                              <span className="visually-hidden">Cargando...</span>
+                            </div>
+                          ) : (
+                            <i className={`fas fa-star ${product.featured ? 'text-warning' : ''}`}></i>
+                          )}
+                        </button>
+                        <button 
+                          className="btn btn-outline-secondary"
+                          onClick={() => handleToggleStatus(product)}
+                          title={product.active ? 'Desactivar' : 'Activar'}
+                          disabled={isStatusLoading}
+                        >
+                          {isStatusLoading ? (
+                            <div className="spinner-border spinner-border-sm" role="status">
+                              <span className="visually-hidden">Cargando...</span>
+                            </div>
+                          ) : (
+                            <i className={`fas ${product.active ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                          )}
                         </button>
                       </div>
                     </td>
@@ -201,7 +793,8 @@ export default function ProductManagement() {
           </table>
           {!loading && filteredProducts.length === 0 && (
             <div className="text-center text-muted py-4">
-              No se encontraron productos que coincidan con los filtros
+              <i className="fas fa-search fa-2x mb-3"></i>
+              <p>No se encontraron productos que coincidan con los filtros</p>
             </div>
           )}
         </div>

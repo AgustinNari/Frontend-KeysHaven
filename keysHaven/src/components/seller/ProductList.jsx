@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSellerProducts, updateProduct, deleteProduct } from '../../services/sellerService';
+import { getSellerProducts, updateProduct } from '../../services/sellerService';
 
 export default function ProductList({ onEditProduct }) {
   const [products, setProducts] = useState([]);
@@ -30,18 +30,6 @@ export default function ProductList({ onEditProduct }) {
     } catch (err) {
       console.error('Error actualizando producto:', err);
       setError('Error al actualizar producto');
-    }
-  };
-
-  const handleDelete = async (productId) => {
-    if (!window.confirm('¿Estás seguro de eliminar este producto?')) return;
-    
-    try {
-      await deleteProduct(productId);
-      await loadProducts(); // Recargar lista
-    } catch (err) {
-      console.error('Error eliminando producto:', err);
-      setError('Error al eliminar producto');
     }
   };
 
@@ -109,6 +97,7 @@ export default function ProductList({ onEditProduct }) {
                 <th>Stock</th>
                 <th>Categorías</th>
                 <th>Estado</th>
+                <th>Destacado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -175,6 +164,11 @@ export default function ProductList({ onEditProduct }) {
                       </span>
                     </td>
                     <td>
+                      <span className={`badge ${product.featured ? 'bg-warning' : 'bg-secondary'}`}>
+                        {product.featured ? 'Sí' : 'No'}
+                      </span>
+                    </td>
+                    <td>
                       <div className="btn-group btn-group-sm">
                         <button 
                           className="btn btn-outline-primary"
@@ -189,13 +183,6 @@ export default function ProductList({ onEditProduct }) {
                           title={product.active ? 'Desactivar' : 'Activar'}
                         >
                           <i className={`fas ${product.active ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                        </button>
-                        <button 
-                          className="btn btn-outline-danger"
-                          onClick={() => handleDelete(product.id)}
-                          title="Eliminar producto"
-                        >
-                          <i className="fas fa-trash"></i>
                         </button>
                       </div>
                     </td>

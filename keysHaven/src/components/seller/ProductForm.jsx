@@ -15,12 +15,14 @@ export default function ProductForm({ product, onSuccess }) {
     releaseDate: '',
     developer: '',
     publisher: '',
-    metacriticScore: ''
+    metacriticScore: '',
+    images: [] // Cambio: ahora es un array de objetos con name y url
   });
 
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [newImage, setNewImage] = useState({ name: '', url: '' });
 
   // Cargar categorías disponibles
   useEffect(() => {
@@ -43,7 +45,7 @@ export default function ProductForm({ product, onSuccess }) {
         title: product.title || '',
         description: product.description || '',
         price: product.price?.toString() || '',
-        currency: product.currency || 'USD',
+        currency: 'USD',
         categoryIds: new Set(product.categories?.map(cat => cat.id.toString()) || []),
         platform: product.platform || 'PC',
         region: product.region || 'Global',
@@ -52,7 +54,12 @@ export default function ProductForm({ product, onSuccess }) {
         releaseDate: product.releaseDate || '',
         developer: product.developer || '',
         publisher: product.publisher || '',
-        metacriticScore: product.metacriticScore?.toString() || ''
+        metacriticScore: product.metacriticScore?.toString() || '',
+        images: product.imageUrls ? product.imageUrls.map((url, index) => ({
+          name: `Imagen ${index + 1}`,
+          url: url,
+          isPrimary: index === 0
+        })) : []
       });
     }
   }, [product]);
@@ -67,6 +74,46 @@ export default function ProductForm({ product, onSuccess }) {
       }
       return { ...prev, categoryIds: newCategoryIds };
     });
+  };
+
+  const addImage = () => {
+    if (newImage.url.trim() && newImage.name.trim() && 
+        !formData.images.some(img => img.url === newImage.url.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, {
+          name: newImage.name.trim(),
+          url: newImage.url.trim(),
+          isPrimary: prev.images.length === 0 // Primera imagen es primaria por defecto
+        }]
+      }));
+      setNewImage({ name: '', url: '' });
+    }
+  };
+
+  const removeImage = (index) => {
+    if (formData.images.length > 1) {
+      const newImages = formData.images.filter((_, i) => i !== index);
+      // Si eliminamos la imagen primaria, hacer la primera imagen primaria
+      if (formData.images[index].isPrimary && newImages.length > 0) {
+        newImages[0].isPrimary = true;
+      }
+      setFormData(prev => ({ ...prev, images: newImages }));
+    }
+  };
+
+  const setPrimaryImage = (index) => {
+    const newImages = formData.images.map((img, i) => ({
+      ...img,
+      isPrimary: i === index
+    }));
+    setFormData(prev => ({ ...prev, images: newImages }));
+  };
+
+  const updateImageName = (index, newName) => {
+    const newImages = [...formData.images];
+    newImages[index] = { ...newImages[index], name: newName };
+    setFormData(prev => ({ ...prev, images: newImages }));
   };
 
   const handleSubmit = async (e) => {
@@ -88,12 +135,20 @@ export default function ProductForm({ product, onSuccess }) {
         return;
       }
 
-      // CORRECCIÓN: Usar Number en lugar de BigDecimal
+      if (formData.images.length === 0) {
+        setError('Debes agregar al menos una imagen');
+        setLoading(false);
+        return;
+      }
+
+      // Extraer solo las URLs para el payload
+      const imageUrls = formData.images.map(img => img.url);
+
       const payload = {
         title: formData.title,
         description: formData.description,
-        price: parseFloat(formData.price), // Cambiado a parseFloat
-        currency: formData.currency,
+        price: parseFloat(formData.price),
+        currency: 'USD',
         categoryIds: Array.from(formData.categoryIds).map(id => parseInt(id)),
         platform: formData.platform,
         region: formData.region,
@@ -102,14 +157,13 @@ export default function ProductForm({ product, onSuccess }) {
         releaseDate: formData.releaseDate || null,
         developer: formData.developer || null,
         publisher: formData.publisher || null,
-        metacriticScore: formData.metacriticScore ? parseInt(formData.metacriticScore) : null
+        metacriticScore: formData.metacriticScore ? parseInt(formData.metacriticScore) : null,
+        imageUrls: imageUrls
       };
 
       if (product) {
-        // Actualizar producto existente
         await updateProduct(product.id, payload);
       } else {
-        // Crear nuevo producto
         await createProduct(payload);
       }
 
@@ -150,30 +204,17 @@ export default function ProductForm({ product, onSuccess }) {
               />
             </div>
             <div className="col-md-6 mb-3">
-              <label className="form-label text-primary-light">Precio *</label>
-              <div className="input-group">
-                <input 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  className="form-control bg-dark border-secondary text-white"
-                  value={formData.price}
-                  onChange={(e) => setFormData({...formData, price: e.target.value})}
-                  required
-                  disabled={loading}
-                />
-                <select 
-                  className="form-select bg-dark border-secondary text-white"
-                  style={{maxWidth: '100px'}}
-                  value={formData.currency}
-                  onChange={(e) => setFormData({...formData, currency: e.target.value})}
-                  disabled={loading}
-                >
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="ARS">ARS</option>
-                </select>
-              </div>
+              <label className="form-label text-primary-light">Precio (USD) *</label>
+              <input 
+                type="number" 
+                step="0.01"
+                min="0"
+                className="form-control bg-dark border-secondary text-white"
+                value={formData.price}
+                onChange={(e) => setFormData({...formData, price: e.target.value})}
+                required
+                disabled={loading}
+              />
             </div>
             
             <div className="col-md-6 mb-3">
@@ -290,6 +331,116 @@ export default function ProductForm({ product, onSuccess }) {
             </div>
 
             <div className="col-12 mb-3">
+              <label className="form-label text-primary-light">Imágenes del Producto *</label>
+              
+              {/* Agregar nueva imagen */}
+              <div className="card bg-dark border-secondary mb-3">
+                <div className="card-body">
+                  <h6 className="text-primary-light mb-3">Agregar Nueva Imagen</h6>
+                  <div className="row">
+                    <div className="col-md-6 mb-2">
+                      <label className="form-label text-primary-light small">Nombre de la Imagen *</label>
+                      <input 
+                        type="text" 
+                        className="form-control bg-dark border-secondary text-white"
+                        value={newImage.name}
+                        onChange={(e) => setNewImage({...newImage, name: e.target.value})}
+                        placeholder="Ej: Portada principal, Gameplay 1, etc."
+                        disabled={loading}
+                      />
+                    </div>
+                    <div className="col-md-6 mb-2">
+                      <label className="form-label text-primary-light small">URL de la Imagen *</label>
+                      <input 
+                        type="text" 
+                        className="form-control bg-dark border-secondary text-white"
+                        value={newImage.url}
+                        onChange={(e) => setNewImage({...newImage, url: e.target.value})}
+                        placeholder="https://ejemplo.com/imagen.jpg"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-primary btn-sm"
+                    onClick={addImage}
+                    disabled={loading || !newImage.name.trim() || !newImage.url.trim()}
+                  >
+                    <i className="fas fa-plus me-1"></i>
+                    Agregar Imagen
+                  </button>
+                </div>
+              </div>
+
+              {/* Lista de imágenes */}
+              <div className="row">
+                {formData.images.map((image, index) => (
+                  <div key={index} className="col-md-4 mb-3">
+                    <div className="card bg-dark border-secondary h-100">
+                      <img 
+                        src={image.url} 
+                        alt={image.name}
+                        className="card-img-top"
+                        style={{ height: '150px', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/300x150/333/666?text=Imagen+No+Disponible';
+                        }}
+                      />
+                      <div className="card-body">
+                        <div className="mb-2">
+                          <label className="form-label text-primary-light small mb-1">Nombre</label>
+                          <input 
+                            type="text" 
+                            className="form-control bg-dark border-secondary text-white"
+                            value={image.name}
+                            onChange={(e) => updateImageName(index, e.target.value)}
+                            disabled={loading}
+                          />
+                        </div>
+                        <div className="btn-group w-100">
+                          {image.isPrimary ? (
+                            <span className="btn btn-success btn-sm disabled">
+                              <i className="fas fa-star me-1"></i>
+                              Principal
+                            </span>
+                          ) : (
+                            <button 
+                              type="button"
+                              className="btn btn-outline-warning btn-sm"
+                              onClick={() => setPrimaryImage(index)}
+                              disabled={loading}
+                            >
+                              <i className="fas fa-star me-1"></i>
+                              Principal
+                            </button>
+                          )}
+                          {formData.images.length > 1 && (
+                            <button 
+                              type="button"
+                              className="btn btn-outline-danger btn-sm"
+                              onClick={() => removeImage(index)}
+                              disabled={loading}
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {formData.images.length === 0 && (
+                <div className="text-center text-muted py-4">
+                  <i className="fas fa-images fa-3x mb-3"></i>
+                  <p>No hay imágenes agregadas. Agrega al menos una imagen para el producto.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="col-12 mb-3">
               <label className="form-label text-primary-light">Categorías *</label>
               <div className="d-flex flex-wrap gap-3">
                 {categories.map(category => (
@@ -321,7 +472,7 @@ export default function ProductForm({ product, onSuccess }) {
             <button 
               type="submit" 
               className="btn btn-primary"
-              disabled={loading || formData.categoryIds.size === 0}
+              disabled={loading || formData.categoryIds.size === 0 || formData.images.length === 0}
             >
               {loading ? (
                 <>

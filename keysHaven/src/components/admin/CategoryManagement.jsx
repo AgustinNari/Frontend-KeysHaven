@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createCategory, getCategories, updateCategory, deleteCategory } from '../../services/adminService';
+import { createCategory, getCategories, updateCategory } from '../../services/adminService';
 
 export default function CategoryManagement() {
   const [categories, setCategories] = useState([]);
@@ -58,15 +58,13 @@ export default function CategoryManagement() {
     setShowForm(true);
   };
 
-  const handleDelete = async (categoryId) => {
-    if (!window.confirm('¿Estás seguro de eliminar esta categoría?')) return;
-    
+  const handleToggleFeatured = async (categoryId, currentFeatured) => {
     try {
-      await deleteCategory(categoryId);
+      await updateCategory(categoryId, { featured: !currentFeatured });
       await loadCategories(); // Recargar lista
     } catch (err) {
-      console.error('Error eliminando categoría:', err);
-      setError('Error al eliminar categoría');
+      console.error('Error actualizando categoría:', err);
+      setError('Error al actualizar categoría');
     }
   };
 
@@ -182,18 +180,12 @@ export default function CategoryManagement() {
                         Editar
                       </button>
                       <button 
-                        className="btn btn-outline-danger"
-                        onClick={() => handleDelete(category.id)}
-                        disabled={category.productCount > 0}
+                        className="btn btn-outline-warning"
+                        onClick={() => handleToggleFeatured(category.id, category.featured)}
                       >
-                        Eliminar
+                        {category.featured ? 'Quitar Destacado' : 'Destacar'}
                       </button>
                     </div>
-                    {category.productCount > 0 && (
-                      <small className="text-muted d-block mt-1">
-                        No se puede eliminar (tiene productos)
-                      </small>
-                    )}
                   </td>
                 </tr>
               ))}
