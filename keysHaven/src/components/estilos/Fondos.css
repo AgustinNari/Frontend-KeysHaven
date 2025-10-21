@@ -9,6 +9,10 @@
   border-color: #6a0fc7 !important;
 }
 
+body{
+  background-color: #191022;
+}
+
 .text-primary {
   color: #7f13ec !important;
 }

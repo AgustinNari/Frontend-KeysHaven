@@ -29,7 +29,7 @@ export default function Login() {
   }
 
   return (
-    <div data-bs-theme="dark" className="bg-body text-body min-vh-100">
+    <div data-bs-theme="dark" className="bg-primary-dark text-body d-flex justify-content-center align-items-center">
       <div className="container-fluid d-flex flex-column align-items-center justify-content-center min-vh-100">
         <div className="card w-50 shadow-lg border-secondary">
           <div className="card-body p-5">
