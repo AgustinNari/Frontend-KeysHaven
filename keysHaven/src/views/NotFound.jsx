@@ -74,14 +74,16 @@ export default function NotFound() {
           backgroundPosition: "center",
           minHeight: "850px",
         }}>
-         <div style={{ position: "relative", zIndex: 2 }}>
-           <h2 className="text-primary">{messageText}</h2>
-           <h3 className="text-primary">{errorMessage}</h3>
-           <p>
-             <Link to="/" className="text-primary"  style={{textDecoration: "underline" }}>
-               Volver al Home
-             </Link>
-           </p>
+         <div style={{ position: "relative", zIndex: 2}}>
+          <div style={{ position: "relative", zIndex: 2000}}>
+            <h2 className="text-primary">{messageText}</h2>
+            <h3 className="text-primary">{errorMessage}</h3>
+            <p>
+              <Link to="/home" className="text-primary"  style={{textDecoration: "hover-underline"}}>
+                Volver al Home
+              </Link>
+            </p>
+           </div>
            <div style={{position: "relative", zIndex: 2}}>
              <img
                src=  {imageTop}
@@ -104,7 +106,4 @@ export default function NotFound() {
      </section>
    );
 }
-/*<div className="text-center">
-        <h2>404 - Página no encontrada</h2>
-        <p><Link to="/">Volver al Home</Link></p>
-      </div>*///url('/src/assets/doppyKnight/doppyMessageBoard.png')
+///url('/src/assets/doppyKnight/doppyMessageBoard.png')
