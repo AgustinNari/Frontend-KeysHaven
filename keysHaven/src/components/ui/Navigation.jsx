@@ -12,7 +12,7 @@ export default function Navigation() {
   const briefName = user?.displayName ?? user?.email ?? "";
 
   return (
-    <nav className="navbar navbar-expand-lg sticky-top navbar-dark bg-primary-dark">
+    <nav className="navbar navbar-expand-lg sticky-top navbar-dark bg-primary-dark border-bottom border-light">
       <div className="container-fluid">
         <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
           <img src="/src/assets/keyLogo.svg" width={55} height={35} alt="KeysHaven" />

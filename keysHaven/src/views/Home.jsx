@@ -36,11 +36,11 @@ export default function Home() {
 
       {/* Floating Icon Bar */}
       <div
-      className="position-fixed top-5 start-50 translate-middle-x z-3 mt-3"
-      style={{ zIndex: 1055 }}
+      className="position-fixed start-50 translate-middle-x z-2000"
+      style={{ top: '50px', zIndex: 1055 }}
     >
       <div
-        className="d-inline-flex align-items-center rounded-pill bg-primary-dark bg-opacity-75 p-3 shadow-lg"
+        className="d-inline-flex align-items-center rounded-pill bg-primary-mid bg-opacity-75 p-3 shadow-lg"
         style={{ backdropFilter: "blur(8px)", minWidth: "280px" }}
       >
         {/* If NOT in search mode → show platform icons */}
