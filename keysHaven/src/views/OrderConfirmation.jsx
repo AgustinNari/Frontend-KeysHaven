@@ -51,14 +51,14 @@ export default function OrderConfirmation() {
           style={{ width: 160, height: "auto", opacity: 0.95 }}
         />
         <h2 className="mt-3">¡Gracias por tu compra!</h2>
-        <p className="text-muted mb-1">
+        <p style = {{ color: "#e6dbff" }}>
           Orden <strong>{order.id}</strong>
         </p>
-        <p className="text-muted">
+        <p style = {{ color: "#8a4ff0" }}>
           Fecha: {new Date(order.createdAt).toLocaleString()}
         </p>
-        <div className="small text-muted">
-          * La entrega es digital. Recibirás tus claves al instante.
+        <div style = {{ color: "#8a4ff0" }}>
+          * La entrega es digital. Recibirás tus claves al instante y las podrás ver en tu perfil de usuario.
         </div>
       </div>
 
@@ -87,14 +87,14 @@ export default function OrderConfirmation() {
 
                   <div className="flex-grow-1">
                     <div className="fw-semibold">{it.title}</div>
-                    <div className="text-muted small">
+                    <div style = {{ color: "#8a4ff0" }} className="text small">
                       Cant: {it.qty} · {currency} {Number(it.price).toFixed(2)} c/u
                       {it.seller ? (
                         <> · Vendedor: <span className="fw-semibold">{it.seller}</span></>
                       ) : null}
                     </div>
 
-                    <div className="small text-muted mt-1">
+                    <div style = {{ color: "#8a4ff0" }} className="text small">
                       Subtotal ítem: {currency} {Number(it.line.subtotal).toFixed(2)}
                       {Number(it.line.bulkDiscount) > 0 && (
                         <> · Desc. Cantidad: −{currency} {Number(it.line.bulkDiscount).toFixed(2)}</>
@@ -126,14 +126,14 @@ export default function OrderConfirmation() {
               </div>
 
               <div className="d-flex justify-content-between small">
-                <span className="text-muted">Desc. por cantidad</span>
+                <span style = {{ color: "#8a4ff0" }}>Desc. por cantidad</span>
                 <span className="text-danger">
                   −{currency} {bulkSum.toFixed(2)}
                 </span>
               </div>
 
               <div className="d-flex justify-content-between small">
-                <span className="text-muted">
+                <span style = {{ color: "#8a4ff0" }}>
                   Cupón {couponCode ? `(${couponCode})` : ""}
                 </span>
                 <span className="text-danger">
@@ -162,7 +162,7 @@ export default function OrderConfirmation() {
             </div>
           </div>
 
-          <div className="text-muted small mt-2">
+          <div style = {{ color: "#8a4ff0" }} className="text small">
             Si necesitás ayuda con tu compra, escribinos desde tu perfil &gt; Órdenes.
           </div>
         </div>

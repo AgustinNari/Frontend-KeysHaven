@@ -46,7 +46,7 @@ export default function ProductCard({ product }) {
             <div className="meta">{product.platform} • {product.region}</div>
             {/* NUEVO: vendedor */}
             {product.sellerDisplayName && (
-              <div className="text-muted small mt-1">
+              <div style={{color: "#8a4ff0"}} className="text small">
                 Vendedor: <span className="fw-semibold">{product.sellerDisplayName}</span>
               </div>
             )}
