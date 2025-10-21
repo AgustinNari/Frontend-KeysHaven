@@ -36,9 +36,6 @@ export default function Navigation() {
             <li className="nav-item">
               <NavLink to="/catalog" className="nav-link">Catálogo</NavLink>
             </li>
-            <li className="nav-item">
-              <NavLink to="/cart" className="nav-link">Carrito</NavLink>
-            </li>
 
             {!isAuthenticated && (
               <>

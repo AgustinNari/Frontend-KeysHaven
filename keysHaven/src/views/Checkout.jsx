@@ -130,7 +130,7 @@ export default function Checkout() {
 
                     <div className="flex-grow-1">
                       <div className="fw-semibold">{it.title}</div>
-                      <div className="text-muted small">
+                      <div style = {{ color: "#8a4ff0" }} className="text small">
                         Cant: {it.qty} · {currency} {Number(it.price).toFixed(2)} c/u
                         {seller ? (
                           <>
@@ -140,7 +140,7 @@ export default function Checkout() {
                         ) : null}
                       </div>
 
-                      <div className="small text-muted mt-1">
+                      <div style = {{ color: "#8a4ff0" }} className="text small">
                         Subtotal ítem: {currency} {b.lineSubtotal.toFixed(2)}
                         {b.bulkDiscount > 0 && (
                           <>
@@ -181,13 +181,13 @@ export default function Checkout() {
               </div>
 
               <div className="d-flex justify-content-between small">
-                <span className="text-muted">Desc. por cantidad</span>
+                <span style = {{ color: "#8a4ff0" }}>Desc. por cantidad</span>
                 <span className="text-danger">
                   −{currency} {bulkSum.toFixed(2)}
                 </span>
               </div>
               <div className="d-flex justify-content-between small">
-                <span className="text-muted">
+                <span style = {{ color: "#8a4ff0" }}>
                   Cupón {appliedCoupon?.code ? `(${appliedCoupon.code})` : ""}
                 </span>
                 <span className="text-danger">
