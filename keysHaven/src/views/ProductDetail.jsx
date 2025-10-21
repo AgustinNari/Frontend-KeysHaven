@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../store/cart.jsx';
 import { PRODUCTS} from '../data/products.js';
 import { MOCK_REVIEWS } from '../data/mockReviews.js';
+import "../components/estilos/Fondos.css";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -11,6 +12,7 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [sellerProducts, setSellerProducts] = useState([]);
+  const [theme, setTheme] = useState("bg-primary-dark");
 
   useEffect(() => {
     // Buscar producto por ID
@@ -41,8 +43,8 @@ export default function ProductDetail() {
   }
 
   return (
-    <div data-bs-theme="dark" className="bg-body text-body">
-      <div data-bs-theme="dark" className="bg-body text-body" style={{ padding: '40px', minHeight: '100vh' }}>
+    <div data-bs-theme="dark" className="bg-primary-dark d-flex justify-content-center align-items-center text-body">
+      <div data-bs-theme="dark" className="bg-primary-dark text-body" style={{ padding: '40px', minHeight: '100vh' }}>
         {/* Breadcrumb y título */}
         <nav aria-label="breadcrumb" className="mb-3">
           <ol className="breadcrumb">

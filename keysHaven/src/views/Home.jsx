@@ -3,7 +3,7 @@ import "../components/estilos/Fondos.css";
 import HomeBanner from '/src/assets/homeImage.png'
 export default function Home() {
   const [theme, setTheme] = useState("bg-primary-dark");
-  const [active, setActive] = useState("all");
+  const [active, setActive] = useState("pc");
   const [searchMode, setSearchMode] = useState(false);
   const inputRef = useRef(null);
 
@@ -11,7 +11,7 @@ export default function Home() {
     { id: "pc", icon: "fab fa-windows" },
     { id: "ps", icon: "fab fa-playstation" },
     { id: "xbox", icon: "fab fa-xbox" },
-    { id: "all", icon: "fas fa-gamepad" },
+    { id: "switch", icon: "fas fa-gamepad" },
   ];
 
   // focus input when search opens

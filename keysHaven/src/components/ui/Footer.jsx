@@ -8,9 +8,9 @@ export default function Footer() {
           <div className="col-md-3">
             <a href="#" className="d-flex align-items-center gap-2 mb-3 text-decoration-none text-light">
               <img src="/src/assets/keyLogo.svg" width={55} height={50} />
-              <strong>Key Haven</strong>
+              <strong>KeysHaven</strong>
             </a>
-            <small className="text-light">© 2025 Key Haven. All rights reserved.</small>
+            <small className="text-light">© 2025 KeysHaven. All rights reserved.</small>
           </div>
           <div className="col-md-2">
             <h6 className="fw-bold">Support</h6>
