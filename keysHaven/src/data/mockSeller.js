@@ -1,5 +1,5 @@
 export const MOCK_SELLER_DETAIL = {
-  id: 10,
+  id: 1,
   displayName: "CarlosR",
   avatarContentType: "image/png",
   avatarDataUrl: "/src/assets/doppyKnight/homeImage.png",
