@@ -1,4 +1,6 @@
+// src/views/Catalog.jsx
 import React, { useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import SidebarFilters from "../components/catalog/SidebarFilters";
 import SearchBar from "../components/catalog/SearchBar";
 import SortDropdown from "../components/catalog/SortDropdown";
@@ -10,6 +12,10 @@ import "../components/estilos/catalog.css";
 import { useCart } from "../store/cart.jsx";
 
 export default function Catalog() {
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const querySellerId = queryParams.get("sellerId");
+
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
   const pageSize = 12;
@@ -23,8 +29,14 @@ export default function Catalog() {
 
   const { add } = useCart();
 
+  // Simula la búsqueda en servidor pero ahora incorpora sellerId
   const simulateServerFetch = useCallback((filters, pageNum, pageSizeNum, sort) => {
     let arr = MOCK_PRODUCTS.slice();
+
+    // Filtro por sellerId (nuevo)
+    if (filters?.sellerId != null && filters.sellerId !== "") {
+      arr = arr.filter(p => Number(p.sellerId) === Number(filters.sellerId));
+    }
 
     if (filters.title && filters.title.trim()) {
       const q = filters.title.trim().toLowerCase();
@@ -73,6 +85,16 @@ export default function Catalog() {
     return { items: pageItems, total };
   }, []);
 
+  // Si la URL contiene sellerId, lo aplicamos como filtro inicial
+  useEffect(() => {
+    if (querySellerId) {
+      // aplicamos sellerId a appliedFilters
+      setAppliedFilters(prev => ({ ...prev, sellerId: Number(querySellerId) }));
+      setPage(1);
+    }
+  }, [querySellerId]);
+
+  // Cuando appliedFilters/page/sort cambian, recalculemos items
   useEffect(() => {
     const res = simulateServerFetch(appliedFilters, page, pageSize, sortBy);
     setItems(res.items);
@@ -81,14 +103,21 @@ export default function Catalog() {
   }, [appliedFilters, page, pageSize, sortBy, simulateServerFetch]);
 
   const handleApply = (filters) => {
-    setAppliedFilters({ ...filters, title: filters.title ?? searchText ?? "" });
+    // preservamos sellerId (si existía) para que no se pierda al aplicar otros filtros
+    setAppliedFilters(prev => ({ ...prev, ...filters, title: filters.title ?? searchText ?? "" }));
     setPage(1);
   };
 
   const handleClearAll = () => {
-    setWorkingFilters({});
-    setAppliedFilters({});
-    setSearchText("");
+    // Al limpiar, mantenemos sellerId si venía por query param (comportamiento deseado)
+    if (querySellerId) {
+      setWorkingFilters({});
+      setAppliedFilters({ sellerId: Number(querySellerId) });
+    } else {
+      setWorkingFilters({});
+      setAppliedFilters({});
+      setSearchText("");
+    }
     setPage(1);
   };
 
@@ -141,3 +170,4 @@ export default function Catalog() {
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 export const PRODUCTS = [
 
   {
-    id: 1, sellerId:2, sellerDisplayName:"CarlosR",
+    id: 1, sellerId:1, sellerDisplayName:"CarlosR",
     title:"Grand Theft Auto V", price:9.99, originalPrice:29.99, currency:"USD",
     platform:"PC", region:"GLOBAL", releaseDate:"2013-09-17", developer:"Rockstar North", publisher:"Rockstar Games",
     metacriticScore:96, featured:false, categories:["Acción","Mundo Abierto"], avgRating:4.5, ratingCount:12000,
@@ -18,7 +18,7 @@ export const PRODUCTS = [
 
   { id:3, sellerId:4, sellerDisplayName:"StudioX", title:"The Witcher 3", price:29.99, originalPrice:39.99, platform:"PC", region:"GLOBAL", releaseDate:"2015-05-18", developer:"CD Projekt", publisher:"CD Projekt", metacriticScore:93, categories:["RPG","Acción"], avgRating:4.9, ratingCount:2500, stock:15, sold:2500, primaryImageUrl:"/images/witcher3.jpg", active:true },
 
-  { id:4, sellerId:2, sellerDisplayName:"CarlosR", title:"Red Dead Redemption 2", price:39.99, originalPrice:49.99, platform:"PC", region:"GLOBAL", releaseDate:"2018-10-26", developer:"Rockstar Studios", publisher:"Rockstar Games", metacriticScore:97, categories:["Acción","Aventura"], avgRating:4.7, ratingCount:3100, stock:5, sold:3100, primaryImageUrl:"/images/rdr2.jpg", active:true },
+  { id:4, sellerId:1, sellerDisplayName:"CarlosR", title:"Red Dead Redemption 2", price:39.99, originalPrice:49.99, platform:"PC", region:"GLOBAL", releaseDate:"2018-10-26", developer:"Rockstar Studios", publisher:"Rockstar Games", metacriticScore:97, categories:["Acción","Aventura"], avgRating:4.7, ratingCount:3100, stock:5, sold:3100, primaryImageUrl:"/images/rdr2.jpg", active:true },
 
   { id:5, sellerId:5, sellerDisplayName:"EAStore", title:"FIFA 23", price:19.99, originalPrice:59.99, platform:"PlayStation", region:"EU", releaseDate:"2022-09-27", developer:"EA Sports", publisher:"EA", metacriticScore:75, categories:["Deportes"], avgRating:3.9, ratingCount:2100, stock:40, sold:5000, primaryImageUrl:"/images/fifa23.jpg", active:true },
 
