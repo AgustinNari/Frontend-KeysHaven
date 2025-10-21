@@ -1,11 +1,22 @@
+
 import React from "react";
 
 
-export default function Rating({ value = 0, count = 0, size = 14 }) {
+export default function Rating({ value = 0, count = 0, size = 14, max = 10 }) {
+
+  let v = Number(value) || 0;
+  const scale = Number(max) || 10;
+
+  let norm = (scale > 0) ? (v / (scale / 5)) : v;
+
+  norm = Math.max(0, Math.min(5, norm));
+
+  norm = Math.round(norm * 2) / 2;
+
   const stars = Array.from({ length: 5 }, (_, i) => {
     const idx = i + 1;
-    if (value >= idx) return "full";
-    if (value >= idx - 0.5) return "half";
+    if (norm >= idx) return "full";
+    if (norm >= idx - 0.5) return "half";
     return "empty";
   });
 
@@ -35,7 +46,7 @@ export default function Rating({ value = 0, count = 0, size = 14 }) {
   );
 
   return (
-    <div className="rating" style={{ color: "#ffd166" }}>
+    <div className="rating" style={{ color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 6 }}>
       <div style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
         {stars.map((s, idx) => {
           const keyId = `s${idx}-${s}`;
@@ -44,8 +55,11 @@ export default function Rating({ value = 0, count = 0, size = 14 }) {
           return <StarEmpty key={keyId} keyId={keyId} />;
         })}
       </div>
-      {typeof count === "number" && (
-        <div className="count" style={{ marginLeft: 6 }}>{count ? `(${count})` : ""}</div>
+
+      {typeof count === "number" && count > 0 && (
+        <div style={{ marginLeft: 6, color: "var(--muted)", fontSize: Math.max(12, Math.round(size * 0.8)) }}>
+          ({count})
+        </div>
       )}
     </div>
   );
