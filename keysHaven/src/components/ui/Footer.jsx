@@ -4,13 +4,12 @@ export default function Footer() {
   return (
     <footer className="border-top py-5 bg-primary-mid text-light">
       <div className="container app-container text-center">
-        <div className="row g-4">
-          <div className="col-md-3">
+        <div className="row d-flex justify-content-center g-4">
+          <div className="col-md-2">
             <a href="#" className="d-flex align-items-center gap-2 mb-3 text-decoration-none text-light">
               <img src="/src/assets/keyLogo.svg" width={55} height={50} />
               <strong>Key Haven</strong>
             </a>
-            <small className="text-light">© 2025 Key Haven. All rights reserved.</small>
           </div>
           <div className="col-md-2">
             <h6 className="fw-bold">Support</h6>
@@ -27,6 +26,7 @@ export default function Footer() {
             </ul>
           </div>
         </div>
+        <small className="text-light text-center">© 2025 Key Haven. All rights reserved.</small>
       </div>
     </footer>
   );

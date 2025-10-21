@@ -1,36 +1,93 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../store/cart.jsx';
-import { PRODUCTS} from '../data/products.js';
+import { PRODUCTS } from '../data/products.js';
 import { MOCK_REVIEWS } from '../data/mockReviews.js';
+import "../components/estilos/Fondos.css";
 
 export default function ProductDetail() {
   const { id } = useParams();
   const { add } = useCart();
   const [activeTab, setActiveTab] = useState('descripcion');
   const [product, setProduct] = useState(null);
+  const [productImages, setProductImages] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [sellerProducts, setSellerProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
-    // Buscar producto por ID
-    const foundProduct = PRODUCTS.find(p => p.id === parseInt(id));
-    setProduct(foundProduct);
+    const fetchProductData = async () => {
+      try {
+        setLoading(true);
+        
+        // Simular llamada al endpoint /products/{id}/detail
+        // En un entorno real, esto sería: const response = await fetch(`/api/products/${id}/detail`);
+        const foundProduct = PRODUCTS.find(p => p.id === parseInt(id));
+        
+        if (foundProduct) {
+          setProduct(foundProduct);
+          
+          // Simular imágenes dinámicas del producto
+          // En un entorno real, esto vendría del endpoint product_images
+          const mockImages = [
+            {
+              id: 1,
+              productId: foundProduct.id,
+              name: `${foundProduct.title} - Imagen principal`,
+              isPrimary: true,
+              file: foundProduct.primaryImageUrl,
+              contentType: 'image/jpeg',
+              dataUrl: foundProduct.primaryImageUrl
+            },
+            {
+              id: 2,
+              productId: foundProduct.id,
+              name: `${foundProduct.title} - Gameplay 1`,
+              isPrimary: false,
+              file: foundProduct.primaryImageUrl, // En realidad sería otra URL
+              contentType: 'image/jpeg',
+              dataUrl: foundProduct.primaryImageUrl
+            },
+            {
+              id: 3,
+              productId: foundProduct.id,
+              name: `${foundProduct.title} - Gameplay 2`,
+              isPrimary: false,
+              file: foundProduct.primaryImageUrl, // En realidad sería otra URL
+              contentType: 'image/jpeg',
+              dataUrl: foundProduct.primaryImageUrl
+            }
+          ];
+          
+          setProductImages(mockImages);
 
-    // Buscar reviews del producto
-    const productReviews = MOCK_REVIEWS.filter(r => r.productId === parseInt(id));
-    setReviews(productReviews);
+          // Buscar reviews del producto
+          const productReviews = MOCK_REVIEWS.filter(r => r.productId === parseInt(id));
+          setReviews(productReviews);
 
-    // Buscar otros productos del mismo vendedor
-    if (foundProduct) {
-      const sellerProds = PRODUCTS.filter(p => 
-        p.sellerId === foundProduct.sellerId && p.id !== foundProduct.id
-      ).slice(0, 3);
-      setSellerProducts(sellerProds);
-    }
+          // Buscar otros productos del mismo vendedor
+          const sellerProds = PRODUCTS.filter(p => 
+            p.sellerId === foundProduct.sellerId && p.id !== foundProduct.id
+          ).slice(0, 3);
+          setSellerProducts(sellerProds);
+        }
+      } catch (error) {
+        console.error('Error fetching product data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProductData();
   }, [id]);
 
-  if (!product) {
+  const getActiveImage = () => {
+    if (productImages.length === 0) return product?.primaryImageUrl;
+    return productImages[activeImageIndex]?.dataUrl || productImages[activeImageIndex]?.file;
+  };
+
+  if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
         <div className="spinner-border text-primary" role="status">
@@ -40,9 +97,22 @@ export default function ProductDetail() {
     );
   }
 
+  if (!product) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
+        <div className="text-center">
+          <h4 className="text-white">Producto no encontrado</h4>
+          <Link to="/catalog" className="btn btn-primary mt-3">
+            Volver al catálogo
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div data-bs-theme="dark" className="bg-body text-body">
-      <div data-bs-theme="dark" className="bg-body text-body" style={{ padding: '40px', minHeight: '100vh' }}>
+    <div data-bs-theme="dark" className="bg-primary-dark text-body d-flex justify-content-center align-items-center">
+      <div data-bs-theme="dark" className="bg-primary-dark text-body" style={{ padding: '40px', minHeight: '100vh' }}>
         {/* Breadcrumb y título */}
         <nav aria-label="breadcrumb" className="mb-3">
           <ol className="breadcrumb">
@@ -55,25 +125,67 @@ export default function ProductDetail() {
         <div className="d-flex gap-4" style={{ alignItems: 'flex-start' }}>
           {/* Columna izquierda - Imagen y detalles */}
           <div style={{ flex: '1', maxWidth: '800px' }}>
-            {/* Imagen principal */}
-            <div
-              className="card shadow-sm mb-4"
-              style={{
-                height: '400px',
-                background: `linear-gradient(to top, rgba(25, 16, 34, 0.7) 0%, rgba(25, 16, 34, 0) 40%), url(${product.primaryImageUrl}) center/cover`
-              }}
-            >
-              <div className="d-flex justify-content-center gap-2" style={{ position: 'absolute', bottom: '15px', left: '50%', transform: 'translateX(-50%)' }}>
-                {[1, 2, 3, 4, 5].map((dot) => (
-                  <div
-                    key={dot}
-                    className={`rounded-circle ${dot === 1 ? 'bg-white' : 'bg-white-50'}`}
-                    style={{ width: '8px', height: '8px' }}
-                  ></div>
-                ))}
+            {/* Imagen principal con miniaturas */}
+            <div className="card shadow-sm mb-4">
+              <div
+                className="card-body p-0"
+                style={{
+                  height: '400px',
+                  background: `linear-gradient(to top, rgba(25, 16, 34, 0.7) 0%, rgba(25, 16, 34, 0) 40%), url(${getActiveImage()}) center/cover`
+                }}
+              >
+                {/* Indicadores de imágenes (puntos) */}
+                <div className="d-flex justify-content-center gap-2" style={{ position: 'absolute', bottom: '15px', left: '50%', transform: 'translateX(-50%)' }}>
+                  {productImages.map((_, index) => (
+                    <button
+                      key={index}
+                      className={`rounded-circle border-0 ${activeImageIndex === index ? 'bg-white' : 'bg-white-50'}`}
+                      style={{ 
+                        width: '12px', 
+                        height: '12px', 
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onClick={() => setActiveImageIndex(index)}
+                      aria-label={`Ver imagen ${index + 1}`}
+                    />
+                  ))}
+                </div>
               </div>
+              
+              {/* Miniaturas de imágenes (opcional - puedes comentar esta sección si no la necesitas) */}
+              {productImages.length > 1 && (
+                <div className="card-footer bg-dark">
+                  <div className="d-flex gap-2 justify-content-center">
+                    {productImages.map((image, index) => (
+                      <button
+                        key={image.id}
+                        className={`border-0 bg-transparent p-1 ${activeImageIndex === index ? 'border-primary' : ''}`}
+                        style={{
+                          border: activeImageIndex === index ? '2px solid #0d6efd' : '2px solid transparent',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setActiveImageIndex(index)}
+                      >
+                        <img
+                          src={image.dataUrl || image.file}
+                          alt={image.name}
+                          style={{
+                            width: '60px',
+                            height: '40px',
+                            objectFit: 'cover',
+                            borderRadius: '2px'
+                          }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Resto del código permanece igual */}
             {/* Tabs de contenido */}
             <div className="card shadow-sm">
               <div className="card-header">
@@ -86,14 +198,7 @@ export default function ProductDetail() {
                       Descripción
                     </button>
                   </li>
-                  <li className="nav-item">
-                    <button
-                      className={`nav-link ${activeTab === 'requisitos' ? 'active text-primary fw-bold' : 'link-light'}`}
-                      onClick={() => setActiveTab('requisitos')}
-                    >
-                      Requisitos
-                    </button>
-                  </li>
+
                   <li className="nav-item">
                     <button
                       className={`nav-link ${activeTab === 'vendedor' ? 'active text-primary fw-bold' : 'link-light'}`}
@@ -121,36 +226,6 @@ export default function ProductDetail() {
                       <p className="card-text">{product.description}</p>
                     )}
                   </>
-                )}
-
-                {activeTab === 'requisitos' && (
-                  <div>
-                    <h5 className="card-title text-primary">Requisitos del Sistema</h5>
-                    <div className="row">
-                      <div className="col-6">
-                        <h6 className="text-white">Mínimos</h6>
-                        <ul className="text-muted">
-                          <li>SO: Windows 7/8/10 (64-bit)</li>
-                          <li>Procesador: Intel Core i5-3570K</li>
-                          <li>Memoria: 8 GB RAM</li>
-                          <li>Gráficos: GTX 780 3GB</li>
-                          <li>Almacenamiento: 70 GB</li>
-                          <li>DirectX: Versión 12</li>
-                        </ul>
-                      </div>
-                      <div className="col-6">
-                        <h6 className="text-white">Recomendados</h6>
-                        <ul className="text-muted">
-                          <li>SO: Windows 10 (64-bit)</li>
-                          <li>Procesador: Intel Core i7-4790</li>
-                          <li>Memoria: 12 GB RAM</li>
-                          <li>Gráficos: GTX 1060 6GB</li>
-                          <li>Almacenamiento: 70 GB SSD</li>
-                          <li>DirectX: Versión 12</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
                 )}
 
                 {activeTab === 'vendedor' && (
@@ -192,38 +267,6 @@ export default function ProductDetail() {
                 )}
               </div>
             </div>
-
-            {/* Sección de Opiniones (comentada) */}
-            {/* 
-            <div className="card shadow-sm mt-4">
-              <div className="card-body">
-                <h5 className="card-title text-primary">Opiniones de Clientes</h5>
-                
-                <div className="d-flex gap-4 mb-4">
-                  <div className="text-center" style={{ width: '200px' }}>
-                    <div className="h2 text-primary mb-2">4.5</div>
-                    <div className="text-warning mb-2">
-                      {'★'.repeat(4)}<span className="text-muted">★</span>
-                    </div>
-                    <small className="text-muted">Basado en 125 reseñas</small>
-                  </div>
-                  
-                  <div style={{ width: '400px' }}>
-                    {[5, 4, 3, 2, 1].map((stars, index) => (
-                      <div key={stars} className="d-flex align-items-center mb-1">
-                        <span className="me-2" style={{ width: '20px' }}>{stars}</span>
-                        <div className="progress flex-grow-1 me-2" style={{ height: '8px' }}>
-                          <div
-                            className="progress-bar bg-primary"
-                            style={{ width: `${[40, 30, 15, 10, 5][index]}%` }}
-                          ></div>
-                        </div>
-                        <small className="text-muted" style={{ width: '40px' }}>{[40, 30, 15, 10, 5][index]}%</small>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-            */}
 
             {/* Comentarios de reseñas */}
             <div className="card shadow-sm mt-4">
@@ -291,9 +334,17 @@ export default function ProductDetail() {
                         "Selecciona 'Usar un código' en el menú.",
                         "Ingresa tu clave de juego y sigue las instrucciones."
                       ]
+                    },
+                    {
+                      platform: "Switch",
+                      steps: [
+                        "En tu consola Xbox, ve a la Tienda.",
+                        "Selecciona 'Usar un código' en el menú.",
+                        "Ingresa tu clave de juego y sigue las instrucciones."
+                      ]
                     }
                   ].map((platform, index) => (
-                    <div key={index} className="col-4">
+                    <div key={index} className="col-6">
                       <div className="card border h-100">
                         <div className="card-body">
                           <h6 className="card-title text-white ">{platform.platform}</h6>
