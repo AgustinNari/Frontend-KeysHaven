@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import "../components/estilos/Fondos.css";
 import DoppyBoard from '/src/assets/doppyKnight/doppyMessageBoard.png';
+import DoppyUnplugged from '/src/assets/doppyKnight/doppyUnplugged.png';
 import Number404 from '/src/assets/doppyKnight/404.png';
 import Number400 from '/src/assets/doppyKnight/400.png';
 import Number401 from '/src/assets/doppyKnight/401.png';
@@ -10,19 +11,57 @@ import Number409 from '/src/assets/doppyKnight/409.png';
 import Number500 from '/src/assets/doppyKnight/500.png';
 
 export default function NotFound() {
+
+  const location = useLocation();
+
+  const [errorMessage, setErrorMessage] = useState("Error Grave......GRAVÍSIMO!!!!!!!");
+
+  useEffect(() => {
+    const fetchErrorMessage = async () => {
+      try {
+        // Example API endpoint - adjust according to your backend
+        const response = await fetch('/api/getErrorMessage');
+        if (response.ok) {
+          const data = await response.json();
+          // Set the message based on the backend response
+          setErrorMessage(data.message);  // Assuming the backend returns { message: 'Some error message' }
+        } else {
+          console.error('Error fetching error message');
+        }
+      } catch (error) {
+        console.error('Error fetching error message:', error);
+      }
+    };
+
+    fetchErrorMessage();  // Fetch the message when the component mounts
+  }, []);  // Empty dependency array to run only once when the component mounts
+
   let imageTop = DoppyBoard;
   let imageBottom = Number404;
-  
+  let messageText = "404 - Página no encontrada"
+
   if (location.pathname === '/400') {
     imageBottom = Number400;
+    messageText = "400 - BAD_REQUEST"
   } else if (location.pathname === '/401') {
     imageBottom = Number401;
+    messageText = "401 - Acceso No Autorizado"
   } else if (location.pathname === '/403') {
     imageBottom = Number403;
+    messageText = "403 - Prohibido el Acceso!!!"
+  } else if (location.pathname === '/404') {
+    imageBottom = Number404;
+    messageText = "404 - Página no encontrada"
   } else if (location.pathname === '/409') {
     imageBottom = Number409;
+    messageText = "409 - Conflicto"
   } else if (location.pathname === '/500') {
     imageBottom = Number500;
+    messageText = "500 - Error Interno del Servidor"
+  } else {
+    imageTop = DoppyUnplugged;
+    imageBottom = "";
+    messageText = "Error Desconocido"
   }
     return (
       <section
@@ -36,7 +75,8 @@ export default function NotFound() {
           minHeight: "850px",
         }}>
          <div style={{ position: "relative", zIndex: 2 }}>
-           <h2 className="text-primary">404 - Página no encontrada</h2>
+           <h2 className="text-primary">{messageText}</h2>
+           <h3 className="text-primary">{errorMessage}</h3>
            <p>
              <Link to="/" className="text-primary"  style={{textDecoration: "underline" }}>
                Volver al Home
@@ -53,7 +93,7 @@ export default function NotFound() {
              <div style={{ position: "relative", zIndex: 3 }}>
                <img
                  src={imageBottom}
-                 alt="NumberError"
+                 alt={imageBottom ? "NumberError" : ""}
                  width={350}
                  height={170}
                  style={{ display: "block", margin: "0 auto", marginTop: "-805px"}}
