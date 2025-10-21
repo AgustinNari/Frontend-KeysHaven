@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAllProducts, updateProduct } from '../../services/adminService';
-import { mockProducts } from '../../data/mockData'; 
+import { mockProducts } from '../../data/mockData';
+import ConfirmModal from '../profile/ConfirmModal';
 
 export default function ProductManagement() {
   const [products, setProducts] = useState([]);
@@ -15,10 +16,16 @@ export default function ProductManagement() {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [imageError, setImageError] = useState('');
 
-  // Categorías disponibles
+  const [confirm, setConfirm] = useState({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: null
+  });
+
   const imageCategories = [
     'Portada principal',
-    'Gameplay 1', 
+    'Gameplay 1',
     'Gameplay 2',
     'Gameplay 3',
     'Tráiler',
@@ -44,55 +51,57 @@ export default function ProductManagement() {
     }
   };
 
-  // Función para validar URL de imagen
-  const isValidImageUrl = (url) => {
-    try {
-      const parsedUrl = new URL(url);
-      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
-    } catch {
-      return false;
+  const closeConfirm = () => setConfirm({ show: false, title: '', message: '', onConfirm: null });
+
+  const handleToggleRequest = (product) => {
+    if (product.active) {
+      setConfirm({
+        show: true,
+        title: 'Desactivar Producto',
+        message: `¿Estás seguro que querés desactivar el producto "${product.title}"? Podrás activarlo luego.`,
+        onConfirm: () => handleDeactivateConfirmed(product.id)
+      });
+    } else {
+      handleActivate(product.id);
     }
   };
 
-  // Función para verificar si la imagen existe
-  const checkImageExists = (url) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
-      img.src = url;
-    });
+  const handleDeactivateConfirmed = async (productId) => {
+    setActionLoading(`status-${productId}`);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === productId ? { ...p, active: false } : p
+        )
+      );
+
+      console.log(`Producto ${productId} desactivado`);
+    } catch (err) {
+      console.error('Error desactivando producto:', err);
+      setError('Error al desactivar producto');
+    } finally {
+      setActionLoading(null);
+      closeConfirm();
+    }
   };
 
-  const handleToggleStatus = async (product) => {
-    setActionLoading(`status-${product.id}`);
+  const handleActivate = async (productId) => {
+    setActionLoading(`status-${productId}`);
     try {
-      // Simular llamada al API
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Actualización optimista
-      setProducts(prevProducts => 
-        prevProducts.map(p => 
-          p.id === product.id 
-            ? { ...p, active: !p.active }
-            : p
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === productId ? { ...p, active: true } : p
         )
       );
-      
-      console.log(`Producto ${product.id} - Estado actualizado: ${!product.active}`);
-      
+
+      console.log(`Producto ${productId} activado`);
     } catch (err) {
-      console.error('Error actualizando producto:', err);
-      setError('Error al actualizar producto');
-      
-      // Revertir en caso de error
-      setProducts(prevProducts => 
-        prevProducts.map(p => 
-          p.id === product.id 
-            ? { ...p, active: product.active }
-            : p
-        )
-      );
+      console.error('Error activando producto:', err);
+      setError('Error al activar producto');
     } finally {
       setActionLoading(null);
     }
@@ -103,28 +112,22 @@ export default function ProductManagement() {
     try {
       // Simular llamada al API
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       // Actualización optimista
-      setProducts(prevProducts => 
-        prevProducts.map(p => 
-          p.id === product.id 
-            ? { ...p, featured: !p.featured }
-            : p
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === product.id ? { ...p, featured: !p.featured } : p
         )
       );
-      
+
       console.log(`Producto ${product.id} - Destacado actualizado: ${!product.featured}`);
-      
     } catch (err) {
       console.error('Error actualizando producto:', err);
       setError('Error al actualizar producto');
-      
       // Revertir en caso de error
-      setProducts(prevProducts => 
-        prevProducts.map(p => 
-          p.id === product.id 
-            ? { ...p, featured: product.featured }
-            : p
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === product.id ? { ...p, featured: product.featured } : p
         )
       );
     } finally {
@@ -132,21 +135,24 @@ export default function ProductManagement() {
     }
   };
 
-  const openImageManager = (product) => {
-    setSelectedProduct({
-      ...product,
-      images: product.imageUrls ? product.imageUrls.map((url, index) => ({
-        name: `Imagen ${index + 1}`,
-        url: url,
-        isPrimary: index === 0,
-        categories: []
-      })) : []
+
+  const isValidImageUrl = (url) => {
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+
+  const checkImageExists = (url) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = url;
     });
-    setImageManagerMode(true);
-    setError('');
-    setNewImage({ name: '', url: '' });
-    setSelectedCategories([]);
-    setImageError('');
   };
 
   const closeImageManager = () => {
@@ -158,7 +164,7 @@ export default function ProductManagement() {
 
   // Función para manejar categorías
   const handleCategoryToggle = (category) => {
-    setSelectedCategories(prev => 
+    setSelectedCategories(prev =>
       prev.includes(category)
         ? prev.filter(c => c !== category)
         : [...prev, category]
@@ -210,7 +216,7 @@ export default function ProductManagement() {
           categories: [...selectedCategories]
         }]
       }));
-      
+
       setNewImage({ name: '', url: '' });
       setSelectedCategories([]);
     } catch (err) {
@@ -258,14 +264,14 @@ export default function ProductManagement() {
 
     try {
       const imageUrls = selectedProduct.images.map(img => img.url);
-      
+
       // Simular llamada al API
       await new Promise(resolve => setTimeout(resolve, 800));
-      
+
       // Actualizar el producto en la lista
-      setProducts(prevProducts => 
-        prevProducts.map(p => 
-          p.id === selectedProduct.id 
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === selectedProduct.id
             ? { ...p, imageUrls: imageUrls }
             : p
         )
@@ -284,10 +290,10 @@ export default function ProductManagement() {
   // Filtrar productos
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.sellerDisplayName?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' ? product.active : !product.active);
-    
+      product.sellerDisplayName?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' ||
+      (statusFilter === 'active' ? product.active : !product.active);
+
     return matchesSearch && matchesStatus;
   });
 
@@ -306,7 +312,7 @@ export default function ProductManagement() {
             <i className="fas fa-images me-2"></i>
             Gestión de Imágenes - {selectedProduct.title}
           </h5>
-          <button 
+          <button
             className="btn btn-outline-secondary btn-sm"
             onClick={closeImageManager}
             disabled={loading}
@@ -354,8 +360,8 @@ export default function ProductManagement() {
               <div key={index} className="col-md-4 mb-3">
                 <div className="card bg-dark border-secondary h-100">
                   <div className="card-img-top position-relative">
-                    <img 
-                      src={image.url} 
+                    <img
+                      src={image.url}
                       alt={image.name}
                       style={{ height: '200px', objectFit: 'cover', width: '100%' }}
                       onError={(e) => {
@@ -375,8 +381,8 @@ export default function ProductManagement() {
                         <i className="fas fa-tag me-1"></i>
                         Nombre
                       </label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         className="form-control bg-dark border-secondary text-white"
                         value={image.name}
                         onChange={(e) => updateImageName(index, e.target.value)}
@@ -388,8 +394,8 @@ export default function ProductManagement() {
                         <i className="fas fa-link me-1"></i>
                         URL
                       </label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         className="form-control bg-dark border-secondary text-white"
                         value={image.url}
                         onChange={(e) => updateImageUrl(index, e.target.value)}
@@ -413,7 +419,7 @@ export default function ProductManagement() {
                     )}
                     <div className="btn-group w-100">
                       {!image.isPrimary && (
-                        <button 
+                        <button
                           type="button"
                           className="btn btn-outline-warning btn-sm"
                           onClick={() => setPrimaryImage(index)}
@@ -424,7 +430,7 @@ export default function ProductManagement() {
                         </button>
                       )}
                       {selectedProduct.images.length > 1 && (
-                        <button 
+                        <button
                           type="button"
                           className="btn btn-outline-danger btn-sm"
                           onClick={() => removeImage(index)}
@@ -464,12 +470,12 @@ export default function ProductManagement() {
                     <i className="fas fa-tag me-1"></i>
                     Nombre de la imagen *
                   </label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     className="form-control bg-dark border-secondary text-white"
                     value={newImage.name}
                     onChange={(e) => {
-                      setNewImage({...newImage, name: e.target.value});
+                      setNewImage({ ...newImage, name: e.target.value });
                       setImageError('');
                     }}
                     placeholder="Portada principal, Gameplay 1, etc."
@@ -481,12 +487,12 @@ export default function ProductManagement() {
                     <i className="fas fa-link me-1"></i>
                     URL de la imagen *
                   </label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     className="form-control bg-dark border-secondary text-white"
                     value={newImage.url}
                     onChange={(e) => {
-                      setNewImage({...newImage, url: e.target.value});
+                      setNewImage({ ...newImage, url: e.target.value });
                       setImageError('');
                     }}
                     placeholder="https://ejemplo.com/imagen.jpg"
@@ -515,8 +521,8 @@ export default function ProductManagement() {
                               onChange={() => handleCategoryToggle(category)}
                               disabled={loading}
                             />
-                            <label 
-                              className="form-check-label text-white small" 
+                            <label
+                              className="form-check-label text-white small"
                               htmlFor={`category-${category.replace(/\s+/g, '-')}`}
                             >
                               {category}
@@ -527,7 +533,7 @@ export default function ProductManagement() {
                     </div>
                   </div>
                 </div>
-                
+
                 {selectedCategories.length === 0 && (
                   <div className="alert alert-warning mt-2 py-2" role="alert">
                     <small>
@@ -540,14 +546,14 @@ export default function ProductManagement() {
 
               {/* Botón agregar - CORREGIDO */}
               <div className="d-flex justify-content-between align-items-center">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn btn-primary"
                   onClick={addImage}
                   disabled={
-                    loading || 
-                    !newImage.name.trim() || 
-                    !newImage.url.trim() || 
+                    loading ||
+                    !newImage.name.trim() ||
+                    !newImage.url.trim() ||
                     selectedCategories.length === 0
                   }
                 >
@@ -576,7 +582,7 @@ export default function ProductManagement() {
 
           {/* Botones de acción */}
           <div className="d-flex gap-2">
-            <button 
+            <button
               className="btn btn-primary"
               onClick={saveImageChanges}
               disabled={loading || selectedProduct.images.length === 0}
@@ -593,7 +599,7 @@ export default function ProductManagement() {
                 </>
               )}
             </button>
-            <button 
+            <button
               className="btn btn-secondary"
               onClick={closeImageManager}
               disabled={loading}
@@ -654,7 +660,7 @@ export default function ProductManagement() {
             </select>
           </div>
           <div className="col-md-2 d-flex align-items-end">
-            <button 
+            <button
               className="btn btn-outline-secondary w-100"
               onClick={() => {
                 setSearchTerm('');
@@ -694,14 +700,14 @@ export default function ProductManagement() {
                 const stockStatus = getStockStatus(product.availableStock);
                 const isStatusLoading = actionLoading === `status-${product.id}`;
                 const isFeaturedLoading = actionLoading === `featured-${product.id}`;
-                
+
                 return (
                   <tr key={product.id}>
                     <td>
                       <div className="d-flex align-items-center">
                         {product.imageUrls && product.imageUrls.length > 0 && (
-                          <img 
-                            src={product.imageUrls[0]} 
+                          <img
+                            src={product.imageUrls[0]}
                             alt={product.title}
                             className="rounded me-3"
                             style={{ width: '50px', height: '50px', objectFit: 'cover' }}
@@ -748,15 +754,7 @@ export default function ProductManagement() {
                     </td>
                     <td>
                       <div className="btn-group btn-group-sm">
-                        <button 
-                          className="btn btn-outline-primary"
-                          onClick={() => openImageManager(product)}
-                          title="Gestionar imágenes"
-                          disabled={actionLoading}
-                        >
-                          <i className="fas fa-images"></i>
-                        </button>
-                        <button 
+                        <button
                           className="btn btn-outline-warning"
                           onClick={() => handleToggleFeatured(product)}
                           title={product.featured ? 'Quitar destacado' : 'Destacar'}
@@ -770,9 +768,9 @@ export default function ProductManagement() {
                             <i className={`fas fa-star ${product.featured ? 'text-warning' : ''}`}></i>
                           )}
                         </button>
-                        <button 
+                        <button
                           className="btn btn-outline-secondary"
-                          onClick={() => handleToggleStatus(product)}
+                          onClick={() => handleToggleRequest(product)}
                           title={product.active ? 'Desactivar' : 'Activar'}
                           disabled={isStatusLoading}
                         >
@@ -840,6 +838,16 @@ export default function ProductManagement() {
             </div>
           </div>
         </div>
+
+        <ConfirmModal
+          show={confirm.show}
+          title={confirm.title}
+          message={confirm.message}
+          onConfirm={() => { confirm.onConfirm && confirm.onConfirm(); }}
+          onCancel={closeConfirm}
+          confirmText="Desactivar"
+          cancelText="Cancelar"
+        />
       </div>
     </div>
   );

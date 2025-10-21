@@ -4,6 +4,7 @@ import ProductManagement from './ProductManagement';
 import CategoryManagement from './CategoryManagement';
 import CouponManagement from './CouponManagement';
 import AdminDashboard from './AdminDashboard';
+import ReviewsManagement from './ReviewsManagement';
 
 export default function AdminPanel() {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -21,6 +22,9 @@ export default function AdminPanel() {
       case 'dashboard':
       default:
         return <AdminDashboard />;
+      case 'reviews':
+        return <ReviewsManagement />;
+
     }
   };
 
@@ -58,7 +62,8 @@ export default function AdminPanel() {
                     { id: 'users', icon: 'fas fa-users', label: 'Usuarios' },
                     { id: 'products', icon: 'fas fa-gamepad', label: 'Productos' },
                     { id: 'categories', icon: 'fas fa-tags', label: 'Categorías' },
-                    { id: 'coupons', icon: 'fas fa-tag', label: 'Cupones' }
+                    { id: 'coupons', icon: 'fas fa-tag', label: 'Cupones' },
+                    { id: 'reviews', icon: 'fas fa-comments', label: 'Reseñas' }
                   ].map(item => (
                     <button 
                       key={item.id}

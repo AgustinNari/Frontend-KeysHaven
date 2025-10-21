@@ -29,6 +29,7 @@ import ProductForm from './components/seller/ProductForm';
 import SalesAnalytics from './components/seller/SalesAnalytics';
 import SellerCoupons from './components/seller/SellerCoupons';
 import KeyManagement from './components/seller/KeyManagement';
+import ReviewsManagement from './components/admin/ReviewsManagement';
 
 export default function App() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/admin/coupons" element={<CouponManagement />} />
           <Route path="/admin/products" element={<ProductManagement />} />
           <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/reviews" element={<ReviewsManagement />} />
 
           <Route path="/seller/*" element={<SellerDashboard />} />
           <Route path="/sellerdashboard/*" element={<SellerDashboard />} />

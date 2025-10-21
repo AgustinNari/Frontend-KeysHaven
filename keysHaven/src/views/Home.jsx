@@ -14,14 +14,12 @@ export default function Home() {
     { id: "switch", icon: "fas fa-gamepad" },
   ];
 
-  // focus input when search opens
   useEffect(() => {
     if (searchMode && inputRef.current) {
       inputRef.current.focus();
     }
   }, [searchMode]);
 
-  // close search when clicking outside
   useEffect(() => {
     const handleClick = (e) => {
       if (inputRef.current && !inputRef.current.contains(e.target)) {
@@ -34,7 +32,6 @@ export default function Home() {
   return (
     <div data-bs-theme={theme} className="bg-body text-body">
 
-      {/* Floating Icon Bar */}
       <div
       className="position-fixed start-50 translate-middle-x z-2000"
       style={{ top: '50px', zIndex: 1055 }}
@@ -43,7 +40,6 @@ export default function Home() {
         className="d-inline-flex align-items-center rounded-pill bg-primary-mid bg-opacity-75 p-3 shadow-lg"
         style={{ backdropFilter: "blur(8px)", minWidth: "280px" }}
       >
-        {/* If NOT in search mode → show platform icons */}
         {!searchMode && (
           <>
             <div className="d-flex align-items-center gap-4 pe-4">
@@ -62,7 +58,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* search button */}
             <div className="d-flex align-items-center bg-primary rounded-pill px-4 ms-2">
               <button
                 className="btn btn-link text-white fs-5 p-0"
@@ -74,14 +69,13 @@ export default function Home() {
           </>
         )}
 
-        {/* If in search mode → show input */}
         {searchMode && (
           <div className="flex-grow-1 d-flex align-items-center px-2" ref={inputRef}>
             <i className="fas fa-search text-white me-2"></i>
             <input
               type="text"
               className="form-control bg-dark text-light border-0 shadow-sm"
-              placeholder="Search for games..."
+              placeholder="Buscar juegos..."
               style={{ width: "220px" }}
             />
             <button
