@@ -6,17 +6,18 @@ import { useCart } from "../../store/cart.jsx";
 export default function ProductCard({ product }) {
   const { add } = useCart();
 
-  const hasDiscount =
-    product.originalPrice != null && product.originalPrice > product.price;
-  const discountPct = hasDiscount
-    ? Math.round((1 - product.price / product.originalPrice) * 100)
-    : 0;
+
+  const hasDiscount = product.bestDiscountFrac != null && Number(product.bestDiscountFrac) > 0;
+  const discountPct = hasDiscount ? Math.round(Number(product.bestDiscountFrac) * 100) : 0;
+
+  const baseOriginalPrice = Number(product.price ?? 0);
+  const displayPrice = (hasDiscount && product.discountedPrice != null) ? Number(product.discountedPrice) : baseOriginalPrice;
 
   const handleAdd = () => {
     add({
       id: product.id,
       title: product.title,
-      price: product.price,
+      price: displayPrice,
       currency: product.currency ?? "USD",
       imageUrl: product.primaryImageUrl ?? null,
       platform: product.platform ?? null,
@@ -44,7 +45,6 @@ export default function ProductCard({ product }) {
           <div style={{ minWidth: 0 }}>
             <h3 className="h6 mb-1">{product.title}</h3>
             <div className="meta">{product.platform} • {product.region}</div>
-            {/* NUEVO: vendedor */}
             {product.sellerDisplayName && (
               <div style={{color: "#8a4ff0"}} className="text small">
                 Vendedor: <span className="fw-semibold">{product.sellerDisplayName}</span>
@@ -54,12 +54,12 @@ export default function ProductCard({ product }) {
 
           <div className="price text-end">
             {hasDiscount && (
-              <div className="old">
-                ${Number(product.originalPrice).toFixed(2)}
+              <div className="old" style={{textDecoration: "line-through", opacity: 0.8}}>
+                ${baseOriginalPrice.toFixed(2)}
               </div>
             )}
             <div className="h6 mb-0">
-              ${Number(product.price).toFixed(2)}
+              ${displayPrice.toFixed(2)}
             </div>
           </div>
         </div>

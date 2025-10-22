@@ -1,8 +1,7 @@
 import apiClient from "../api/apiClient";
 
-
 const SORT_MAP = {
-  amountSold: "sold",
+  amountSold: "amountSold",
   price: "price",
   createdAt: "createdAt",
   releaseDate: "releaseDate",
@@ -18,7 +17,6 @@ function mapSortKey(frontKey) {
   const field = SORT_MAP[prop] ?? prop;
   return `${field},${dir}`;
 }
-
 
 function buildQueryParams({ filters = {}, page = 0, size = 12, sort = "createdAt_desc" } = {}) {
   const qs = new URLSearchParams();
@@ -54,6 +52,15 @@ function buildQueryParams({ filters = {}, page = 0, size = 12, sort = "createdAt
   return qs.toString();
 }
 
+
+function normalizeDiscountValueToFraction(raw) {
+  if (raw == null) return null;
+  const n = Number(raw);
+  if (Number.isNaN(n)) return null;
+  if (n > 1) return n / 100;
+  return n;
+}
+
 async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc", onlyActive = true) {
   const base = `/api/v1/products/filtered/${onlyActive ? "active" : "all"}`;
   const params = buildQueryParams({ filters, page, size, sort });
@@ -62,21 +69,38 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
   const resp = await apiClient.apiFetch(path);
   if (!resp) return { content: [], totalElements: 0, totalPages: 0, number: 0, size };
 
-  const content = (resp.content || resp.items || []).map(p => {
+  const rawContent = resp.content || resp.items || [];
 
+  const content = rawContent.map(p => {
     let primaryImageUrl = null;
     if (p.primaryImageDataUrl) primaryImageUrl = p.primaryImageDataUrl;
     else if (p.imageUrls && p.imageUrls.length > 0) primaryImageUrl = p.imageUrls[0];
+    else if (p.primaryImageUrl) primaryImageUrl = p.primaryImageUrl;
     else if (p.primaryImageContentType && p.primaryImageDataUrl) primaryImageUrl = p.primaryImageDataUrl;
 
-    if (!primaryImageUrl && p.primaryImageUrl) primaryImageUrl = p.primaryImageUrl;
+    let rawBestPct = null;
+    if (p.bestDiscountPercentage != null) rawBestPct = p.bestDiscountPercentage;
+    else if (p.bestDiscount && p.bestDiscount.value != null) rawBestPct = p.bestDiscount.value;
+
+    let bestDiscountFrac = normalizeDiscountValueToFraction(rawBestPct);
+
+
+    let discountedPrice = null;
+    const basePrice = Number(p.price ?? 0);
+    if (bestDiscountFrac != null && !Number.isNaN(basePrice)) {
+      discountedPrice = Math.max(0, Math.round((basePrice * (1 - bestDiscountFrac)) * 100) / 100);
+    }
+
+    const discountPctDisplay = bestDiscountFrac != null ? Math.round(bestDiscountFrac * 100) : 0;
 
     return {
       ...p,
-      primaryImageUrl
+      primaryImageUrl,
+      bestDiscountFrac,
+      discountedPrice,
+      discountPctDisplay
     };
   });
-
 
   return {
     content,
@@ -87,4 +111,79 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
   };
 }
 
-export default { search, mapSortKey, SORT_MAP };
+
+async function getById(id) {
+  const resp = await apiClient.apiFetch(`/products/${id}/detail`);
+  if (!resp) return null;
+
+  const p = resp;
+
+  let images = p.images || [];
+  let primaryImageUrl = null;
+  if (images && images.length > 0) {
+    const primary = images.find(i => i.isPrimary) || images[0];
+    primaryImageUrl = primary.dataUrl ?? primary.file ?? null;
+  }
+
+  let bestDiscountFrac = null;
+  let discountPctDisplay = 0;
+  let discountedPrice = null;
+
+  if (p.bestDiscount != null) {
+    const rawVal = p.bestDiscount.value;
+    bestDiscountFrac = normalizeDiscountValueToFraction(rawVal);
+
+    if (p.bestDiscount.type === "PERCENT" || p.bestDiscount.type === "PERCENT") {
+      if (bestDiscountFrac != null && !Number.isNaN(Number(p.price ?? 0))) {
+        discountedPrice = Math.max(0, Math.round(((Number(p.price ?? 0)) * (1 - bestDiscountFrac)) * 100) / 100);
+      }
+      discountPctDisplay = bestDiscountFrac != null ? Math.round(bestDiscountFrac * 100) : 0;
+    } else if (p.bestDiscount.type === "FIXED") {
+      const fixedVal = Number(rawVal ?? 0);
+      const basePrice = Number(p.price ?? 0);
+      if (!Number.isNaN(basePrice)) {
+        discountedPrice = Math.max(0, Math.round((basePrice - fixedVal) * 100) / 100);
+      }
+      discountPctDisplay = null;
+    } else {
+      if (bestDiscountFrac != null && !Number.isNaN(Number(p.price ?? 0))) {
+        discountedPrice = Math.max(0, Math.round(((Number(p.price ?? 0)) * (1 - bestDiscountFrac)) * 100) / 100);
+        discountPctDisplay = bestDiscountFrac != null ? Math.round(bestDiscountFrac * 100) : 0;
+      }
+    }
+  }
+
+  return {
+    ...p,
+    images,
+    primaryImageUrl,
+    bestDiscountFrac,
+    discountedPrice,
+    discountPctDisplay
+  };
+}
+
+async function relatedByCategories(categoryIds = [], excludeProductId = null, size = 6) {
+  if (!Array.isArray(categoryIds) || categoryIds.length === 0) return [];
+  const filters = { categories: categoryIds };
+  const res = await search(filters, 0, size, "amountSold_desc", true);
+  const items = res.content || [];
+  const filtered = items.filter(it => it.id !== Number(excludeProductId)).slice(0, size);
+  return filtered;
+}
+
+async function productsBySeller(sellerId, excludeProductId = null, size = 6) {
+  if (!sellerId) return [];
+  const res = await search({ sellerId }, 0, size, "amountSold_desc", true);
+  const items = res.content || [];
+  return items.filter(it => it.id !== Number(excludeProductId)).slice(0, size);
+}
+
+export default {
+  search,
+  getById,
+  relatedByCategories,
+  productsBySeller,
+  mapSortKey,
+  SORT_MAP
+};

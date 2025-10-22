@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getSellerProducts, getProductDetail, updateProduct } from '../../services/sellerService';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmModal from '../profile/ConfirmModal';
+import { deriveAvailableStock } from '../../utils/stock';
 
 export default function ProductList({ onEditProduct }) {
   const { user } = useAuth();
@@ -116,7 +117,8 @@ export default function ProductList({ onEditProduct }) {
             <tbody>
               {filtered.map(product => {
                 const thumb = (product.primaryImageDataUrl) ? product.primaryImageDataUrl : (product.imageUrls && product.imageUrls.length>0 ? product.imageUrls[0] : null);
-                const stockStatus = getStockStatus(product.availableStock || 0);
+                const stockValue = deriveAvailableStock(product);
+  const          stockStatus = getStockStatus(stockValue);
                 return (
                   <tr key={product.id}>
                     <td>
@@ -129,7 +131,7 @@ export default function ProductList({ onEditProduct }) {
                       </div>
                     </td>
                     <td><div className="text-primary-light fw-bold">{product.currency} {product.price}</div></td>
-                    <td><span className={`badge ${stockStatus.class}`}>{product.availableStock || 0} - {stockStatus.text}</span></td>
+                    <td><span className={`badge ${stockStatus.class}`}>{stockValue} - {stockStatus.text}</span></td>
                     <td>
                       <div className="d-flex flex-wrap gap-1">
                         {product.categories && product.categories.slice(0,2).map(c => <span key={c.id} className="badge bg-secondary small">{c.description || c.id}</span>)}

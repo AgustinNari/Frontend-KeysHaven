@@ -1,4 +1,6 @@
 import apiClient from "../api/apiClient";
+import { normalizeProductsStock } from "../utils/stock";
+
 
 function buildQueryString(params = {}) {
   const usp = new URLSearchParams();
@@ -11,7 +13,6 @@ function buildQueryString(params = {}) {
   const qs = usp.toString();
   return qs ? `?${qs}` : "";
 }
-
 function dataUrlToBlob(dataUrl) {
   if (!dataUrl || typeof dataUrl !== "string") return null;
   if (dataUrl.startsWith("data:")) {
@@ -35,20 +36,30 @@ export const getSellerProducts = async (sellerId) => {
     const qs = buildQueryString({ page: 0, size: 2147483647, sellerId });
     const res = await apiClient.apiFetch(`/api/v1/products/filtered/all${qs}`, { method: "GET" });
     if (!res) return [];
-    if (Array.isArray(res)) return res;
-    return res.content ?? res.items ?? [];
+
+    let items = [];
+    if (Array.isArray(res)) items = res;
+    else items = res.content ?? res.items ?? [];
+
+    return normalizeProductsStock(items);
   } catch (err) {
     console.error("getSellerProducts error:", err);
     return [];
   }
 };
 
+
 export const getSellerActiveProducts = async (sellerId) => {
   try {
     const qs = buildQueryString({ page: 0, size: 2147483647, sellerId });
     const res = await apiClient.apiFetch(`/api/v1/products/filtered/active${qs}`, { method: "GET" });
     if (!res) return [];
-    return res.content ?? res.items ?? [];
+
+    let items = [];
+    if (Array.isArray(res)) items = res;
+    else items = res.content ?? res.items ?? [];
+
+    return normalizeProductsStock(items);
   } catch (err) {
     console.error("getSellerActiveProducts error:", err);
     return [];

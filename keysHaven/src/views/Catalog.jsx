@@ -1,4 +1,3 @@
-// src/views/Catalog.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import SidebarFilters from "../components/catalog/SidebarFilters";
@@ -6,9 +5,10 @@ import SearchBar from "../components/catalog/SearchBar";
 import SortDropdown from "../components/catalog/SortDropdown";
 import ProductGrid from "../components/catalog/ProductGrid";
 import PaginationBar from "../components/catalog/PaginationBar";
-import { PRODUCTS as MOCK_PRODUCTS } from "../data/products";
 import "../components/estilos/catalog.css";
 
+import productsService from "../services/productsService";
+import categoriesService from "../services/categoriesService";
 import { useCart } from "../store/cart.jsx";
 
 export default function Catalog() {
@@ -26,93 +26,83 @@ export default function Catalog() {
   const [appliedFilters, setAppliedFilters] = useState({});
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [categoriesOptions, setCategoriesOptions] = useState([]);
 
   const { add } = useCart();
 
-  // Simula la búsqueda en servidor pero ahora incorpora sellerId
-  const simulateServerFetch = useCallback((filters, pageNum, pageSizeNum, sort) => {
-    let arr = MOCK_PRODUCTS.slice();
-
-    // Filtro por sellerId (nuevo)
-    if (filters?.sellerId != null && filters.sellerId !== "") {
-      arr = arr.filter(p => Number(p.sellerId) === Number(filters.sellerId));
-    }
-
-    if (filters.title && filters.title.trim()) {
-      const q = filters.title.trim().toLowerCase();
-      arr = arr.filter(p => p.title.toLowerCase().includes(q));
-    }
-    if (filters.minPrice != null) arr = arr.filter(p => (p.price ?? 0) >= filters.minPrice);
-    if (filters.maxPrice != null) arr = arr.filter(p => (p.price ?? 0) <= filters.maxPrice);
-    if (filters.platform) arr = arr.filter(p => p.platform === filters.platform);
-    if (filters.region) arr = arr.filter(p => p.region === filters.region);
-    if (filters.developer) arr = arr.filter(p => p.developer === filters.developer);
-    if (filters.publisher) arr = arr.filter(p => p.publisher === filters.publisher);
-    if (filters.releaseDateFrom) arr = arr.filter(p => new Date(p.releaseDate) >= new Date(filters.releaseDateFrom));
-    if (filters.releaseDateTo) arr = arr.filter(p => new Date(p.releaseDate) <= new Date(filters.releaseDateTo));
-    if (filters.minMetacritic != null) arr = arr.filter(p => (p.metacriticScore ?? 0) >= filters.minMetacritic);
-    if (filters.maxMetacritic != null) arr = arr.filter(p => (p.metacriticScore ?? 0) <= filters.maxMetacritic);
-    if (filters.categories && filters.categories.length > 0) {
-      arr = arr.filter(p => filters.categories.every(c => p.categories.includes(c)));
-    }
-    if (filters.minAvgRating != null) arr = arr.filter(p => (p.avgRating ?? 0) >= filters.minAvgRating);
-    if (filters.minSold != null) arr = arr.filter(p => (p.sold ?? 0) >= filters.minSold);
-    if (filters.minDiscountPct != null) {
-      arr = arr.filter(p => {
-        if (!p.originalPrice) return false;
-        const pct = Math.round((1 - p.price / p.originalPrice) * 100);
-        return pct >= filters.minDiscountPct;
-      });
-    }
-
-    arr = arr.filter(p => p.active !== false && (p.stock ?? 0) >= 1);
-
-    switch (sort) {
-      case "price_asc": arr.sort((a,b)=> (a.price??0)-(b.price??0)); break;
-      case "price_desc": arr.sort((a,b)=> (b.price??0)-(a.price??0)); break;
-      case "createdAt_asc": arr.sort((a,b)=> new Date(a.releaseDate) - new Date(b.releaseDate)); break;
-      case "createdAt_desc": arr.sort((a,b)=> new Date(b.releaseDate) - new Date(a.releaseDate)); break;
-      case "metacritic_asc": arr.sort((a,b)=> (a.metacriticScore??0)-(b.metacriticScore??0)); break;
-      case "metacritic_desc": arr.sort((a,b)=> (b.metacriticScore??0)-(a.metacriticScore??0)); break;
-      case "avgRating_desc": arr.sort((a,b)=> (b.avgRating??0)-(a.avgRating??0)); break;
-      case "amountSold_desc":
-      default: arr.sort((a,b)=> (b.sold??0)-(a.sold??0)); break;
-    }
-
-    const total = arr.length;
-    const start = (pageNum - 1) * pageSizeNum;
-    const pageItems = arr.slice(start, start + pageSizeNum);
-    return { items: pageItems, total };
-  }, []);
-
-  // Si la URL contiene sellerId, lo aplicamos como filtro inicial
   useEffect(() => {
     if (querySellerId) {
-      // aplicamos sellerId a appliedFilters
       setAppliedFilters(prev => ({ ...prev, sellerId: Number(querySellerId) }));
+      setWorkingFilters(prev => ({ ...prev, sellerId: Number(querySellerId) }));
       setPage(1);
     }
   }, [querySellerId]);
 
-  // Cuando appliedFilters/page/sort cambian, recalculemos items
   useEffect(() => {
-    const res = simulateServerFetch(appliedFilters, page, pageSize, sortBy);
-    setItems(res.items);
-    setTotalItems(res.total);
-    setTotalPages(Math.max(1, Math.ceil(res.total / pageSize)));
-  }, [appliedFilters, page, pageSize, sortBy, simulateServerFetch]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const cats = await categoriesService.getAllCategories();
+        if (cancelled) return;
+        const opts = (cats || []).map(c => ({ id: c.id, description: c.description }));
+        setCategoriesOptions(opts);
+      } catch (err) {
+        console.error("Error loading categories", err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchItems = async () => {
+      setLoading(true);
+      try {
+        const backendPage = Math.max(0, page - 1);
+        const resp = await productsService.search(appliedFilters, backendPage, pageSize, sortBy, true);
+        if (cancelled) return;
+        const content = resp.content || [];
+        setItems(content);
+        setTotalItems(resp.totalElements ?? content.length);
+        setTotalPages(Math.max(1, resp.totalPages ?? Math.ceil((resp.totalElements ?? content.length) / pageSize)));
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setItems([]);
+        setTotalItems(0);
+        setTotalPages(1);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchItems();
+    return () => { cancelled = true; };
+  }, [appliedFilters, page, pageSize, sortBy]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setAppliedFilters(prev => ({ ...prev, title: searchText }));
+      setPage(1);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [searchText]);
+
+  const handleSearchSubmit = () => {
+    setAppliedFilters(prev => ({ ...prev, title: searchText }));
+    setPage(1);
+  };
 
   const handleApply = (filters) => {
-    // preservamos sellerId (si existía) para que no se pierda al aplicar otros filtros
-    setAppliedFilters(prev => ({ ...prev, ...filters, title: filters.title ?? searchText ?? "" }));
+    setAppliedFilters(prev => ({ ...prev, ...filters, title: filters.title ?? (prev.title ?? "") }));
     setPage(1);
   };
 
   const handleClearAll = () => {
-    // Al limpiar, mantenemos sellerId si venía por query param (comportamiento deseado)
     if (querySellerId) {
-      setWorkingFilters({});
+      setWorkingFilters({ sellerId: Number(querySellerId) });
       setAppliedFilters({ sellerId: Number(querySellerId) });
+      setSearchText("");
     } else {
       setWorkingFilters({});
       setAppliedFilters({});
@@ -126,6 +116,7 @@ export default function Catalog() {
       <div className="catalog-layout">
         <aside className="sidebar">
           <SidebarFilters
+            categories={categoriesOptions}
             workingFilters={workingFilters}
             setWorkingFilters={setWorkingFilters}
             onApply={handleApply}
@@ -141,33 +132,42 @@ export default function Catalog() {
             </div>
 
             <div className="d-flex align-items-center justify-content-space-between gap-2">
-              <div className="search-bar-wrapper">
+              <div className="search-bar-wrapper" style={{ minWidth: 260 }}>
                 <SearchBar
                   value={searchText}
                   onChange={setSearchText}
-                  onSearch={() => { setAppliedFilters(prev => ({ ...prev, title: searchText })); setPage(1); }}
+                  onSearch={handleSearchSubmit}
                 />
               </div>
-              <text-muted>Ordenar:</text-muted>
-              <div className="sort-dropdown-wrapper">
-                <SortDropdown value={sortBy} onChange={setSortBy} />
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div className="small muted">Ordenar:</div>
+                <div className="sort-dropdown-wrapper">
+                  <SortDropdown value={sortBy} onChange={setSortBy} />
+                </div>
               </div>
             </div>
           </div>
 
-          <ProductGrid products={items} onAdd={add} />
+          {loading ? (
+            <div className="d-flex justify-content-center align-items-center" style={{ height: 200 }}>
+              <div className="spinner-border text-primary" role="status"><span className="visually-hidden">Cargando...</span></div>
+            </div>
+          ) : (
+            <>
+              <ProductGrid products={items} onAdd={add} />
 
-          <div className="mt-3">
-            <div style={{ color: "#e6dbff" }} className="mb-2">
-              Mostrando {items.length} de {totalItems} resultados
-            </div>
-            <div className="pagination-center">
-              <PaginationBar page={page} setPage={setPage} totalPages={totalPages} />
-            </div>
-          </div>
+              <div className="mt-3">
+                <div style={{ color: "#e6dbff" }} className="mb-2">
+                  Mostrando {items.length} de {totalItems} resultados
+                </div>
+                <div className="pagination-center">
+                  <PaginationBar page={page} setPage={setPage} totalPages={totalPages} />
+                </div>
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>
   );
 }
-

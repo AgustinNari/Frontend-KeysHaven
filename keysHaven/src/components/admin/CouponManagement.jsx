@@ -44,7 +44,7 @@ export default function CouponManagement() {
       ]);
       setDiscounts(discountsData || []);
       setCategories(categoriesData || []);
-      setUsers((usersData || []).filter(u => u.role === 'BUYER'));
+      setUsers((usersData || []));
     } catch (err) {
       console.error(err);
       setError('Error cargando datos');
