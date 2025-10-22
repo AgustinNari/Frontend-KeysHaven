@@ -3,11 +3,10 @@ import FilterGroup from "./FilterGroup";
 
 const PLATFORMS = ["PC","Steam","Epic Games","PlayStation","Xbox","Nintendo Switch"];
 const REGIONS = ["GLOBAL","NA","EU","ASIA","LATAM"];
-const CATEGORIES = ["Acción","RPG","Deportes","Indie","Aventura","Estrategia","Simulador","Carreras","Puzzle","Terror"];
 const DEVELOPERS = ["Rockstar North","SmallDev","Ubisoft","EA","CD Projekt","Bethesda"];
 const PUBLISHERS = ["Rockstar Games","IndiePub","Ubisoft","EA","CD Projekt","Bethesda"];
 
-export default function SidebarFilters({ workingFilters, setWorkingFilters, onApply, onClearAll }) {
+export default function SidebarFilters({ categories = [], workingFilters, setWorkingFilters, onApply, onClearAll }) {
   workingFilters = workingFilters || {};
 
   const setField = (key, value) => {
@@ -23,7 +22,6 @@ export default function SidebarFilters({ workingFilters, setWorkingFilters, onAp
   };
 
   const handleApplyClick = () => {
-
     onApply({ ...workingFilters });
   };
 
@@ -31,7 +29,7 @@ export default function SidebarFilters({ workingFilters, setWorkingFilters, onAp
     <div className="filters-panel p-3">
       <div className="d-flex justify-content-between align-items-center mb-2">
         <h5 className="m-0">Filtros</h5>
-        <button style = {{ color: "#8a4ff0" }}  onClick={onClearAll}>Limpiar todo</button>
+        <button style={{ color: "#8a4ff0" }} onClick={onClearAll}>Limpiar todo</button>
       </div>
 
       <div className="mb-3">
@@ -96,9 +94,9 @@ export default function SidebarFilters({ workingFilters, setWorkingFilters, onAp
 
       <FilterGroup
         title="Categorías"
-        options={CATEGORIES}
+        options={(categories || []).map(c => ({ value: c.id, label: c.description }))}
         selected={workingFilters.categories || []}
-        showLimit={3}
+        showLimit={6}
         onToggle={(vals) => setField("categories", vals)}
       />
 

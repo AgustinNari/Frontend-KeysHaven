@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
-import { PRODUCTS } from "../data/products.js";
-import { MOCK_PRODUCT_DETAIL } from "../data/mockProductDetail";
-import { MOCK_SELLER_DETAIL } from "../data/mockSeller";
 import "../components/estilos/Fondos.css";
 import "../components/estilos/product.css";
 import ActivationSteps from "../components/product/ActivationSteps.jsx";
@@ -14,51 +11,106 @@ import RelatedProducts from "../components/product/RelatedProducts";
 import ReviewList from "../components/product/ReviewList";
 import Rating from "../components/catalog/Rating";
 
+import productsService from "../services/productsService.js";
+import sellersService from "../services/sellers";
+import reviewsService from "../services/reviews";
+
 export default function ProductDetail() {
   const { id } = useParams();
   const { add } = useCart();
+
   const [product, setProduct] = useState(null);
   const [productImages, setProductImages] = useState([]);
-  const [reviews, setReviews] = useState([]);
+  const [reviewsPage, setReviewsPage] = useState({ content: [], totalElements: 0, totalPages: 0 });
   const [seller, setSeller] = useState(null);
   const [sellerProducts, setSellerProducts] = useState([]);
+  const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("descripcion");
 
+  const [reviewsPageNumber, setReviewsPageNumber] = useState(1);
+  const reviewsPageSize = 5;
+
   useEffect(() => {
-    const fetch = async () => {
+    const fetchDetail = async () => {
       setLoading(true);
       try {
-        const detail = id == MOCK_PRODUCT_DETAIL.id ? MOCK_PRODUCT_DETAIL : { ...MOCK_PRODUCT_DETAIL, id: parseInt(id) };
+        const detail = await productsService.getById(id);
+        if (!detail) {
+          setProduct(null);
+          return;
+        }
+
+        setProduct(detail);
 
         const imgs = (detail.images || []).slice().sort((a, b) => {
           if (a.isPrimary && !b.isPrimary) return -1;
           if (!a.isPrimary && b.isPrimary) return 1;
           return (a.name || "").localeCompare(b.name || "");
         });
-
-        setProduct(detail);
         setProductImages(imgs);
         setActiveImageIndex(0);
-        window.scrollTo(0, 0);
 
-        const sellerDetail = MOCK_SELLER_DETAIL;
-        setSeller(sellerDetail);
+        if (detail.sellerId) {
+          try {
+            const s = await sellersService.getSellerDetail(detail.sellerId);
+            setSeller(s);
+          } catch (e) {
+            setSeller(null);
+          }
+        } else {
+          setSeller(null);
+        }
 
-        const sProducts = PRODUCTS.filter(p => p.sellerId === detail.sellerId && p.id !== detail.id).slice(0, 6);
-        setSellerProducts(sProducts);
+        const categoryIds = (detail.categories || []).map(c => (c?.id ?? null)).filter(Boolean);
+        if (categoryIds.length > 0) {
+          const rel = await productsService.relatedByCategories(categoryIds, detail.id, 6);
+          setRelated(rel);
+        } else {
+          setRelated([]);
+        }
 
-        setReviews(detail.reviews || []);
-      } catch (e) {
-        console.error(e);
+        if (detail.sellerId) {
+          const sp = await productsService.productsBySeller(detail.sellerId, detail.id, 6);
+          setSellerProducts(sp);
+        } else {
+          setSellerProducts([]);
+        }
+
+        const r = await reviewsService.getReviewsByProduct(id, 0, reviewsPageSize);
+        setReviewsPage({
+          content: r?.content ?? [],
+          totalElements: r?.totalElements ?? r?.total ?? 0,
+          totalPages: r?.totalPages ?? Math.max(1, Math.ceil((r?.totalElements ?? r?.total ?? 0) / reviewsPageSize))
+        });
+      } catch (err) {
+        console.error("Error loading product detail:", err);
       } finally {
         setLoading(false);
+        window.scrollTo(0,0);
       }
     };
 
-    fetch();
+    fetchDetail();
   }, [id]);
+
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const r = await reviewsService.getReviewsByProduct(id, reviewsPageNumber - 1, reviewsPageSize);
+        setReviewsPage({
+          content: r?.content ?? [],
+          totalElements: r?.totalElements ?? r?.total ?? 0,
+          totalPages: r?.totalPages ?? Math.max(1, Math.ceil((r?.totalElements ?? r?.total ?? 0) / reviewsPageSize))
+        });
+      } catch (e) {
+        console.error("Error loading reviews page", e);
+      }
+    };
+    if (product) fetchReviews();
+  }, [id, reviewsPageNumber, reviewsPageSize, product]);
 
   if (loading) {
     return (
@@ -79,16 +131,27 @@ export default function ProductDetail() {
     );
   }
 
-  let related = PRODUCTS.filter(p => {
-    if (!p.categories || !product.categories) return false;
-    const pCats = p.categories.map(c => (typeof c === "string" ? c : c.description));
-    const prodCats = product.categories.map(c => (typeof c === "string" ? c : c.description));
-    return p.id !== product.id && pCats.some(pc => prodCats.includes(pc));
-  }).slice(0, 4);
-
-  if (related.length === 0) {
-    related = sellerProducts.slice(0, 4);
+  let discountPctDisplay = null;
+  let discountedPrice = null;
+  let fixedOffAmount = null;
+  if (product.bestDiscount != null) {
+    if (product.bestDiscountFrac != null) {
+      discountPctDisplay = Math.round(product.bestDiscountFrac * 100);
+      discountedPrice = product.discountedPrice ?? null;
+    } else if (product.bestDiscount.type === "FIXED" && product.bestDiscount.value != null) {
+      fixedOffAmount = Number(product.bestDiscount.value);
+      discountedPrice = product.discountedPrice ?? null;
+    } else if (product.bestDiscount.value != null) {
+      const frac = (Number(product.bestDiscount.value) > 1) ? Number(product.bestDiscount.value) / 100 : Number(product.bestDiscount.value);
+      if (!Number.isNaN(frac)) {
+        discountPctDisplay = Math.round(frac * 100);
+        discountedPrice = Math.max(0, Math.round((Number(product.price ?? 0) * (1 - frac)) * 100) / 100);
+      }
+    }
   }
+
+  const basePrice = Number(product.price ?? 0);
+  const priceToShow = discountedPrice != null ? discountedPrice : basePrice;
 
   return (
     <div className="product-page">
@@ -109,8 +172,8 @@ export default function ProductDetail() {
           <div className="card shadow-sm mb-3 p-3">
             <h3 style={{ margin: 0, color: "var(--text)" }}>{product.title}</h3>
             <div className="product-stats mt-2">
-              <div className="stat"><strong style={{ color: "var(--text)" }}>${product.price}</strong></div>
-              <div className="stat"><Rating value={product.avgRating ?? product.avgRating} count={product.ratingCount ?? 0} size={14} /></div>
+              <div className="stat"><strong style={{ color: "var(--text)" }}>${priceToShow.toFixed(2)}</strong></div>
+              <div className="stat"><Rating value={product.avgRating ?? 0} count={product.ratingCount ?? 0} size={14} /></div>
               <div className="stat muted">Reseñas: <strong style={{ color: "var(--text)" }}>{product.ratingCount ?? 0}</strong></div>
               <div className="stat muted">Ventas: <strong style={{ color: "var(--text)" }}>{product.sold ?? 0}</strong></div>
               <div className="stat muted">Stock: <strong style={{ color: "var(--text)" }}>{product.stock ?? 0}</strong></div>
@@ -137,7 +200,7 @@ export default function ProductDetail() {
                   <p className="muted">{product.description}</p>
                   <p className="muted">Desarrollador: <strong style={{ color: "var(--text)" }}>{product.developer}</strong></p>
                   <p className="muted">Publisher: <strong style={{ color: "var(--text)" }}>{product.publisher}</strong></p>
-                  <p className="muted">Categorías: <strong style={{ color: "var(--text)" }}>{product.categories?.map(c => (typeof c === "string" ? c : c.description)).join(", ")}</strong></p>
+                  <p className="muted">Categorías: <strong style={{ color: "var(--text)" }}>{(product.categories || []).map(c => c?.description ?? "").join(", ")}</strong></p>
                 </>
               )}
 
@@ -155,7 +218,7 @@ export default function ProductDetail() {
                         <div key={sp.id} className="col-6 col-md-4 mb-2">
                           <Link to={`/product/${sp.id}`} onClick={() => window.scrollTo(0,0)} style={{ textDecoration: "none" }}>
                             <div className="card" style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.03)" }}>
-                              <img src={sp.primaryImageUrl} style={{ width: "100%", height: 120, objectFit: "cover" }} alt={sp.title} />
+                              <img src={sp.primaryImageDataUrl ?? sp.primaryImageUrl} style={{ width: "100%", height: 120, objectFit: "cover" }} alt={sp.title} />
                               <div className="p-2">
                                 <div style={{ color: "var(--text)", fontWeight: 700 }}>{sp.title}</div>
                                 <div className="meta">{sp.platform}</div>
@@ -176,7 +239,13 @@ export default function ProductDetail() {
             <div className="card-body">
               <h5 className="text-primary">Opiniones de clientes</h5>
               <div className="mt-2">
-                <ReviewList reviews={reviews} pageSize={3} />
+                <ReviewList
+                  reviews={reviewsPage.content}
+                  page={reviewsPageNumber}
+                  setPage={setReviewsPageNumber}
+                  totalPages={reviewsPage.totalPages}
+                  pageSize={reviewsPageSize}
+                />
               </div>
             </div>
           </div>
@@ -184,23 +253,48 @@ export default function ProductDetail() {
         <ActivationSteps />
 
         </div>
+
         <aside className="product-right">
           <div className="card shadow-sm p-3 mb-3">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <h4 style={{ margin: 0, color: "var(--text)" }}>{product.title}</h4>
-              {product.bestDiscount && <div className="badge-off">{Math.round(product.bestDiscount.percentage * 100)}% OFF</div>}
+              {discountPctDisplay != null ? (
+                <div className="badge-off">{discountPctDisplay}% OFF</div>
+              ) : (fixedOffAmount != null ? (
+                <div className="badge-off">${Number(fixedOffAmount).toFixed(2)} OFF</div>
+              ) : null)}
             </div>
 
             <div className="meta mt-2">Plataforma: <strong style={{ color: "var(--text)" }}>{product.platform}</strong></div>
             <div className="meta">Región: <strong style={{ color: "var(--text)" }}>{product.region}</strong></div>
 
             <div className="d-flex align-items-center gap-3 mt-3">
-              <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent)" }}>${product.price}</div>
+              <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "var(--accent)" }}>${priceToShow.toFixed(2)}</div>
+              {discountedPrice != null && (
+                <div style={{ marginLeft: 8, textDecoration: "line-through", color: "rgba(255,255,255,0.6)" }}>
+                  ${basePrice.toFixed(2)}
+                </div>
+              )}
             </div>
 
             <div className="mt-3 d-grid gap-2">
-              <Link className="btn btn-primary btn-lg" to="/cart" onClick={() => add(product)}>Comprar ahora</Link>
-              <button className="btn btn-outline-primary" onClick={() => add(product)}>Agregar al carrito</button>
+              <button className="btn btn-primary btn-lg" onClick={() => add({
+                id: product.id,
+                title: product.title,
+                price: priceToShow,
+                imageUrl: product.primaryImageDataUrl ?? (product.primaryImageUrl ?? null),
+                platform: product.platform,
+                region: product.region
+              })}>Comprar ahora</button>
+
+              <button className="btn btn-outline-primary" onClick={() => add({
+                id: product.id,
+                title: product.title,
+                price: priceToShow,
+                imageUrl: product.primaryImageDataUrl ?? (product.primaryImageUrl ?? null),
+                platform: product.platform,
+                region: product.region
+              })}>Agregar al carrito</button>
             </div>
 
             <div className="mt-3">
@@ -212,6 +306,9 @@ export default function ProductDetail() {
           <div className="card shadow-sm p-3 mb-3">
             <h6 style={{ color: "var(--text)" }}>Vendedor</h6>
             <SellerCard seller={seller} />
+            <div className="mt-2">
+              <Link to={`/seller-detail/${product.sellerId}`} className="btn btn-outline-primary btn-sm">Ver vendedor</Link>
+            </div>
           </div>
 
           <div className="card shadow-sm p-3">
