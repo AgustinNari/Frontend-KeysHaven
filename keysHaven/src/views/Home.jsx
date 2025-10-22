@@ -1,19 +1,59 @@
 import React, { useState, useRef, useEffect } from "react";
 import "../components/estilos/Fondos.css";
+import { getFeaturedCategories } from '../api/categories';
+import { getTopSellers } from "../api/sellers";
 import HomeBanner from '/src/assets/homeImage.png';
 
 export default function Home() {
   const [theme, setTheme] = useState("bg-primary-dark");
-  const [active, setActive] = useState("pc");
-  const [searchMode, setSearchMode] = useState(false);
+  
+  //Categories Variables
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(null);
+  
+  //Sellers Variables
+  const [sellers, setSellers] = useState([]);
+  
+  //Mininavbar Variables
   const inputRef = useRef(null);
-
+  const [searchMode, setSearchMode] = useState(false);
+  const [active, setActive] = useState("pc");
   const icons = [
     { id: "pc", icon: "fab fa-windows" },
     { id: "ps", icon: "fab fa-playstation" },
     { id: "xbox", icon: "fab fa-xbox" },
     { id: "switch", icon: "fas fa-gamepad" },
   ];
+
+  useEffect(() => {
+    getTopSellers()
+      .then(data => setSellers(data.content))
+      .catch(err => console.error("Failed to load sellers", err));
+  }, []);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const response = await fetch("/api/categories/featured?page=0&size=5");  // adjust URL as needed
+        if (!response.ok) {
+          throw new Error(`Error fetching categories: ${response.statusText}`);
+        }
+        const page = await response.json();
+        // page.content is the list (assuming standard Spring Page structure) :contentReference[oaicite:0]{index=0}
+        const fetchedCats = page.content || [];
+        setCategories(fetchedCats);
+      } catch (err) {
+        console.error(err);
+        setCategoriesError(err.message);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     if (searchMode && inputRef.current) {
@@ -111,22 +151,29 @@ export default function Home() {
       </section>
 
       {/* Categories */}
-      <section className="py-5 bg-primary-dark">
+            <section className="py-5 bg-primary-dark">
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Top Categories</h2>
           <div className="row g-4 justify-content-center">
-            {["PC Games", "Xbox", "PlayStation", "Gift Cards", "Subscriptions"].map((cat) => (
+            {loadingCategories && <p className="text-light">Loading categories…</p>}
+            {categoriesError && <p className="text-danger">Error: {categoriesError}</p>}
+            {!loadingCategories && !categoriesError && categories.length === 0 && (
+              <p className="text-light">No categories found.</p>
+            )}
+            {!loadingCategories && !categoriesError && categories.map((cat) => (
               <div
-                key={cat}
+                key={cat.id}
                 className="col-6 col-md-4 col-lg-2 position-relative overflow-hidden rounded shadow"
               >
                 <img
-                  src="/src/assets/keyLogo.svg" width={80} height={70}
+                  src={cat.imageUrl ?? "/src/assets/keyLogo.svg"}
+                  width={80}
+                  height={70}
                   className="w-100 rounded"
-                  alt={cat}
+                  alt={cat.name}
                 />
                 <div className="position-absolute bottom-0 start-0 w-100 p-2 text-white bg-dark bg-opacity-50 fw-bold">
-                  {cat}
+                  {cat.name}
                 </div>
               </div>
             ))}
@@ -139,18 +186,18 @@ export default function Home() {
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Top Sellers</h2>
           <div className="row g-5 justify-content-center">
-            {["ProductOne", "GameStoreX", "PlayHub", "KeyWorld"].map((seller, i) => (
-              <div key={i} className="col-6 col-md-3">
-                <a href={`/product/${i + 1}`} className="text-decoration-none text-body text-primary-light">
+            {sellers.map((seller, i) => (
+              <div key={seller.id || i} className="col-6 col-md-3">
+                <a href={`"/seller-detail/${seller.id}`} className="text-decoration-none text-body text-primary-light">
                   <img
-                    src="/src/assets/react.svg"
+                    src={seller.avatarDataUrl || "/src/assets/react.svg"}
                     className="rounded-circle border border-primary border-3 mb-3"
                     width="160"
                     height="160"
-                    alt={seller}
+                    alt={seller.displayName}
                   />
-                  <h5>{seller}</h5>
-                  <small className="text-light">12,345 keys • 4.8★</small>
+                  <h5>{seller.displayName}</h5>
+                  <small className="text-light">{seller.amountSold} keys sold • {seller.avgRating}★</small>
                 </a>
               </div>
             ))}
@@ -158,22 +205,32 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Best Sellers */}
+      {/* Most Bought Products */}
       <section className="py-5 bg-primary-dark">
         <div className="container">
           <h2 className="fw-bold text-center mb-5 text-primary-light">Most Sold Games</h2>
-          <div className="row g-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="col-6 col-md-4 col-lg-3">
-                <img
-                  src= {HomeBanner}
-                  className="w-100 rounded text-primary-light"
-                  alt={`Game ${i + 1}`}
-                />
-                <h6 className="mt-2 mb-0 fw-semibold text-primary-light">Game Title {i + 1}</h6>
-                <small className="text-muted text-primary">Action</small>
-              </div>
-            ))}
+          <div className="row g-4 justify-content-center">
+            {loadingProducts && <p className="text-light text-center">Loading games…</p>}
+            {productsError && <p className="text-danger text-center">{productsError}</p>}
+            {!loadingProducts && topProducts.length === 0 && (
+              <p className="text-light text-center">No top products found.</p>
+            )}
+            {!loadingProducts &&
+              topProducts.map((product) => (
+                <div key={product.id} className="col-6 col-md-4 col-lg-3">
+                  <a href={`/product/${product.id}`} className="text-decoration-none">
+                    <img
+                      src={product.primaryImageUrl ?? HomeBanner}
+                      className="w-100 rounded"
+                      alt={product.title}
+                    />
+                    <h6 className="mt-2 mb-0 fw-semibold text-primary-light">{product.title}</h6>
+                    <small className="text-muted text-primary">
+                      {product.categories ?? ""} • {product.amountSold ?? 0} sold
+                    </small>
+                  </a>
+                </div>
+              ))}
           </div>
         </div>
       </section>

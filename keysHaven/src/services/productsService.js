@@ -77,6 +77,9 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
     };
   });
 
+  function getTopSoldProducts(size = 4) {
+  return apiClient.search({}, 0, size, "amountSold_desc");
+}
 
   return {
     content,
@@ -87,4 +90,11 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
   };
 }
 
-export default { search, mapSortKey, SORT_MAP };
+export default { search,getTopSoldProducts, mapSortKey, SORT_MAP };
+
+/*export default {
+  search: apiClient.search,
+  getTopSoldProducts, // <-- add this export
+  mapSortKey: apiClient.mapSortKey,
+  SORT_MAP: apiClient.SORT_MAP,
+};*/
