@@ -23,7 +23,7 @@ export default function NotFound() {
 
   const [error, setError] = useState(getLastApiError());
 
-  if (error?.status === 400) {
+  /*if (error?.status === 400) {
     imageBottom = Number400;
     messageText = "400 - BAD_REQUEST";
   } else if (error?.status === 401) {
@@ -39,6 +39,30 @@ export default function NotFound() {
     imageBottom = Number409;
     messageText = "409 - Conflicto";
   } else if (error?.status === 500) {
+    imageBottom = Number500;
+    messageText = "500 - Error Interno del Servidor";
+  } else {
+    imageTop = DoppyUnplugged;
+    imageBottom = null;
+    messageText = "Error Desconocido";
+  }*/
+
+  if (location.pathname === "/400") {
+    imageBottom = Number400;
+    messageText = "400 - BAD_REQUEST";
+  } else if (location.pathname === "/401") {
+    imageBottom = Number401;
+    messageText = "401 - Acceso No Autorizado";
+  } else if (location.pathname === "/403") {
+    imageBottom = Number403;
+    messageText = "403 - Prohibido el Acceso!!!";
+  } else if (location.pathname === "/404") {
+    imageBottom = Number404;
+    messageText = "404 - Página no encontrada";
+  } else if (location.pathname === "/409") {
+    imageBottom = Number409;
+    messageText = "409 - Conflicto";
+  } else if (location.pathname === "/500") {
     imageBottom = Number500;
     messageText = "500 - Error Interno del Servidor";
   } else {
