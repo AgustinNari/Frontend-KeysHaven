@@ -209,28 +209,18 @@ export default function Home() {
       <section className="py-5 bg-primary-dark">
         <div className="container">
           <h2 className="fw-bold text-center mb-5 text-primary-light">Most Sold Games</h2>
-          <div className="row g-4 justify-content-center">
-            {loadingProducts && <p className="text-light text-center">Loading games…</p>}
-            {productsError && <p className="text-danger text-center">{productsError}</p>}
-            {!loadingProducts && topProducts.length === 0 && (
-              <p className="text-light text-center">No top products found.</p>
-            )}
-            {!loadingProducts &&
-              topProducts.map((product) => (
-                <div key={product.id} className="col-6 col-md-4 col-lg-3">
-                  <a href={`/product/${product.id}`} className="text-decoration-none">
-                    <img
-                      src={product.primaryImageUrl ?? HomeBanner}
-                      className="w-100 rounded"
-                      alt={product.title}
-                    />
-                    <h6 className="mt-2 mb-0 fw-semibold text-primary-light">{product.title}</h6>
-                    <small className="text-muted text-primary">
-                      {product.categories ?? ""} • {product.amountSold ?? 0} sold
-                    </small>
-                  </a>
-                </div>
-              ))}
+          <div className="row g-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="col-6 col-md-4 col-lg-3">
+                <img
+                  src= {HomeBanner}
+                  className="w-100 rounded text-primary-light"
+                  alt={`Game ${i + 1}`}
+                />
+                <h6 className="mt-2 mb-0 fw-semibold text-primary-light">Game Title {i + 1}</h6>
+                <small className="text-muted text-primary">Action</small>
+              </div>
+            ))}
           </div>
         </div>
       </section>
