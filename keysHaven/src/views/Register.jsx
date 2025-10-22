@@ -188,7 +188,6 @@ export default function Register() {
                   <select className="form-select" value={role} onChange={(e)=>setRole(e.target.value)}>
                     <option value="BUYER">Buyer</option>
                     <option value="SELLER">Seller</option>
-                    <option value="ADMIN">Admin</option>
                   </select>
                 </div>
 

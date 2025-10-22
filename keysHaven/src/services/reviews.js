@@ -16,4 +16,8 @@ export async function deleteReview(reviewId) {
   return apiClient.apiFetch(`/reviews/${reviewId}`, { method: "DELETE" });
 }
 
-export default { getReviewsByProduct, createReview, updateReview, deleteReview };
+export function getReviewByOrderItem(orderItemId) {
+  return apiClient.apiFetch(`/reviews/order-item/${orderItemId}`, { method: "GET" });
+}
+
+export default { getReviewsByProduct, createReview, updateReview, deleteReview, getReviewByOrderItem };

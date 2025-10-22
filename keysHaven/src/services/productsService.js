@@ -112,8 +112,10 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
   };
 }
 
+
+
 async function getTopSoldProducts(size = 4) {
-  return search({}, 0, size, "amountSold_desc");
+  return search({}, 0, size, "amountSold_desc", true);
 }
 
 async function getById(id) {

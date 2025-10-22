@@ -78,7 +78,7 @@ export default function OrderConfirmation() {
     <div className="container py-4">
       <div className="text-center mb-4">
         <img
-          src="/src/assets/doppyHandsUp.png"
+          src="/src/assets/doppyKnight/doppyJump.png"
           alt="¡Gracias por tu compra!"
           style={{ width: 160, height: "auto", opacity: 0.95 }}
         />
@@ -101,9 +101,9 @@ export default function OrderConfirmation() {
             <div className="card-body">
               {normalized.items.map((it) => (
                 <div key={it.id ?? `${it.title}-${Math.random()}`} className="d-flex align-items-center mb-3">
-                  {it.image ? (
+                  {it.image || it.imageUrl ? (
                     <img
-                      src={it.image}
+                      src={it.image || it.imageUrl}
                       alt={it.title}
                       style={{ width: 64, height: 64, objectFit: "cover" }}
                       className="me-3 rounded"

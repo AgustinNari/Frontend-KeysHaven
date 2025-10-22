@@ -9,4 +9,8 @@ export async function getAllCategories(page = 0, size = 1000) {
   return apiClient.apiFetch(`/categories?${qs.toString()}`);
 }
 
-export default { getAllCategories };
+export async function getFeaturedCategories(page = 0, size = 5) {
+  return apiClient.apiFetch(`/categories/featured?page=${page}&size=${size}`);
+}
+
+export default { getAllCategories, getFeaturedCategories };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import ReviewForm from "./ReviewForm";
 import ConfirmModal from "./ConfirmModal";
 import * as ordersApi from "../../services/orders";
-import * as reviewsApi from "../../api/reviews";
+import * as reviewsApi from "../../services/reviews";
 
 export default function OrderDetailModal({ show, order, userReviews = [], onClose, onSaveReview, onDeleteReview }) {
   const [activeItem, setActiveItem] = useState(null);

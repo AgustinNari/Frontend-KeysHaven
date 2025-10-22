@@ -10,7 +10,7 @@ import Rating from "../components/catalog/Rating";
 import "../components/estilos/Fondos.css";
 import "../components/estilos/product.css";
 
-import { getSellerStats, getSellerActiveProducts } from "../services/sellerService";
+import { getSellerStats, getSellerActiveProductsForDetail } from "../services/sellerService";
 import useApiError from "../hooks/useApiError";
 import ApiErrorAlert from "../components/common/ApiErrorAlert";
 
@@ -43,7 +43,7 @@ export default function SellerDetail() {
         }
 
         // Devuelve los productos activos del vendedor
-        const activeProducts = await getSellerActiveProducts(sellerId);
+        const activeProducts = await getSellerActiveProductsForDetail(sellerId);
         console.log("🎮 Productos activos recibidos:", activeProducts);
 
         // Objeto Seller
@@ -101,7 +101,7 @@ export default function SellerDetail() {
             setFrom(new Error("Vendedor no encontrado"));
             return;
           }
-          const activeProducts = await getSellerActiveProducts(sellerId);
+          const activeProducts = await getSellerActiveProductsForDetail(sellerId);
           const sellerData = {
             // ... (misma construcción de datos)
             id: sellerId,
@@ -271,7 +271,6 @@ export default function SellerDetail() {
             <h6 style={{ color: "var(--text)" }}>Información de contacto</h6>
             <div className="meta mt-2">
               {seller.email && <div>Email: <strong style={{ color: "var(--text)" }}>{seller.email}</strong></div>}
-              {seller.phone && <div>Teléfono: <strong style={{ color: "var(--text)" }}>{seller.phone}</strong></div>}
               {seller.country && <div>País: <strong style={{ color: "var(--text)" }}>{seller.country}</strong></div>}
             </div>
           </div>

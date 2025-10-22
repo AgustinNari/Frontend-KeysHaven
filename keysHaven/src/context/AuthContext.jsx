@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import * as authApi from "../api/auth";
-import * as usersApi from "../api/users";
+import * as authApi from "../services/auth";
+import * as usersApi from "../services/users";
 import apiClient from "../api/apiClient";
 
 const STORAGE_TOKEN_KEY = "jwtToken";

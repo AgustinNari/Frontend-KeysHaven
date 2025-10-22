@@ -8,10 +8,10 @@ import ConfirmModal from "../components/profile/ConfirmModal";
 import ChangePasswordModal from "../components/profile/ChangePasswordModal";
 
 import { useAuth } from "../context/AuthContext";
-import * as usersApi from "../api/users";
+import * as usersApi from "../services/users";
 import * as ordersApi from "../services/orders";
-import * as reviewsApi from "../api/reviews";
-import * as authApi from "../api/auth";
+import * as reviewsApi from "../services/reviews";
+import * as authApi from "../services/auth";
 import apiClient from "../api/apiClient";
 
 export default function Profile() {
@@ -303,7 +303,7 @@ export default function Profile() {
                 <div className="avatar-box">
                   <div className="avatar-preview">
                     <img
-                      src={profile.avatarDataUrl ?? "/src/assets/doppyKnight/homeImage.png"}
+                      src={profile.avatarDataUrl ?? "/src/assets/doppyKnight/doppyThumbsUp.png"}
                       alt="avatar"
                       style={{ width: 120, height: 120, borderRadius: 8 }}
                     />
@@ -347,7 +347,7 @@ export default function Profile() {
                   <h3>Avatar</h3>
                   <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                     <AvatarUploader
-                      avatarDataUrl={profile.avatarDataUrl}
+                      avatarDataUrl={profile.avatarDataUrl ?? "/src/assets/doppyKnight/doppyThumbsUp.png"}
                       onUpload={handleUploadAvatar}
                       onReplace={handleReplaceAvatar}
                       onDelete={handleDeleteAvatar}

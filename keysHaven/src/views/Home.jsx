@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../components/estilos/Fondos.css";
-import { getFeaturedCategories } from '../api/categories';
-import { getTopSellers } from "../api/sellers";
+import { getFeaturedCategories } from '../services/categories';
+import { getTopSellers } from "../services/sellers";
 import productsService from "../services/productsService";
 import HomeBanner from '/src/assets/homeImage.png';
 
