@@ -16,8 +16,6 @@ import ApiErrorAlert from "../components/common/ApiErrorAlert";
 
 export default function SellerDetail() {
   const { sellerId } = useParams();
-  
-  console.log("🔄 SellerDetail montado con sellerId:", sellerId);
 
   const [seller, setSeller] = useState(null);
   const [allProducts, setAllProducts] = useState([]);
@@ -25,105 +23,129 @@ export default function SellerDetail() {
   const pageSize = 8;
   const [loading, setLoading] = useState(true);
   
-  // Usar el hook de errores en lugar del estado de error simple
+  // Reemplazar el estado simple de error por useApiError
   const { apiError, setFrom, clear, hasError } = useApiError();
 
-  const loadSellerData = async () => {
-    try {
-      setLoading(true);
-      clear(); // Limpiar errores previos
-
-      console.log("🔍 Iniciando carga de datos para sellerId:", sellerId);
-
-      if (!sellerId) {
-        setFrom(new Error("ID de vendedor no proporcionado"));
-        return;
-      }
-
-      // Cargar estadísticas del seller
-      console.log("📊 Llamando a getSellerStats...");
-      const stats = await getSellerStats(sellerId);
-      console.log("📊 Stats recibidas:", stats);
-      
-      if (!stats) {
-        setFrom(new Error("Vendedor no encontrado en la base de datos"));
-        return;
-      }
-
-      // Cargar productos activos del seller
-      console.log("🎮 Llamando a getSellerActiveProducts...");
-      const activeProducts = await getSellerActiveProducts(sellerId);
-      console.log("🎮 Productos activos recibidos:", activeProducts);
-
-      // Crear objeto seller con datos reales del backend
-      const sellerData = {
-        id: sellerId,
-        displayName: stats.displayName || `Vendedor #${sellerId}`,
-        sellerDescription: stats.sellerDescription || "Vendedor de productos digitales",
-        avatarDataUrl: stats.avatarDataUrl || null,
-        firstName: stats.firstName || "",
-        lastName: stats.lastName || "",
-        email: stats.email || "",
-        phone: stats.phone || "",
-        country: stats.country || "",
-        
-        // Estadísticas
-        avgRating: stats.avgRating || 0,
-        ratingCount: stats.ratingCount || 0,
-        soldKeys: stats.soldKeys || 0,
-        amountSold: stats.amountSold || 0,
-        totalSales: stats.totalSales || 0,
-        totalRevenue: stats.totalRevenue || 0,
-        activeProducts: stats.activeProducts || 0,
-        totalProducts: stats.totalProducts || 0
-      };
-
-      console.log("🛠️ Seller data construido:", sellerData);
-
-      setSeller(sellerData);
-      setAllProducts(activeProducts || []);
-      setPage(1);
-
-      console.log("✅ Datos cargados exitosamente");
-
-    } catch (err) {
-      console.error("❌ Error cargando datos del seller:", err);
-      console.error("❌ Stack trace:", err.stack);
-      setFrom(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    console.log("🎯 useEffect ejecutándose con sellerId:", sellerId);
+    const loadSellerData = async () => {
+      try {
+        setLoading(true);
+        clear(); // Limpiar errores previos
+
+        console.log("🔍 Cargando datos para sellerId:", sellerId);
+
+        // Cargar estadísticas del seller usando el endpoint real
+        const stats = await getSellerStats(sellerId);
+        console.log("📊 Stats recibidas:", stats);
+        
+        if (!stats) {
+          setFrom(new Error("Vendedor no encontrado"));
+          return;
+        }
+
+        // Cargar productos activos del seller
+        const activeProducts = await getSellerActiveProducts(sellerId);
+        console.log("🎮 Productos activos recibidos:", activeProducts);
+
+        // Crear objeto seller con datos reales del backend
+        const sellerData = {
+          id: sellerId,
+          displayName: stats.displayName || `Vendedor #${sellerId}`,
+          sellerDescription: stats.sellerDescription || "Vendedor de productos digitales",
+          avatarDataUrl: stats.avatarDataUrl || null,
+          firstName: stats.firstName || "",
+          lastName: stats.lastName || "",
+          email: stats.email || "",
+          phone: stats.phone || "",
+          country: stats.country || "",
+          
+          // Estadísticas
+          avgRating: stats.avgRating || 0,
+          ratingCount: stats.ratingCount || 0,
+          soldKeys: stats.soldKeys || 0,
+          amountSold: stats.amountSold || 0,
+          totalSales: stats.totalSales || 0,
+          totalRevenue: stats.totalRevenue || 0,
+          activeProducts: stats.activeProducts || 0,
+          totalProducts: stats.totalProducts || 0
+        };
+
+        console.log("🛠️ Seller data construido:", sellerData);
+
+        setSeller(sellerData);
+        setAllProducts(activeProducts || []);
+        setPage(1);
+
+      } catch (err) {
+        console.error("❌ Error cargando datos del seller:", err);
+        setFrom(err); // Usar setFrom en lugar de setError
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (sellerId) {
       loadSellerData();
-    } else {
-      setFrom(new Error("No se proporcionó ID de vendedor"));
-      setLoading(false);
     }
   }, [sellerId]);
 
   // Función para reintentar la carga
   const handleRetry = () => {
-    console.log("🔄 Reintentando carga de datos...");
-    loadSellerData();
+    if (sellerId) {
+      const loadSellerData = async () => {
+        try {
+          setLoading(true);
+          clear();
+          // ... (misma lógica de carga)
+          const stats = await getSellerStats(sellerId);
+          if (!stats) {
+            setFrom(new Error("Vendedor no encontrado"));
+            return;
+          }
+          const activeProducts = await getSellerActiveProducts(sellerId);
+          const sellerData = {
+            // ... (misma construcción de datos)
+            id: sellerId,
+            displayName: stats.displayName || `Vendedor #${sellerId}`,
+            sellerDescription: stats.sellerDescription || "Vendedor de productos digitales",
+            avatarDataUrl: stats.avatarDataUrl || null,
+            firstName: stats.firstName || "",
+            lastName: stats.lastName || "",
+            email: stats.email || "",
+            phone: stats.phone || "",
+            country: stats.country || "",
+            avgRating: stats.avgRating || 0,
+            ratingCount: stats.ratingCount || 0,
+            soldKeys: stats.soldKeys || 0,
+            amountSold: stats.amountSold || 0,
+            totalSales: stats.totalSales || 0,
+            totalRevenue: stats.totalRevenue || 0,
+            activeProducts: stats.activeProducts || 0,
+            totalProducts: stats.totalProducts || 0
+          };
+          setSeller(sellerData);
+          setAllProducts(activeProducts || []);
+          setPage(1);
+        } catch (err) {
+          setFrom(err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadSellerData();
+    }
   };
 
-  // Estado de carga
   if (loading) {
     return (
-      <div className="container mt-4">
-        <div className="d-flex justify-content-center align-items-center" style={{ height: "40vh" }}>
-          <div className="spinner-border text-primary" role="status" />
-          <span className="ms-2">Cargando información del vendedor...</span>
-        </div>
+      <div className="d-flex justify-content-center align-items-center" style={{ height: "40vh" }}>
+        <div className="spinner-border text-primary" role="status" />
+        <span className="ms-2">Cargando información del vendedor...</span>
       </div>
     );
   }
 
-  // Estado de error
+  // Reemplazar el manejo de error simple por ApiErrorAlert
   if (hasError && !seller) {
     return (
       <div className="container mt-4">
@@ -132,25 +154,15 @@ export default function SellerDetail() {
           onRetry={handleRetry}
           onClose={clear}
         />
-        <div className="text-center mt-3">
-          <Link to="/catalog" className="btn btn-primary">
-            Volver al catálogo
-          </Link>
-        </div>
       </div>
     );
   }
 
-  // Vendedor no encontrado
   if (!seller) {
     return (
       <div className="container mt-4">
         <div className="alert alert-warning" role="alert">
-          <h4 className="alert-heading">Vendedor no encontrado</h4>
-          <p>El vendedor que buscas no existe o ha sido eliminado.</p>
-          <Link to="/catalog" className="btn btn-outline-primary">
-            Explorar catálogo
-          </Link>
+          Vendedor no encontrado
         </div>
       </div>
     );
@@ -161,29 +173,22 @@ export default function SellerDetail() {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const safePage = Math.min(Math.max(1, page), totalPages);
   const startIndex = (safePage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const endIndex = startIndex + pageSize;
   const pageItems = allProducts.slice(startIndex, endIndex);
 
-  console.log("📦 Estado final - Seller:", seller);
-  console.log("📦 Estado final - Productos:", allProducts.length);
-  console.log("📦 Estado final - Página:", safePage, "de", totalPages);
-
   // Datos para mostrar
-  const displayName = seller.displayName || 
-    `${seller.firstName || ""} ${seller.lastName || ""}`.trim() || 
-    `Vendedor #${sellerId}`;
-  
+  const displayName = seller.displayName || `${seller.firstName || ""} ${seller.lastName || ""}`.trim() || `Vendedor #${sellerId}`;
   const avatar = seller.avatarDataUrl || "/src/assets/react.svg";
-  const description = seller.sellerDescription || "Sin descripción disponible";
+  const description = seller.sellerDescription || "-";
   const avgRating = seller.avgRating || 0;
   const ratingCount = seller.ratingCount || 0;
   const soldKeys = seller.soldKeys || 0;
 
   return (
-    <div className="container-fluid py-4">
-      {/* Alertas de error (si existen) */}
+    <div className="product-page">
+      {/* Mostrar ApiErrorAlert incluso si tenemos datos (para errores no críticos) */}
       {hasError && (
-        <div className="mb-4">
+        <div className="container mt-3">
           <ApiErrorAlert 
             error={apiError} 
             onRetry={handleRetry}
@@ -191,43 +196,35 @@ export default function SellerDetail() {
           />
         </div>
       )}
-
-      {/* Contenido principal */}
-      <div className="row">
-        {/* Columna principal - Información del vendedor y productos */}
-        <div className="col-lg-8 col-md-7">
+      
+      <div className="product-layout">
+        <div className="product-left">
           {/* Tarjeta principal del seller */}
-          <div className="card shadow-sm mb-4">
-            <div className="card-body">
-              <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-4">
-                <img 
-                  src={avatar} 
-                  alt={`Avatar de ${displayName}`}
-                  className="rounded-3"
-                  style={{ 
-                    width: "120px", 
-                    height: "120px", 
-                    objectFit: "cover",
-                    backgroundColor: seller.avatarDataUrl ? "transparent" : "#f8f9fa"
-                  }} 
-                  onError={(e) => {
-                    e.target.src = "/src/assets/react.svg";
-                  }}
-                />
-                <div className="flex-grow-1">
-                  <h1 className="h3 mb-2 text-dark">{displayName}</h1>
-                  <p className="text-muted mb-3">{description}</p>
+          <div className="card shadow-sm p-3 mb-3">
+            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+              <img 
+                src={avatar} 
+                alt={displayName} 
+                style={{ 
+                  width: 96, 
+                  height: 96, 
+                  borderRadius: 12, 
+                  objectFit: "cover",
+                  backgroundColor: seller.avatarDataUrl ? "transparent" : "#f8f9fa"
+                }} 
+              />
+              <div style={{ flex: 1 }}>
+                <h2 style={{ margin: 0, color: "var(--text)" }}>{displayName}</h2>
+                <div className="muted" style={{ marginTop: 6 }}>{description}</div>
 
-                  <div className="d-flex flex-wrap gap-3 align-items-center">
-                    <div className="d-flex align-items-center gap-2">
-                      <Rating value={avgRating} count={ratingCount} size={20} />
-                      <small className="text-muted">({ratingCount} reseñas)</small>
-                    </div>
+                <div className="seller-stats" style={{ marginTop: 10, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                  <div className="seller-stat" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Rating value={avgRating} count={ratingCount} size={16} />
+                    <small className="muted">({ratingCount})</small>
+                  </div>
 
-                    <div className="text-muted">
-                      <i className="bi bi-bag-check me-1"></i>
-                      Ventas: <strong className="text-dark">{soldKeys.toLocaleString()}</strong>
-                    </div>
+                  <div className="seller-stat muted">
+                    Ventas: <strong style={{ color: "var(--text)" }}>{soldKeys.toLocaleString()}</strong>
                   </div>
                 </div>
               </div>
@@ -235,132 +232,66 @@ export default function SellerDetail() {
           </div>
 
           {/* Productos del seller */}
-          <div className="card shadow-sm">
-            <div className="card-body">
-              <h2 className="h5 card-title text-primary mb-4">
-                <i className="bi bi-grid me-2"></i>
-                Productos publicados ({totalItems})
-              </h2>
+          <div className="card shadow-sm p-3 mb-4">
+            <h5 className="text-primary">Productos publicados</h5>
 
-              {totalItems === 0 ? (
-                <div className="text-center py-5">
-                  <i className="bi bi-inbox display-1 text-muted"></i>
-                  <p className="text-muted mt-3">Este vendedor no tiene productos publicados.</p>
+            {totalItems === 0 ? (
+              <div className="muted mt-3">Este vendedor no tiene productos publicados.</div>
+            ) : (
+              <>
+                <div className="mt-3">
+                  <ProductGrid products={pageItems} />
                 </div>
-              ) : (
-                <>
-                  <div className="mb-4">
-                    <ProductGrid products={pageItems} />
-                  </div>
 
-                  {/* Paginación */}
-                  {totalPages > 1 && (
-                    <div className="d-flex justify-content-center mb-3">
-                      <PaginationBar 
-                        page={safePage} 
-                        setPage={setPage} 
-                        totalPages={totalPages} 
-                      />
-                    </div>
-                  )}
+                <div className="mt-3 d-flex justify-content-center">
+                  <PaginationBar page={safePage} setPage={setPage} totalPages={totalPages} />
+                </div>
 
-                  <div className="text-center text-muted small">
-                    Mostrando {startIndex + 1}–{endIndex} de {totalItems} productos
-                  </div>
-                </>
-              )}
-            </div>
+                <div className="meta mt-2 text-center" style={{ color: "var(--muted)" }}>
+                  Mostrando {startIndex + 1}–{Math.min(endIndex, totalItems)} de {totalItems} productos
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Sidebar - Información adicional */}
-        <div className="col-lg-4 col-md-5 mt-4 mt-md-0">
-          {/* Resumen del vendedor */}
-          <div className="card shadow-sm mb-4">
-            <div className="card-body">
-              <h3 className="h6 card-title text-dark mb-3">
-                <i className="bi bi-graph-up me-2"></i>
-                Resumen del vendedor
-              </h3>
-              <div className="row small g-2">
-                <div className="col-6">
-                  <div className="text-muted">Rating promedio</div>
-                  <div className="fw-semibold text-dark">{Number(avgRating).toFixed(1)}/5</div>
-                </div>
-                <div className="col-6">
-                  <div className="text-muted">Reseñas</div>
-                  <div className="fw-semibold text-dark">{ratingCount}</div>
-                </div>
-                <div className="col-6">
-                  <div className="text-muted">Keys vendidas</div>
-                  <div className="fw-semibold text-dark">{soldKeys.toLocaleString()}</div>
-                </div>
-                <div className="col-6">
-                  <div className="text-muted">Ventas totales</div>
-                  <div className="fw-semibold text-dark">{seller.totalSales || 0}</div>
-                </div>
-                <div className="col-6">
-                  <div className="text-muted">Productos activos</div>
-                  <div className="fw-semibold text-dark">{seller.activeProducts || 0}</div>
-                </div>
-                <div className="col-6">
-                  <div className="text-muted">Total productos</div>
-                  <div className="fw-semibold text-dark">{seller.totalProducts || 0}</div>
-                </div>
-              </div>
+        {/* Sidebar con información adicional */}
+        <aside className="product-right">
+          <div className="card shadow-sm p-3 mb-3">
+            <h6 style={{ color: "var(--text)" }}>Resumen del vendedor</h6>
+            <div className="meta mt-2">
+              <div>Rating: <strong style={{ color: "var(--text)" }}>{Number(avgRating).toFixed(1)}</strong></div>
+              <div>Reseñas: <strong style={{ color: "var(--text)" }}>{ratingCount}</strong></div>
+              <div>Keys vendidas: <strong style={{ color: "var(--text)" }}>{soldKeys.toLocaleString()}</strong></div>
+              <div>Ventas totales: <strong style={{ color: "var(--text)" }}>{seller.totalSales || 0}</strong></div>
+              {/* <div>Ingresos totales: <strong style={{ color: "var(--text)" }}>${(seller.totalRevenue || 0).toFixed(2)}</strong></div>*/}
+              <div>Productos activos: <strong style={{ color: "var(--text)" }}>{seller.activeProducts || 0}</strong></div>
+              <div>Total productos: <strong style={{ color: "var(--text)" }}>{seller.totalProducts || 0}</strong></div>
             </div>
           </div>
 
-          {/* Información de contacto */}
-          <div className="card shadow-sm mb-4">
-            <div className="card-body">
-              <h3 className="h6 card-title text-dark mb-3">
-                <i className="bi bi-person-lines-fill me-2"></i>
-                Información de contacto
-              </h3>
-              <div className="small">
-                {seller.email && (
-                  <div className="mb-2">
-                    <div className="text-muted">Email</div>
-                    <div className="fw-semibold text-dark text-truncate">{seller.email}</div>
-                  </div>
-                )}
-                {seller.phone && (
-                  <div className="mb-2">
-                    <div className="text-muted">Teléfono</div>
-                    <div className="fw-semibold text-dark">{seller.phone}</div>
-                  </div>
-                )}
-                {seller.country && (
-                  <div>
-                    <div className="text-muted">País</div>
-                    <div className="fw-semibold text-dark">{seller.country}</div>
-                  </div>
-                )}
-              </div>
+          <div className="card shadow-sm p-3">
+            <h6 style={{ color: "var(--text)" }}>Información de contacto</h6>
+            <div className="meta mt-2">
+              {seller.email && <div>Email: <strong style={{ color: "var(--text)" }}>{seller.email}</strong></div>}
+              {seller.phone && <div>Teléfono: <strong style={{ color: "var(--text)" }}>{seller.phone}</strong></div>}
+              {seller.country && <div>País: <strong style={{ color: "var(--text)" }}>{seller.country}</strong></div>}
             </div>
           </div>
 
-          {/* Acciones */}
-          <div className="card shadow-sm">
-            <div className="card-body">
-              <h3 className="h6 card-title text-dark mb-3">
-                <i className="bi bi-lightning me-2"></i>
-                Acciones
-              </h3>
-              <p className="text-muted small mb-3">
-                Accede a la biblioteca completa de videojuegos de {displayName} desde el catálogo
-              </p>
-              <Link 
-                to={`/catalog?sellerId=${seller.id}`} 
-                className="btn btn-outline-primary w-100"
-              >
-                <i className="bi bi-search me-2"></i>
+          <div className="card shadow-sm p-3">
+            <h6 style={{ color: "var(--text)" }}>Acciones</h6>
+            <div className="d-grid gap-2 mt-2">
+              <div className="muted" style={{ marginTop: 6 }}>
+                Accede a la biblioteca de videojuegos de {displayName} desde el catálogo
+              </div>
+
+              <Link to={`/catalog?sellerId=${seller.id}`} className="btn btn-outline-primary">
                 Ver en catálogo
               </Link>
             </div>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
