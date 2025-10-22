@@ -36,12 +36,7 @@ export default function Home() {
     const fetchCategories = async () => {
       try {
         setLoadingCategories(true);
-        const response = await fetch("/api/categories/featured?page=0&size=5");  // adjust URL as needed
-        if (!response.ok) {
-          throw new Error(`Error fetching categories: ${response.statusText}`);
-        }
-        const page = await response.json();
-        // page.content is the list (assuming standard Spring Page structure) :contentReference[oaicite:0]{index=0}
+        const response = await getFeaturedCategories(0, 5);
         const fetchedCats = page.content || [];
         setCategories(fetchedCats);
       } catch (err) {
@@ -155,7 +150,12 @@ export default function Home() {
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Top Categories</h2>
           <div className="row g-4 justify-content-center">
-            {categories.map((cat) => (
+            {loadingCategories && <p className="text-light">Loading categories…</p>}
+            {categoriesError && <p className="text-danger">Error: {categoriesError}</p>}
+            {!loadingCategories && !categoriesError && categories.length === 0 && (
+              <p className="text-light">No categories found.</p>
+            )}
+            {!loadingCategories && !categoriesError && categories.map((cat) => (
               <div
                 key={cat.id || i}
                 className="col-6 col-md-4 col-lg-2 position-relative overflow-hidden rounded shadow"
