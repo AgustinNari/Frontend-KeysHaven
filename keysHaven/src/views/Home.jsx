@@ -188,7 +188,7 @@ export default function Home() {
           <div className="row g-5 justify-content-center">
             {sellers.map((seller, i) => (
               <div key={seller.id || i} className="col-6 col-md-3">
-                <a href={`"/seller-detail/${seller.id}`} className="text-decoration-none text-body text-primary-light">
+                <a href={`/seller-detail/${seller.id}`} className="text-decoration-none text-body text-primary-light">
                   <img
                     src={seller.avatarDataUrl || "/src/assets/react.svg"}
                     className="rounded-circle border border-primary border-3 mb-3"
