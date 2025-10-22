@@ -55,12 +55,6 @@ body{
   color: white !important;
 }
 
-
-.btn {
-  position: relative;
-  overflow: hidden;
-}
-
 .button-overlay {
   content: '';
   position: absolute;

@@ -3,10 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 import "../components/estilos/Fondos.css";
 import DoppyBoard from '/src/assets/doppyKnight/doppyMessageBoard.png';
 import DoppyUnplugged from '/src/assets/doppyKnight/doppyUnplugged.png';
-import Number404 from '/src/assets/doppyKnight/404.png';
 import Number400 from '/src/assets/doppyKnight/400.png';
 import Number401 from '/src/assets/doppyKnight/401.png';
 import Number403 from '/src/assets/doppyKnight/403.png';
+import Number404 from '/src/assets/doppyKnight/404.png';
 import Number409 from '/src/assets/doppyKnight/409.png';
 import Number500 from '/src/assets/doppyKnight/500.png';
 
@@ -20,11 +20,11 @@ export default function NotFound() {
     const fetchErrorMessage = async () => {
       try {
         // Example API endpoint - adjust according to your backend
-        const response = await fetch('/api/getErrorMessage');
+        const response = await fetch('/src/api/getErrorMessage');
         if (response.ok) {
           const data = await response.json();
           // Set the message based on the backend response
-          setErrorMessage(data.message);  // Assuming the backend returns { message: 'Some error message' }
+          setErrorMessage(data.message);
         } else {
           console.error('Error fetching error message');
         }
@@ -106,4 +106,3 @@ export default function NotFound() {
      </section>
    );
 }
-///url('/src/assets/doppyKnight/doppyMessageBoard.png')
