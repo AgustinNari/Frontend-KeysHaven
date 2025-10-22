@@ -1,5 +1,5 @@
 import React from 'react';
-import ProductCard from '../product/ProductCard';
+import ProductCard from '../catalog/ProductCard';
 
 export default function TopSellers({ products, onAdd }) {
   return (
