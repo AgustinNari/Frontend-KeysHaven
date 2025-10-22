@@ -23,7 +23,6 @@ export default function NotFound() {
         const response = await fetch('/src/api/getErrorMessage');
         if (response.ok) {
           const data = await response.json();
-          // Set the message based on the backend response
           setErrorMessage(data.message);
         } else {
           console.error('Error fetching error message');

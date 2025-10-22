@@ -101,6 +101,9 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
       discountPctDisplay
     };
   });
+  function getTopSoldProducts(size = 4) {
+  return apiClient.search({}, 0, size, "amountSold_desc");
+}
 
   return {
     content,

@@ -74,13 +74,13 @@ export default function App() {
           
 
           <Route path="/404" element={<NotFound />} />
-          <Route path="*" element={<Navigate to="/404" replace />} />
           <Route path="/400" element={<NotFound />} />
           <Route path="/401" element={<NotFound />} />
           <Route path="/403" element={<NotFound />} />
           <Route path="/405" element={<NotFound />} />
           <Route path="/409" element={<NotFound />} />
           <Route path="/500" element={<NotFound />} />
+          <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
       </main>
 

@@ -257,23 +257,45 @@ export const getSellerOrders = async ({ sellerId, limit = 10, status } = {}) => 
 };
 
 
+// en sellerService (reemplaza getSellerStats existente)
 export const getSellerStats = async (sellerId) => {
   try {
     if (!sellerId) return null;
+
+    // petición que ya tenías: trae el detalle del seller (puede devolver null si 204)
     const sellerDetail = await apiClient.apiFetch(`/users/seller/${sellerId}/detail`, { method: "GET" });
     if (!sellerDetail) return null;
+
+    // productos y órdenes para calcular métricas
     const products = await getSellerProducts(sellerId);
     const ordersResp = await getSellerOrders({ sellerId, limit: 1000 });
     const orders = ordersResp.items || [];
+
     const totalSales = orders.length;
     let totalRevenue = 0;
     orders.forEach(o => {
       const amount = o.totalAmount ?? o.amount ?? 0;
       totalRevenue += Number(amount || 0);
     });
+
     const activeProducts = (products || []).filter(p => p.active).length;
     const totalProducts = (products || []).length;
+
+    // Devuelve los campos del sellerDetail + estadísticas calculadas
     return {
+      // perfil (viene del backend)
+      id: sellerDetail.id,
+      displayName: sellerDetail.displayName,
+      sellerDescription: sellerDetail.sellerDescription,
+      avatarDataUrl: sellerDetail.avatarDataUrl,
+      avatarContentType: sellerDetail.avatarContentType,
+      firstName: sellerDetail.firstName,
+      lastName: sellerDetail.lastName,
+      email: sellerDetail.email,
+      phone: sellerDetail.phone,
+      country: sellerDetail.country,
+
+      // estadísticas (desde sellerDetail si vienen, o calculadas)
       avgRating: sellerDetail.avgRating ?? 0,
       ratingCount: sellerDetail.ratingCount ?? 0,
       soldKeys: sellerDetail.soldKeys ?? 0,
@@ -287,6 +309,7 @@ export const getSellerStats = async (sellerId) => {
     console.warn("getSellerStats fallback: ", err);
 
     try {
+      // fallback: intentar calcular stats sin sellerDetail
       const products = await getSellerProducts(sellerId);
       const ordersResp = await getSellerOrders({ sellerId, limit: 1000 });
       const orders = ordersResp.items || [];
@@ -298,13 +321,33 @@ export const getSellerStats = async (sellerId) => {
       });
       const activeProducts = (products || []).filter(p => p.active).length;
       const totalProducts = (products || []).length;
-      return { avgRating: 0, ratingCount: 0, soldKeys: 0, amountSold: 0, totalSales, totalRevenue, activeProducts, totalProducts };
+
+      return {
+        avgRating: 0,
+        ratingCount: 0,
+        soldKeys: 0,
+        amountSold: 0,
+        totalSales,
+        totalRevenue,
+        activeProducts,
+        totalProducts
+      };
     } catch (err2) {
       console.error("Error computing fallback stats:", err2);
-      return { avgRating: 0, ratingCount: 0, soldKeys: 0, amountSold: 0, totalSales: 0, totalRevenue: 0, activeProducts: 0, totalProducts: 0 };
+      return {
+        avgRating: 0,
+        ratingCount: 0,
+        soldKeys: 0,
+        amountSold: 0,
+        totalSales: 0,
+        totalRevenue: 0,
+        activeProducts: 0,
+        totalProducts: 0
+      };
     }
   }
 };
+
 
 
 export const getCategories = async () => {

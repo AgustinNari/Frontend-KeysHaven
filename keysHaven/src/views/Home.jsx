@@ -1,19 +1,54 @@
 import React, { useState, useRef, useEffect } from "react";
 import "../components/estilos/Fondos.css";
+import { getFeaturedCategories } from '../api/categories';
+import { getTopSellers } from "../api/sellers";
 import HomeBanner from '/src/assets/homeImage.png';
 
 export default function Home() {
   const [theme, setTheme] = useState("bg-primary-dark");
-  const [active, setActive] = useState("pc");
-  const [searchMode, setSearchMode] = useState(false);
+  
+  //Categories Variables
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(null);
+  
+  //Sellers Variables
+  const [sellers, setSellers] = useState([]);
+  
+  //Mininavbar Variables
   const inputRef = useRef(null);
-
+  const [searchMode, setSearchMode] = useState(false);
+  const [active, setActive] = useState("pc");
   const icons = [
     { id: "pc", icon: "fab fa-windows" },
     { id: "ps", icon: "fab fa-playstation" },
     { id: "xbox", icon: "fab fa-xbox" },
     { id: "switch", icon: "fas fa-gamepad" },
   ];
+
+  useEffect(() => {
+    getTopSellers()
+      .then(data => setSellers(data.content))
+      .catch(err => console.error("Failed to load sellers", err));
+  }, []);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const page = await getFeaturedCategories(0, 5);
+        const fetchedCats = page.content || [];
+        setCategories(fetchedCats);
+      } catch (err) {
+        console.error(err);
+        setCategoriesError(err.message);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     if (searchMode && inputRef.current) {
@@ -103,9 +138,9 @@ export default function Home() {
         }}
       >
         <div className="container position-relative py-5">
-          <h1 className="display-4 fw-bold">Unlock Your Next Adventure</h1>
+          <h1 className="display-4 fw-bold py-5">La clave para jugar sin límites</h1>
           <p className="lead mt-3 text-light">
-            Explore thousands of games for PC, Xbox, PlayStation, and more. Find the best deals on digital keys and subscriptions.
+            Explora miles de juegos para PC, Xbox, PlayStation, y más. Encuentra las mejores ofertas de llaves.
           </p>
         </div>
       </section>
@@ -115,18 +150,25 @@ export default function Home() {
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Top Categories</h2>
           <div className="row g-4 justify-content-center">
-            {["PC Games", "Xbox", "PlayStation", "Gift Cards", "Subscriptions"].map((cat) => (
+            {loadingCategories && <p className="text-light">Loading categories…</p>}
+            {categoriesError && <p className="text-danger">Error: {categoriesError}</p>}
+            {!loadingCategories && !categoriesError && categories.length === 0 && (
+              <p className="text-light">No categories found.</p>
+            )}
+            {!loadingCategories && !categoriesError && categories.map((cat) => (
               <div
-                key={cat}
+                key={cat.id || i}
                 className="col-6 col-md-4 col-lg-2 position-relative overflow-hidden rounded shadow"
               >
                 <img
-                  src="/src/assets/keyLogo.svg" width={80} height={70}
+                  src={""}
+                  width={80}
+                  height={70}
                   className="w-100 rounded"
-                  alt={cat}
+                  alt={cat.descripion}
                 />
                 <div className="position-absolute bottom-0 start-0 w-100 p-2 text-white bg-dark bg-opacity-50 fw-bold">
-                  {cat}
+                  {cat.description}
                 </div>
               </div>
             ))}
@@ -139,18 +181,18 @@ export default function Home() {
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Top Sellers</h2>
           <div className="row g-5 justify-content-center">
-            {["ProductOne", "GameStoreX", "PlayHub", "KeyWorld"].map((seller, i) => (
-              <div key={i} className="col-6 col-md-3">
-                <a href={`/product/${i + 1}`} className="text-decoration-none text-body text-primary-light">
+            {sellers.map((seller, i) => (
+              <div key={seller.id || i} className="col-6 col-md-3">
+                <a href={`/seller-detail/${seller.id}`} className="text-decoration-none text-body text-primary-light">
                   <img
-                    src="/src/assets/react.svg"
+                    src={seller.avatarDataUrl || "/src/assets/react.svg"}
                     className="rounded-circle border border-primary border-3 mb-3"
                     width="160"
                     height="160"
-                    alt={seller}
+                    alt={seller.displayName}
                   />
-                  <h5>{seller}</h5>
-                  <small className="text-light">12,345 keys • 4.8★</small>
+                  <h5>{seller.displayName}</h5>
+                  <small className="text-light">{seller.amountSold} keys sold • {seller.avgRating}★</small>
                 </a>
               </div>
             ))}
@@ -158,12 +200,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Best Sellers */}
+      {/* Most Bought Products */}
       <section className="py-5 bg-primary-dark">
         <div className="container">
           <h2 className="fw-bold text-center mb-5 text-primary-light">Most Sold Games</h2>
           <div className="row g-4">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="col-6 col-md-4 col-lg-3">
                 <img
                   src= {HomeBanner}
