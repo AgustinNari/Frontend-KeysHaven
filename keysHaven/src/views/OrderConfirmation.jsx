@@ -18,29 +18,61 @@ export default function OrderConfirmation() {
     );
   }
 
-  const currency = order.currency ?? "$";
+  const normalize = (rawOrder) => {
+    const currency = rawOrder.currency ?? "$";
+    const createdAt = rawOrder.createdAt ?? rawOrder.created_at ?? new Date().toISOString();
 
-  const safeItems = order.items.map(it => {
-    const fallbackLineSubtotal = Number(it.price) * Number(it.qty);
-    const line = it.line ?? {
-      subtotal: fallbackLineSubtotal,
-      bulkDiscount: 0,
-      couponDiscount: 0,
-      total: fallbackLineSubtotal,
+    const safeItems = (rawOrder.items || []).map(it => {
+      const qty = Number(it.quantity ?? it.qty ?? 0);
+      const unitPrice = Number(it.unitPrice ?? it.price ?? 0);
+      const lineSubtotal = Number(it.lineSubtotal ?? it.line?.subtotal ?? (unitPrice * qty));
+      const bulkDiscount = Number(it.line?.bulkDiscount ?? 0);
+      const couponDiscount = Number(it.line?.couponDiscount ?? it.line?.discountAmount ?? 0);
+      const total = Number(it.lineTotal ?? it.line?.total ?? it.line?.lineTotal ?? (lineSubtotal - bulkDiscount - couponDiscount));
+      const image = it.image ?? it.imageUrl ?? it.primaryImageUrl ?? null;
+      return {
+        id: it.productId ?? it.id ?? null,
+        title: it.productTitle ?? it.title ?? "Producto",
+        qty: isNaN(qty) ? 0 : qty,
+        price: isNaN(unitPrice) ? 0 : unitPrice,
+        image,
+        seller: it.seller ?? it.sellerDisplayName ?? null,
+        line: {
+          subtotal: isNaN(lineSubtotal) ? 0 : lineSubtotal,
+          bulkDiscount: isNaN(bulkDiscount) ? 0 : bulkDiscount,
+          couponDiscount: isNaN(couponDiscount) ? 0 : couponDiscount,
+          total: isNaN(total) ? 0 : total,
+        }
+      };
+    });
+
+    const subtotal = Number(rawOrder.subtotal ?? rawOrder.subtotalAmount ?? rawOrder.total ?? 0);
+    const discountsTotal = Number(rawOrder.discountAmount ?? rawOrder.discounts?.total ?? rawOrder.discounts?.total ?? 0);
+    const total = Number(rawOrder.totalAmount ?? rawOrder.total ?? rawOrder.totalAmount ?? rawOrder.totalAmount ?? rawOrder.total ?? 0);
+
+    const couponCode = rawOrder.discounts?.couponUsed ?? rawOrder.discounts?.coupon ?? null;
+
+    return {
+      id: rawOrder.id ?? null,
+      createdAt,
+      currency,
+      items: safeItems,
+      subtotal: isNaN(subtotal) ? 0 : subtotal,
+      discountsTotal: isNaN(discountsTotal) ? 0 : discountsTotal,
+      total: isNaN(total) ? safeItems.reduce((n, it) => n + Number(it.line.total || 0), 0) : total,
+      couponCode
     };
-    return { ...it, line };
-  });
+  };
+
+  const normalized = normalize(order);
+  const currency = normalized.currency ?? "$";
 
   const { bulkSum, couponSum, discountsTotal } = useMemo(() => {
-    const bulk = safeItems.reduce((n, it) => n + Number(it.line.bulkDiscount || 0), 0);
-    const coup = safeItems.reduce((n, it) => n + Number(it.line.couponDiscount || 0), 0);
-    const total = (order.discounts?.total != null)
-      ? Number(order.discounts.total)
-      : bulk + coup;
-    return { bulkSum: bulk, couponSum: coup, discountsTotal: total };
-  }, [safeItems, order.discounts]);
-
-  const couponCode = order.discounts?.couponUsed ?? null;
+    const bulk = normalized.items.reduce((n, it) => n + Number(it.line.bulkDiscount || 0), 0);
+    const coup = normalized.items.reduce((n, it) => n + Number(it.line.couponDiscount || 0), 0);
+    const totalDiscount = Number(normalized.discountsTotal ?? (bulk + coup));
+    return { bulkSum: bulk, couponSum: coup, discountsTotal: totalDiscount };
+  }, [normalized]);
 
   return (
     <div className="container py-4">
@@ -52,10 +84,10 @@ export default function OrderConfirmation() {
         />
         <h2 className="mt-3">¡Gracias por tu compra!</h2>
         <p style = {{ color: "#e6dbff" }}>
-          Orden <strong>{order.id}</strong>
+          Orden <strong>{normalized.id ?? "(sin id)"}</strong>
         </p>
         <p style = {{ color: "#8a4ff0" }}>
-          Fecha: {new Date(order.createdAt).toLocaleString()}
+          Fecha: {new Date(normalized.createdAt).toLocaleString()}
         </p>
         <div style = {{ color: "#8a4ff0" }}>
           * La entrega es digital. Recibirás tus claves al instante y las podrás ver en tu perfil de usuario.
@@ -67,8 +99,8 @@ export default function OrderConfirmation() {
           <div className="card mb-3">
             <div className="card-header">Productos comprados</div>
             <div className="card-body">
-              {safeItems.map((it) => (
-                <div key={it.id} className="d-flex align-items-center mb-3">
+              {normalized.items.map((it) => (
+                <div key={it.id ?? `${it.title}-${Math.random()}`} className="d-flex align-items-center mb-3">
                   {it.image ? (
                     <img
                       src={it.image}
@@ -100,7 +132,7 @@ export default function OrderConfirmation() {
                         <> · Desc. Cantidad: −{currency} {Number(it.line.bulkDiscount).toFixed(2)}</>
                       )}
                       {Number(it.line.couponDiscount) > 0 && (
-                        <> · Cupón {couponCode ? `(${couponCode})` : ""}: −{currency} {Number(it.line.couponDiscount).toFixed(2)}</>
+                        <> · Cupón {normalized.couponCode ? `(${normalized.couponCode})` : ""}: −{currency} {Number(it.line.couponDiscount).toFixed(2)}</>
                       )}
                     </div>
                   </div>
@@ -121,7 +153,7 @@ export default function OrderConfirmation() {
               <div className="d-flex justify-content-between">
                 <span>Subtotal</span>
                 <span>
-                  {currency} {Number(order.subtotal ?? 0).toFixed(2)}
+                  {currency} {Number(normalized.subtotal ?? normalized.items.reduce((n, it) => n + Number(it.line.subtotal || 0), 0)).toFixed(2)}
                 </span>
               </div>
 
@@ -134,7 +166,7 @@ export default function OrderConfirmation() {
 
               <div className="d-flex justify-content-between small">
                 <span style = {{ color: "#8a4ff0" }}>
-                  Cupón {couponCode ? `(${couponCode})` : ""}
+                  Cupón {normalized.couponCode ? `(${normalized.couponCode})` : ""}
                 </span>
                 <span className="text-danger">
                   −{currency} {couponSum.toFixed(2)}
@@ -152,7 +184,7 @@ export default function OrderConfirmation() {
               <div className="d-flex justify-content-between fw-bold">
                 <span>Total</span>
                 <span>
-                  {currency} {Number(order.total ?? 0).toFixed(2)}
+                  {currency} {Number(normalized.total ?? normalized.items.reduce((n, it) => n + Number(it.line.total || 0), 0)).toFixed(2)}
                 </span>
               </div>
 

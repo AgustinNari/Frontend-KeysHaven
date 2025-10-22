@@ -1,4 +1,5 @@
-import apiClient from "./apiClient";
+import apiClient from "../api/apiClient";
+
 
 export function getReviewByOrderItem(orderItemId) {
   return apiClient.apiFetch(`/reviews/order-item/${orderItemId}`, { method: "GET" });

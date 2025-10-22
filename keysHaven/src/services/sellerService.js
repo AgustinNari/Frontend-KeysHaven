@@ -51,15 +51,28 @@ export const getSellerProducts = async (sellerId) => {
 
 export const getSellerActiveProducts = async (sellerId) => {
   try {
-    const qs = buildQueryString({ page: 0, size: 2147483647, sellerId });
-    const res = await apiClient.apiFetch(`/api/v1/products/filtered/active${qs}`, { method: "GET" });
+    const sId = sellerId ? (Number.isNaN(Number(sellerId)) ? sellerId : Number(sellerId)) : undefined;
+    const qs = buildQueryString({ page: 0, size: 2147483647, sellerId: sId });
+    const res = await apiClient.apiFetch(`/api/v1/products/filtered/all${qs}`, { method: "GET" });
     if (!res) return [];
 
     let items = [];
     if (Array.isArray(res)) items = res;
     else items = res.content ?? res.items ?? [];
 
-    return normalizeProductsStock(items);
+    items = normalizeProductsStock(items);
+    if ((!items || items.length === 0) && sId) {
+      try {
+        const fallback = await getSellerProducts(sId);
+        const onlyActive = (Array.isArray(fallback) ? fallback : []).filter(p => p.active !== false);
+        if (onlyActive.length > 0) return onlyActive;
+        return fallback;
+      } catch (fbErr) {
+        console.warn("Fallback getSellerProducts failed:", fbErr);
+      }
+    }
+
+    return items;
   } catch (err) {
     console.error("getSellerActiveProducts error:", err);
     return [];

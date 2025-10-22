@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSellerActiveProducts, addBulkDigitalKeys, getProductKeys } from '../../services/sellerService';
+import { getSellerActiveProducts, addBulkDigitalKeys, getProductKeys, getSellerProducts } from '../../services/sellerService';
 import { useAuth } from '../../context/AuthContext';
 
 export default function KeyManagement() {
@@ -8,34 +8,45 @@ export default function KeyManagement() {
 
   const [selectedProduct, setSelectedProduct] = useState('');
   const [keys, setKeys] = useState([]);
-  const [newKey, setNewKey] = useState('');
   const [bulkKeys, setBulkKeys] = useState('');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const prods = await getSellerActiveProducts(user.id);
-        setProducts(prods || []);
-      } catch (err) {
-        console.error('Error cargando productos:', err);
-        setProducts([]);
+  const fetchProducts = async () => {
+    setLoadingProducts(true);
+    setError('');
+    try {
+      const prods = await getSellerActiveProducts(sellerId);
+      if (!prods || (Array.isArray(prods) && prods.length === 0)) {
+        const fallback = await getSellerProducts(sellerId);
+        setProducts(Array.isArray(fallback) ? fallback : []);
+      } else {
+        setProducts(Array.isArray(prods) ? prods : []);
       }
+    } catch (err) {
+      console.error('Error cargando productos:', err);
+      setProducts([]);
+      setError('No se pudieron cargar los productos');
+    } finally {
+      setLoadingProducts(false);
     }
-    if (user?.id) load();
-  }, [user]);
+  };
 
   useEffect(() => {
-    if (selectedProduct) {
-      loadProductKeys(parseInt(selectedProduct, 10));
-    } else {
-      setKeys([]);
-    }
+    if (sellerId) fetchProducts();
+    else setProducts([]);
+  }, [sellerId]);
+
+  useEffect(() => {
+    if (selectedProduct) loadProductKeys(parseInt(selectedProduct, 10));
+    else setKeys([]);
   }, [selectedProduct]);
 
   const loadProductKeys = async (productId) => {
+    setLoading(true);
+    setError('');
     try {
       const keysData = await getProductKeys(productId);
       let ks = keysData ?? [];
@@ -48,11 +59,13 @@ export default function KeyManagement() {
           ks = [];
         }
       }
-      setKeys(ks);
+      setKeys(Array.isArray(ks) ? ks : []);
     } catch (err) {
       console.error('Error cargando claves:', err);
       setError('Error al cargar claves');
       setKeys([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,6 +79,7 @@ export default function KeyManagement() {
       await addBulkDigitalKeys(payload);
       setBulkKeys('');
       await loadProductKeys(parseInt(selectedProduct, 10));
+      await fetchProducts();
     } catch (err) {
       console.error('Error agregando claves en lote:', err);
       setError(err?.message || 'Error al agregar claves');
@@ -99,13 +113,18 @@ export default function KeyManagement() {
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
               required
-              disabled={loading}
+              disabled={loading || loadingProducts}
             >
-              <option value="">Selecciona un producto</option>
-              {products.map(product => (
-                <option key={product.id} value={product.id}>{product.title} ({product.platform})</option>
+              <option value="">{loadingProducts ? 'Cargando productos...' : 'Selecciona un producto'}</option>
+              {Array.isArray(products) && products.map(product => (
+                <option key={product.id} value={product.id}>
+                  {product.title} {product.platform ? `(${product.platform})` : ''}
+                </option>
               ))}
             </select>
+            {Array.isArray(products) && products.length === 0 && !loadingProducts && (
+              <small className="text-muted d-block mt-2">No se encontraron productos. Asegurate de tener productos activos en tu catálogo.</small>
+            )}
           </div>
         </div>
 

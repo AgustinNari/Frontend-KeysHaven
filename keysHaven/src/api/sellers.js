@@ -1,4 +1,5 @@
-import apiClient from "./apiClient";
+import apiClient from "../api/apiClient";
+
 
 export async function getTopSellers(size = 4) {
   const query = new URLSearchParams({

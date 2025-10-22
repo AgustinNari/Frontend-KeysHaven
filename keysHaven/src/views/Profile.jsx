@@ -9,12 +9,10 @@ import ChangePasswordModal from "../components/profile/ChangePasswordModal";
 
 import { useAuth } from "../context/AuthContext";
 import * as usersApi from "../api/users";
-import * as ordersApi from "../api/orders";
+import * as ordersApi from "../services/orders";
 import * as reviewsApi from "../api/reviews";
 import * as authApi from "../api/auth";
 import apiClient from "../api/apiClient";
-
-
 
 export default function Profile() {
   const { user: ctxUser, refreshProfile, logout } = useAuth();
@@ -56,7 +54,6 @@ export default function Profile() {
     loadMyReviews(0, 100);
   }, []);
 
-
   async function loadOrders(page = 0, size = 20) {
     setOrdersLoading(true);
     try {
@@ -85,7 +82,6 @@ export default function Profile() {
       setReviewsLoading(false);
     }
   }
-
 
   async function handleSaveAccount(updated) {
     if (!profile) return;
@@ -151,7 +147,6 @@ export default function Profile() {
     }
   }
 
-
   async function handleChangePassword(dto) {
     try {
       await authApi.changePassword(dto);
@@ -164,6 +159,40 @@ export default function Profile() {
     }
   }
 
+  async function resolveProductIdFromOrder(orderId, orderItemId) {
+    const searchIn = (orders) => {
+      if (!orders || !Array.isArray(orders)) return null;
+      for (const ord of orders) {
+        if (String(ord.id) === String(orderId)) {
+          const items = ord.items ?? ord.orderItems ?? ord.order_items ?? ord.lines ?? [];
+          if (!Array.isArray(items)) continue;
+          for (const it of items) {
+            if (String(it.id) === String(orderItemId) || String(it.orderItemId) === String(orderItemId) || String(it.order_item_id) === String(orderItemId)) {
+              return it.productId ?? it.product?.id ?? it.product_id ?? it.product?.productId ?? null;
+            }
+          }
+        }
+      }
+      return null;
+    };
+
+    const ordersArray = ordersPage?.content ?? (Array.isArray(ordersPage) ? ordersPage : null);
+    let found = searchIn(ordersArray);
+    if (found) return found;
+
+    try {
+      const refreshed = await ordersApi.getMyOrders(0, 200);
+      const refreshedArray = refreshed?.content ?? (Array.isArray(refreshed) ? refreshed : []);
+      setOrdersPage(refreshed);
+      found = searchIn(refreshedArray);
+      if (found) return found;
+    } catch (err) {
+      console.warn("No se pudo recargar órdenes para resolver productId:", err);
+    }
+
+    return null;
+  }
+
   async function handleSaveReview(orderId, orderItemId, data, existingReview = null) {
     try {
       if (existingReview) {
@@ -174,14 +203,30 @@ export default function Profile() {
         });
         setMessage({ type: "success", text: "Reseña actualizada." });
       } else {
+        let productId = data.productId ?? null;
 
-        await reviewsApi.createReview({
-          productId: data.productId ?? null,
+        if (!productId) {
+          productId = await resolveProductIdFromOrder(orderId, orderItemId);
+          if (productId) {
+            console.debug("Resolved productId from order:", productId);
+          }
+        }
+
+        if (!productId) {
+          throw new Error("No se pudo determinar el producto asociado a esta reseña (productId faltante). Intenta recargar la página o contacta soporte.");
+        }
+
+        const payload = {
+          productId: productId,
           rating: data.rating,
           title: data.title,
           comment: data.comment,
           orderItemId: orderItemId
-        });
+        };
+
+        const created = await reviewsApi.createReview(payload);
+
+        console.debug("Created review:", created);
         setMessage({ type: "success", text: "Reseña publicada." });
       }
 
@@ -206,7 +251,6 @@ export default function Profile() {
       setTimeout(() => setMessage(null), 3500);
     }
   }
-
 
   function handleConfirmDeleteProfile() {
     localStorage.removeItem("jwtToken");
@@ -252,7 +296,7 @@ export default function Profile() {
         )}
 
         <div className="profile-layout">
-          
+
           <aside className="profile-sidebar">
             <div className="sidebar-avatar card">
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -296,7 +340,6 @@ export default function Profile() {
             </div>
           </aside>
 
-          
           <section className="profile-content">
             {activeTab === "account" && (
               <>

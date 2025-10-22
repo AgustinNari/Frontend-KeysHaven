@@ -1,4 +1,6 @@
-import apiClient from "./apiClient";
+import apiClient from "../api/apiClient";
+
+
 
 export function getMyProfile() {
   return apiClient.apiFetch("/users/me/profile", {

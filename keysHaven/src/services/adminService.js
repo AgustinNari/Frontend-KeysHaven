@@ -71,14 +71,14 @@ export const updateProduct = async (productId, productData) => {
   }
 
   if (typeof productData.active === "boolean") {
-    return tryEndpoints(candidatesPreferApiV1(`/products/${productId}/active?active=${productData.active}`), { method: "PATCH" });
+    return tryEndpoints(candidatesDefault(`/products/${productId}/active?active=${productData.active}`), { method: "PATCH" });
   }
   return tryEndpoints(candidatesDefault(`/products/${productId}`), { method: "PUT", body: JSON.stringify(productData) });
 };
 
 export const deleteProduct = async (productId) => {
 
-  return tryEndpoints(candidatesPreferApiV1(`/products/${productId}/active?active=false`), { method: "PATCH" });
+  return tryEndpoints(candidatesDefault(`/products/${productId}/active?active=false`), { method: "PATCH" });
 };
 
 

@@ -1,8 +1,6 @@
-// src/views/Cart.jsx
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
-import { COUPONS } from "../data/coupons.js";
 
 export default function Cart() {
   const {
@@ -20,9 +18,10 @@ export default function Cart() {
     applyCouponByCode,
     removeCoupon,
     priceBreakdown,
+    availableCoupons,
   } = useCart();
 
-  const [selection, setSelection] = useState({}); // { [productId]: code }
+  const [selection, setSelection] = useState({});
   const [msg, setMsg] = useState(null);
 
   const hasItems = items.length > 0;
@@ -30,20 +29,20 @@ export default function Cart() {
   const applicableCouponsById = useMemo(() => {
     const map = {};
     for (const it of items) {
-      map[it.id] = COUPONS.filter(
+      map[it.id] = (availableCoupons || []).filter(
         (c) => c.active && (!c.productIds?.length || c.productIds.includes(Number(it.id)))
       );
     }
     return map;
-  }, [items]);
+  }, [items, availableCoupons]);
 
-  const handleApply = (productId) => {
+  const handleApply = async (productId) => {
     const code = selection[productId];
     if (!code) {
       setMsg({ type: "warning", text: "Elegí un cupón para aplicar." });
       return;
     }
-    const res = applyCouponByCode(code, productId);
+    const res = await applyCouponByCode(code, productId);
     if (!res.ok) {
       setMsg({ type: "danger", text: res.reason || "No se pudo aplicar el cupón." });
     } else {
@@ -224,7 +223,9 @@ export default function Cart() {
                           {options.map((c) => (
                             <option key={c.code} value={c.code}>
                               {c.code} —{" "}
-                              {c.type === "percent" ? `${c.value}%` : `-${currency} ${c.value}`}
+                              {c.type === "PERCENT" || c.type === "percent"
+                                ? `${c.value}%`
+                                : `-${currency} ${c.value}`}
                             </option>
                           ))}
                         </select>

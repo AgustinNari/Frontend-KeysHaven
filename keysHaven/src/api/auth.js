@@ -1,4 +1,4 @@
-import apiClient from "./apiClient";
+import apiClient from "../api/apiClient";
 
 export function register(request) {
   return apiClient.apiFetch("/api/v1/auth/register", {

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
+import * as ordersService from "../services/orders";
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function Checkout() {
   } = useCart();
 
   const [placing, setPlacing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
   const hasItems = items && items.length > 0;
 
   const { bulkSum, couponSum } = useMemo(() => {
@@ -33,41 +35,36 @@ export default function Checkout() {
   const handleConfirm = async () => {
     if (!hasItems || placing) return;
     setPlacing(true);
+    setErrorMsg(null);
     try {
-      const order = {
-        id: `KH-${Date.now().toString().slice(-6)}`,
-        createdAt: new Date().toISOString(),
-        currency,
+      const orderDto = {
         items: items.map((it) => {
-          const b = priceBreakdown(it);
           return {
-            id: it.id,
-            title: it.title,
-            price: Number(it.price),
-            qty: Number(it.qty),
-            image: it.image || it.imageUrl || null,
-            seller: it.sellerDisplayName ?? it._raw?.sellerDisplayName ?? null,
-            line: {
-              subtotal: b.lineSubtotal,
-              bulkDiscount: b.bulkDiscount,
-              couponDiscount: b.couponDiscount,
-              total: b.lineTotal,
-            },
+            productId: Number(it.id),
+            couponCode:
+              appliedCoupon && Number(couponTargetProductId) === Number(it.id)
+                ? appliedCoupon.code
+                : null,
+            quantity: Number(it.qty)
           };
         }),
-        subtotal: Number(subtotal),
-        discounts: {
-          bulk: bulkSum,
-          coupon: couponSum,
-          total: Number(discountTotal),
-          couponUsed: appliedCoupon?.code ?? null,
-          couponTargetProductId: couponTargetProductId ?? null,
-        },
-        total: Number(total),
+        notes: null
       };
 
-      clear(); 
-      navigate("/order-confirmation", { state: { order } });
+      const serverOrder = await ordersService.createOrder(orderDto);
+
+      clear();
+      navigate("/order-confirmation", { state: { order: serverOrder } });
+    } catch (err) {
+      console.error("Error creando orden", err);
+      if (err?.status === 401) {
+        setErrorMsg("Debes iniciar sesión para completar la compra.");
+        navigate("/login");
+      } else if (err?.body?.message) {
+        setErrorMsg(err.body.message);
+      } else {
+        setErrorMsg(err.message || "Error al crear la orden");
+      }
     } finally {
       setPlacing(false);
     }
@@ -91,6 +88,8 @@ export default function Checkout() {
   return (
     <div className="container py-4">
       <h2>Checkout</h2>
+
+      {errorMsg && <div className="alert alert-danger">{errorMsg}</div>}
 
       <div className="row mt-3">
         <div className="col-lg-8">
@@ -224,7 +223,7 @@ export default function Checkout() {
             </div>
           </div>
 
-          <div className="text-muted small mt-2">
+          <div style = {{ color: "#8a4ff0" }}>
             * La entrega es digital, no hay costos de envío.
           </div>
         </div>

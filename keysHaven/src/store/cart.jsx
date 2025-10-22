@@ -6,7 +6,9 @@ import React, {
   useCallback,
   useState,
 } from "react";
-import { COUPONS } from "../data/coupons.js";
+import productsService from "../services/productsService";
+import * as discountsService from "../services/discountsService";
+import { useAuth } from "../context/AuthContext";
 
 const CartContext = createContext(null);
 
@@ -24,11 +26,12 @@ function normalizeProduct(p) {
     platform: p.platform ?? p.plataforma ?? null,
     region: p.region ?? p.región ?? null,
     sellerDisplayName: p.sellerDisplayName ?? p.seller ?? null,
-    _raw: p, 
+    _raw: p,
   };
 }
 
 export function CartProvider({ children }) {
+  const { user, isAuthenticated } = useAuth();
   const [items, setItems] = useState(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -47,6 +50,8 @@ export function CartProvider({ children }) {
     }
   });
 
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+
   useEffect(() => {
     localStorage.setItem(LS_KEY, JSON.stringify(items));
   }, [items]);
@@ -55,20 +60,81 @@ export function CartProvider({ children }) {
     localStorage.setItem(LS_COUPON, JSON.stringify(couponState));
   }, [couponState]);
 
-  const add = useCallback((product, qty = 1) => {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!isAuthenticated) {
+        setAvailableCoupons([]);
+        return;
+      }
+      try {
+        const p = await discountsService.getActiveCouponsByBuyer(0, 200);
+        if (cancelled) return;
+        const list = p?.content ?? p ?? [];
+        setAvailableCoupons(list);
+      } catch (err) {
+        console.warn("No se pudieron cargar cupones del usuario:", err);
+        setAvailableCoupons([]);
+      }
+    })();
+    return () => (cancelled = true);
+  }, [isAuthenticated, user]);
+
+  async function ensureProductDetail(raw) {
+    if (!raw) return null;
+    const pid = raw.id ?? raw.productId;
+    if (!pid) return null;
+    const sellerId = raw.sellerId ?? raw.seller?.id ?? raw.sellerId;
+    const stock = raw.availableStock ?? raw.stock ?? raw._stock ?? raw.available_stock;
+    if (sellerId != null && stock != null) {
+      return { sellerId, stock: Number(stock) };
+    }
+    try {
+      const p = await productsService.getById(pid);
+      if (!p) return null;
+      const resolvedStock = p.availableStock ?? p.stock ?? null;
+      return { sellerId: p.sellerId ?? null, stock: resolvedStock == null ? null : Number(resolvedStock) };
+    } catch (err) {
+      console.warn("ensureProductDetail: error fetching product detail", err);
+      return null;
+    }
+  }
+
+  const add = useCallback(async (product, qty = 1) => {
+    if (!isAuthenticated) {
+      return { ok: false, reason: "Debes iniciar sesión para agregar al carrito" };
+    }
+
     const np = normalizeProduct(product);
     qty = Number(qty) || 1;
+
+    try {
+      const info = await ensureProductDetail(np._raw);
+      if (info?.sellerId != null && user && user.role === "SELLER" && Number(user.id) === Number(info.sellerId)) {
+        console.warn("Un seller no puede comprar su propio producto");
+        return { ok: false, reason: "No puedes comprar tu propio producto" };
+      }
+      if (info?.stock != null) {
+        const existing = (items.find(x => String(x.id) === String(np.id)) || {}).qty || 0;
+        if (existing + qty > info.stock) {
+          console.warn("No hay suficiente stock para agregar esa cantidad");
+          return { ok: false, reason: "Stock insuficiente" };
+        }
+      }
+    } catch (e) {}
 
     setItems((prev) => {
       const idx = prev.findIndex((x) => String(x.id) === String(np.id));
       if (idx >= 0) {
         const next = [...prev];
-        next[idx] = { ...next[idx], qty: next[idx].qty + qty };
+        next[idx] = { ...next[idx], qty: next[idx].qty + qty, _raw: np._raw };
         return next;
       }
       return [...prev, { ...np, qty }];
     });
-  }, []);
+
+    return { ok: true };
+  }, [items, isAuthenticated, user]);
 
   const remove = useCallback((id) => {
     setItems((prev) => prev.filter((x) => String(x.id) !== String(id)));
@@ -79,11 +145,27 @@ export function CartProvider({ children }) {
     );
   }, []);
 
-  const inc = useCallback((id) => {
-    setItems((prev) =>
-      prev.map((x) => (String(x.id) === String(id) ? { ...x, qty: x.qty + 1 } : x))
-    );
-  }, []);
+  const inc = useCallback(async (id) => {
+    if (!isAuthenticated) {
+      return { ok: false, reason: "Debes iniciar sesión para modificar el carrito" };
+    }
+    const it = items.find(x => String(x.id) === String(id));
+    if (!it) return { ok: false, reason: "Item no encontrado" };
+    try {
+      const info = await ensureProductDetail(it._raw);
+      if (info?.stock != null && it.qty + 1 > info.stock) {
+        console.warn("No hay más stock disponible");
+        return { ok: false, reason: "No hay más stock disponible" };
+      }
+      setItems((prev) =>
+        prev.map((x) => (String(x.id) === String(id) ? { ...x, qty: x.qty + 1 } : x))
+      );
+      return { ok: true };
+    } catch (err) {
+      console.warn("Error incrementando cantidad", err);
+      return { ok: false, reason: "Error" };
+    }
+  }, [items, isAuthenticated]);
 
   const dec = useCallback((id) => {
     setItems((prev) =>
@@ -99,6 +181,7 @@ export function CartProvider({ children }) {
     setItems([]);
     setCouponState({ coupon: null, productId: null });
   }, []);
+
   const bestBulkPercentFor = (it) => {
     const rules = it._raw?.bulkPricing ?? [];
     if (!Array.isArray(rules) || !rules.length) return 0;
@@ -122,19 +205,31 @@ export function CartProvider({ children }) {
     return items.some((x) => Number(x.id) === Number(productId));
   };
 
-  const applyCouponByCode = useCallback(
-    (code, productId) => {
-      const clean = String(code || "").trim().toUpperCase();
-      const c = COUPONS.find((x) => x.code.toUpperCase() === clean && x.active);
-      if (!c) return { ok: false, reason: "Código inválido" };
-      if (couponState.coupon) return { ok: false, reason: "Ya hay un cupón aplicado" };
-      if (!isCouponApplicableTo(c, productId))
-        return { ok: false, reason: "No aplica a ese producto" };
-      setCouponState({ coupon: c, productId });
-      return { ok: true };
-    },
-    [couponState.coupon, items]
-  );
+  const applyCouponByCode = useCallback(async (code, productId) => {
+    if (!code) return { ok: false, reason: "Código vacío" };
+    if (!isAuthenticated) return { ok: false, reason: "Debes iniciar sesión para usar cupones" };
+
+    const it = items.find(x => Number(x.id) === Number(productId));
+    if (!it) return { ok: false, reason: "Item no encontrado en carrito" };
+
+    try {
+      const requestItem = { productId: Number(it.id), quantity: Number(it.qty) };
+      const resp = await discountsService.validateCouponForOrderItem(code, requestItem);
+      if (!resp) return { ok: false, reason: "Respuesta inválida del servidor" };
+      if (!resp.isValid) {
+        return { ok: false, reason: resp.message || "Cupón inválido" };
+      }
+      const discountAmount = Number(resp.discountAmount || 0);
+      setCouponState({
+        coupon: { code: String(code).trim().toUpperCase(), discountAmount, discountId: resp.discountId ?? null },
+        productId: Number(productId)
+      });
+      return { ok: true, discountAmount };
+    } catch (err) {
+      console.error("applyCouponByCode error", err);
+      return { ok: false, reason: err.message || "Error al validar cupón" };
+    }
+  }, [items, isAuthenticated]);
 
   const removeCoupon = useCallback(
     () => setCouponState({ coupon: null, productId: null }),
@@ -147,21 +242,15 @@ export function CartProvider({ children }) {
       const qty = Number(it.qty) || 0;
       const lineSubtotal = unit * qty;
 
-     
       const bulkPercent = bestBulkPercentFor(it);
       const bulkDiscount = (lineSubtotal * bulkPercent) / 100;
 
-      
       let couponDiscount = 0;
       let couponCode = null;
       if (couponState.coupon && Number(couponState.productId) === Number(it.id)) {
         couponCode = couponState.coupon.code;
-        const base = lineSubtotal - bulkDiscount;
-        if (couponState.coupon.type === "percent") {
-          couponDiscount = (base * Number(couponState.coupon.value || 0)) / 100;
-        } else {
-          couponDiscount = Math.min(base, Number(couponState.coupon.value || 0));
-        }
+        couponDiscount = Number(couponState.coupon.discountAmount || 0);
+        couponDiscount = Math.min(Math.max(0, couponDiscount), Math.max(0, lineSubtotal - bulkDiscount));
       }
 
       const lineTotal = Math.max(0, lineSubtotal - bulkDiscount - couponDiscount);
@@ -210,6 +299,7 @@ export function CartProvider({ children }) {
       applyCouponByCode,
       removeCoupon,
       priceBreakdown,
+      availableCoupons,
     }),
     [
       items,
@@ -223,6 +313,7 @@ export function CartProvider({ children }) {
       applyCouponByCode,
       removeCoupon,
       priceBreakdown,
+      availableCoupons,
     ]
   );
 
