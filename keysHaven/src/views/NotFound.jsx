@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import "../components/estilos/Fondos.css";
+
+import { getLastApiError } from '../services/errorService';
+
 import DoppyBoard from '/src/assets/doppyKnight/doppyMessageBoard.png';
 import DoppyUnplugged from '/src/assets/doppyKnight/doppyUnplugged.png';
 import Number400 from '/src/assets/doppyKnight/400.png';
@@ -14,54 +17,44 @@ export default function NotFound() {
 
   const location = useLocation();
 
-  const [errorMessage, setErrorMessage] = useState("Error Grave......GRAVÍSIMO!!!!!!!");
-
-  useEffect(() => {
-    const fetchErrorMessage = async () => {
-      try {
-        // Example API endpoint - adjust according to your backend
-        const response = await fetch('/src/api/getErrorMessage');
-        if (response.ok) {
-          const data = await response.json();
-          setErrorMessage(data.message);
-        } else {
-          console.error('Error fetching error message');
-        }
-      } catch (error) {
-        console.error('Error fetching error message:', error);
-      }
-    };
-
-    fetchErrorMessage();  // Fetch the message when the component mounts
-  }, []);  // Empty dependency array to run only once when the component mounts
-
   let imageTop = DoppyBoard;
   let imageBottom = Number404;
-  let messageText = "404 - Página no encontrada"
+  let messageText = "404 - Página no encontrada";
 
-  if (location.pathname === '/400') {
+  const [error, setError] = useState(getLastApiError());
+
+  if (error?.status === 400) {
     imageBottom = Number400;
-    messageText = "400 - BAD_REQUEST"
-  } else if (location.pathname === '/401') {
+    messageText = "400 - BAD_REQUEST";
+  } else if (error?.status === 401) {
     imageBottom = Number401;
-    messageText = "401 - Acceso No Autorizado"
-  } else if (location.pathname === '/403') {
+    messageText = "401 - Acceso No Autorizado";
+  } else if (error?.status === 403) {
     imageBottom = Number403;
-    messageText = "403 - Prohibido el Acceso!!!"
-  } else if (location.pathname === '/404') {
+    messageText = "403 - Prohibido el Acceso!!!";
+  } else if (error?.status === 404) {
     imageBottom = Number404;
-    messageText = "404 - Página no encontrada"
-  } else if (location.pathname === '/409') {
+    messageText = "404 - Página no encontrada";
+  } else if (error?.status === 409) {
     imageBottom = Number409;
-    messageText = "409 - Conflicto"
-  } else if (location.pathname === '/500') {
+    messageText = "409 - Conflicto";
+  } else if (error?.status === 500) {
     imageBottom = Number500;
-    messageText = "500 - Error Interno del Servidor"
+    messageText = "500 - Error Interno del Servidor";
   } else {
     imageTop = DoppyUnplugged;
-    imageBottom = "";
-    messageText = "Error Desconocido"
+    imageBottom = null;
+    messageText = "Error Desconocido";
   }
+ 
+  useEffect(() => {
+    if (error && error.message) {
+      setError(error);
+      setErrorMessage(error.message);
+    }
+  }, []);
+
+
     return (
       <section
         className="position-relative text-center text-white py-5"
@@ -76,7 +69,7 @@ export default function NotFound() {
          <div style={{ position: "relative", zIndex: 2}}>
           <div style={{ position: "relative", zIndex: 2000}}>
             <h2 className="text-primary">{messageText}</h2>
-            <h3 className="text-primary">{errorMessage}</h3>
+            <h3 className="text-primary">{error?.message || "Error Grave......GRAVÍSIMO!!!!!!!"}</h3>
             <p>
               <Link to="/home" className="text-primary"  style={{textDecoration: "hover-underline"}}>
                 Volver al Home
@@ -92,13 +85,14 @@ export default function NotFound() {
                style={{ display: "block", margin: "0 auto", marginTop: "-90px" }}
              />
              <div style={{ position: "relative", zIndex: 3 }}>
+              {imageBottom &&(
                <img
                  src={imageBottom}
-                 alt={imageBottom ? "NumberError" : ""}
+                 alt={imageBottom ? "NumberError" : null}
                  width={350}
                  height={170}
                  style={{ display: "block", margin: "0 auto", marginTop: "-805px"}}
-               />
+               />)}
              </div>
            </div>
          </div>
