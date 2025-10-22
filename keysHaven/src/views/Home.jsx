@@ -147,7 +147,7 @@ export default function Home() {
 
         {searchMode && (
           <div className="flex-grow-1 d-flex align-items-center px-2" ref={inputRef}>
-            <i className="fas fa-search text-white me-2"></i>
+            <i className="text-white me-2"></i>
             <input
               type="text"
               value={searchText}
