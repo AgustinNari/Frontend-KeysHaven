@@ -36,7 +36,7 @@ export default function Home() {
     const fetchCategories = async () => {
       try {
         setLoadingCategories(true);
-        const response = await getFeaturedCategories(0, 5);
+        const page = await getFeaturedCategories(0, 5);
         const fetchedCats = page.content || [];
         setCategories(fetchedCats);
       } catch (err) {
