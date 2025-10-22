@@ -143,37 +143,32 @@ export default function Home() {
         }}
       >
         <div className="container position-relative py-5">
-          <h1 className="display-4 fw-bold">Unlock Your Next Adventure</h1>
+          <h1 className="display-4 fw-bold py-5">La clave para jugar sin límites</h1>
           <p className="lead mt-3 text-light">
-            Explore thousands of games for PC, Xbox, PlayStation, and more. Find the best deals on digital keys and subscriptions.
+            Explora miles de juegos para PC, Xbox, PlayStation, y más. Encuentra las mejores ofertas de llaves.
           </p>
         </div>
       </section>
 
       {/* Categories */}
-            <section className="py-5 bg-primary-dark">
+      <section className="py-5 bg-primary-dark">
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Top Categories</h2>
           <div className="row g-4 justify-content-center">
-            {loadingCategories && <p className="text-light">Loading categories…</p>}
-            {categoriesError && <p className="text-danger">Error: {categoriesError}</p>}
-            {!loadingCategories && !categoriesError && categories.length === 0 && (
-              <p className="text-light">No categories found.</p>
-            )}
-            {!loadingCategories && !categoriesError && categories.map((cat) => (
+            {categories.map((cat) => (
               <div
-                key={cat.id}
+                key={cat.id || i}
                 className="col-6 col-md-4 col-lg-2 position-relative overflow-hidden rounded shadow"
               >
                 <img
-                  src={cat.imageUrl ?? "/src/assets/keyLogo.svg"}
+                  src={""}
                   width={80}
                   height={70}
                   className="w-100 rounded"
-                  alt={cat.name}
+                  alt={cat.descripion}
                 />
                 <div className="position-absolute bottom-0 start-0 w-100 p-2 text-white bg-dark bg-opacity-50 fw-bold">
-                  {cat.name}
+                  {cat.description}
                 </div>
               </div>
             ))}
@@ -188,7 +183,7 @@ export default function Home() {
           <div className="row g-5 justify-content-center">
             {sellers.map((seller, i) => (
               <div key={seller.id || i} className="col-6 col-md-3">
-                <a href={`"/seller-detail/${seller.id}`} className="text-decoration-none text-body text-primary-light">
+                <a href={`/seller-detail/${seller.id}`} className="text-decoration-none text-body text-primary-light">
                   <img
                     src={seller.avatarDataUrl || "/src/assets/react.svg"}
                     className="rounded-circle border border-primary border-3 mb-3"
