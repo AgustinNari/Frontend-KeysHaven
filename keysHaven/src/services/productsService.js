@@ -112,9 +112,9 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
   };
 }
 
-function getTopSoldProducts(size = 4) {
-    return apiClient.search({}, 0, size, "amountSold_desc");
-  }
+async function getTopSoldProducts(size = 4) {
+  return search({}, 0, size, "amountSold_desc");
+}
 
 async function getById(id) {
   const resp = await apiClient.apiFetch(`/products/${id}/detail`);

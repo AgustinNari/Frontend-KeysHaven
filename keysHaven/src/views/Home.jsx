@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import "../components/estilos/Fondos.css";
 import { getFeaturedCategories } from '../api/categories';
 import { getTopSellers } from "../api/sellers";
+import productsService from "../services/productsService";
 import HomeBanner from '/src/assets/homeImage.png';
 
 export default function Home() {
@@ -14,8 +15,13 @@ export default function Home() {
   
   //Sellers Variables
   const [sellers, setSellers] = useState([]);
+
+  // Products Variables
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [productsError, setProductsError] = useState(null);
   
-  //Mininavbar Variables
+  //MiniNavBar Variables
   const inputRef = useRef(null);
   const [searchMode, setSearchMode] = useState(false);
   const [active, setActive] = useState("pc");
@@ -26,12 +32,14 @@ export default function Home() {
     { id: "switch", icon: "fas fa-gamepad" },
   ];
 
+  //Seller
   useEffect(() => {
     getTopSellers()
       .then(data => setSellers(data.content))
       .catch(err => console.error("Failed to load sellers", err));
   }, []);
 
+  //Category
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -50,12 +58,33 @@ export default function Home() {
     fetchCategories();
   }, []);
 
+  //Product
+  useEffect(() => {
+    const fetchTopSold = async () => {
+      try {
+        setLoadingProducts(true);
+        const page = await productsService.getTopSoldProducts(4);
+        const fetched = page.content || [];
+        setProducts(fetched);
+      } catch (err) {
+        console.error("Failed to load top sold products", err);
+        setProductsError(err.message);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+
+    fetchTopSold();
+  }, []);
+
+  //MiniNavBar
   useEffect(() => {
     if (searchMode && inputRef.current) {
       inputRef.current.focus();
     }
   }, [searchMode]);
 
+  //SearchBar
   useEffect(() => {
     const handleClick = (e) => {
       if (inputRef.current && !inputRef.current.contains(e.target)) {
@@ -204,16 +233,32 @@ export default function Home() {
       <section className="py-5 bg-primary-dark">
         <div className="container">
           <h2 className="fw-bold text-center mb-5 text-primary-light">Most Sold Games</h2>
-          <div className="row g-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="col-6 col-md-4 col-lg-3">
-                <img
-                  src= {HomeBanner}
-                  className="w-100 rounded text-primary-light"
-                  alt={`Game ${i + 1}`}
-                />
-                <h6 className="mt-2 mb-0 fw-semibold text-primary-light">Game Title {i + 1}</h6>
-                <small className="text-muted text-primary">Action</small>
+
+          {loadingProducts && <p className="text-light text-center">Loading top sold games...</p>}
+          {productsError && <p className="text-danger text-center">Error: {productsError}</p>}
+          {!loadingProducts && !productsError && products.length === 0 && (
+            <p className="text-light text-center">No top sold games found.</p>
+          )}
+
+          <div className="row g-4 justify-content-center">
+            {!loadingProducts && !productsError && products.map((p, i) => (
+              <div key={p.id || i} className="col-6 col-md-4 col-lg-3">
+                <a href={`/product/${p.id}`} className="text-decoration-none text-primary-light">
+                  <img
+                    src={p.primaryImageUrl || HomeBanner}
+                    className="w-100 rounded"
+                    alt={p.title || "Game"}
+                  />
+                  <h6 className="mt-2 mb-0 fw-semibold text-primary-light">{p.title || "Unnamed"}</h6>
+                  <small className="text-muted text-primary">
+                    {p.category?.description || "Game"} • Sold: {p.amountSold ?? 0}
+                  </small>
+                  {p.discountPctDisplay > 0 && (
+                    <div className="text-success fw-bold small">
+                      -{p.discountPctDisplay}% off
+                    </div>
+                  )}
+                </a>
               </div>
             ))}
           </div>
