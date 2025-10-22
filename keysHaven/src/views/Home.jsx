@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import "../components/estilos/Fondos.css";
-import HomeBanner from '/src/assets/homeImage.png'
+import HomeBanner from '/src/assets/homeImage.png';
+
 export default function Home() {
   const [theme, setTheme] = useState("bg-primary-dark");
   const [active, setActive] = useState("pc");
@@ -160,17 +161,17 @@ export default function Home() {
       {/* Best Sellers */}
       <section className="py-5 bg-primary-dark">
         <div className="container">
-          <h2 className="fw-bold text-center mb-5 text-primary-light">Best Sellers</h2>
+          <h2 className="fw-bold text-center mb-5 text-primary-light">Most Sold Games</h2>
           <div className="row g-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="col-6 col-md-4 col-lg-3">
                 <img
-                  src="/src/assets/homeImage.svg"
-                  className="w-100 rounded"
+                  src= {HomeBanner}
+                  className="w-100 rounded text-primary-light"
                   alt={`Game ${i + 1}`}
                 />
                 <h6 className="mt-2 mb-0 fw-semibold text-primary-light">Game Title {i + 1}</h6>
-                <small className="text-muted">Action</small>
+                <small className="text-muted text-primary">Action</small>
               </div>
             ))}
           </div>
