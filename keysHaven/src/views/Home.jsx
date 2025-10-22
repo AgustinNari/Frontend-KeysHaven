@@ -139,9 +139,9 @@ export default function Home() {
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Top Sellers</h2>
           <div className="row g-5 justify-content-center">
-            {["ProductOne", "GameStoreX", "PlayHub", "KeyWorld"].map((seller) => (
-              <div key={seller} className="col-6 col-md-3">
-                <a href="product/1" className="text-decoration-none text-body text-primary-light">
+            {["ProductOne", "GameStoreX", "PlayHub", "KeyWorld"].map((seller, i) => (
+              <div key={i} className="col-6 col-md-3">
+                <a href={`/product/${i + 1}`} className="text-decoration-none text-body text-primary-light">
                   <img
                     src="/src/assets/react.svg"
                     className="rounded-circle border border-primary border-3 mb-3"
