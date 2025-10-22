@@ -183,7 +183,7 @@ export default function SellerDashboard() {
       <div className="container-fluid py-4">
         <div className="row">
           <div className="col-md-3 col-lg-2">
-            <div className="card bg-primary-dark border-0 sticky-top" style={{ top: '86px' }}>
+            <div className="card bg-primary-dark border-0" style={{ top: '86px' }}>
               <div className="card-body">
                 <div className="text-center mb-4">
                   <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '60px', height: '60px' }}>
