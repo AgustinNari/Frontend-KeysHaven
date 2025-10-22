@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import "../components/estilos/Fondos.css";
 import { getFeaturedCategories } from '../api/categories';
 import { getTopSellers } from "../api/sellers";
@@ -31,6 +32,16 @@ export default function Home() {
     { id: "xbox", icon: "fab fa-xbox" },
     { id: "switch", icon: "fas fa-gamepad" },
   ];
+  const navigate = useNavigate();
+  const handleSearch = (term) => {
+    const query = term.trim();
+    if (query.length > 0) {
+      navigate(`/catalog?title=${encodeURIComponent(query)}`);
+    } else {
+      navigate(`/catalog`);
+    }
+  };
+  const [searchText, setSearchText] = useState("");
 
   //Seller
   useEffect(() => {
@@ -139,10 +150,27 @@ export default function Home() {
             <i className="fas fa-search text-white me-2"></i>
             <input
               type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
               className="form-control bg-dark text-light border-0 shadow-sm"
               placeholder="Buscar juegos..."
               style={{ width: "220px" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch(searchText);
+                  setSearchMode(false);
+                }
+              }}
             />
+            <button
+              className="btn btn-link text-white ms-2 fs-5"
+              onClick={() => {
+                handleSearch(searchText);
+                setSearchMode(false);
+              }}
+            >
+              <i className="fas fa-search"></i>
+            </button>
             <button
               className="btn btn-link text-white ms-2 fs-5"
               onClick={() => setSearchMode(false)}
@@ -177,9 +205,9 @@ export default function Home() {
       {/* Categories */}
       <section className="py-5 bg-primary-dark">
         <div className="container text-center">
-          <h2 className="fw-bold mb-5 text-primary-light">Top Categories</h2>
+          <h2 className="fw-bold mb-5 text-primary-light">Categorías Destacadas</h2>
           <div className="row g-4 justify-content-center">
-            {loadingCategories && <p className="text-light">Loading categories…</p>}
+            {loadingCategories && <p className="text-light">Cargando categorías…</p>}
             {categoriesError && <p className="text-danger">Error: {categoriesError}</p>}
             {!loadingCategories && !categoriesError && categories.length === 0 && (
               <p className="text-light">No categories found.</p>
@@ -190,7 +218,7 @@ export default function Home() {
                 className="col-6 col-md-4 col-lg-2 position-relative overflow-hidden rounded shadow"
               >
                 <img
-                  src={""}
+                  src={"url('/src/assets/keyLogo.svg')"}
                   width={80}
                   height={70}
                   className="w-100 rounded"
@@ -208,7 +236,7 @@ export default function Home() {
       {/* Top Sellers */}
       <section className="py-5 bg-primary-dark">
         <div className="container text-center">
-          <h2 className="fw-bold mb-5 text-primary-light">Top Sellers</h2>
+          <h2 className="fw-bold mb-5 text-primary-light">Vendedores más Elegidos</h2>
           <div className="row g-5 justify-content-center">
             {sellers.map((seller, i) => (
               <div key={seller.id || i} className="col-6 col-md-3">
@@ -232,12 +260,12 @@ export default function Home() {
       {/* Most Bought Products */}
       <section className="py-5 bg-primary-dark">
         <div className="container">
-          <h2 className="fw-bold text-center mb-5 text-primary-light">Most Sold Games</h2>
+          <h2 className="fw-bold text-center mb-5 text-primary-light">Llaves más Elegidas</h2>
 
-          {loadingProducts && <p className="text-light text-center">Loading top sold games...</p>}
+          {loadingProducts && <p className="text-light text-center">Cargando juegos...</p>}
           {productsError && <p className="text-danger text-center">Error: {productsError}</p>}
           {!loadingProducts && !productsError && products.length === 0 && (
-            <p className="text-light text-center">No top sold games found.</p>
+            <p className="text-light text-center">No games found.</p>
           )}
 
           <div className="row g-4 justify-content-center">

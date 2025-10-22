@@ -14,6 +14,7 @@ import { useCart } from "../store/cart.jsx";
 export default function Catalog() {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
+  const queryTitle = queryParams.get("title");
   const querySellerId = queryParams.get("sellerId");
 
   const [items, setItems] = useState([]);
@@ -38,6 +39,10 @@ export default function Catalog() {
       setPage(1);
     }
   }, [querySellerId]);
+
+  useEffect(() => {
+    if (queryTitle) setSearchText(queryTitle);
+  }, [queryTitle]);
 
   useEffect(() => {
     let cancelled = false;
