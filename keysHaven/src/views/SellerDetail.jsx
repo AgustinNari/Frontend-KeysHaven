@@ -23,18 +23,17 @@ export default function SellerDetail() {
   const pageSize = 8;
   const [loading, setLoading] = useState(true);
   
-  // Reemplazar el estado simple de error por useApiError
   const { apiError, setFrom, clear, hasError } = useApiError();
 
   useEffect(() => {
     const loadSellerData = async () => {
       try {
         setLoading(true);
-        clear(); // Limpiar errores previos
+        clear(); 
 
         console.log("🔍 Cargando datos para sellerId:", sellerId);
 
-        // Cargar estadísticas del seller usando el endpoint real
+        
         const stats = await getSellerStats(sellerId);
         console.log("📊 Stats recibidas:", stats);
         
@@ -43,11 +42,11 @@ export default function SellerDetail() {
           return;
         }
 
-        // Cargar productos activos del seller
+        // Devuelve los productos activos del vendedor
         const activeProducts = await getSellerActiveProducts(sellerId);
         console.log("🎮 Productos activos recibidos:", activeProducts);
 
-        // Crear objeto seller con datos reales del backend
+        // Objeto Seller
         const sellerData = {
           id: sellerId,
           displayName: stats.displayName || `Vendedor #${sellerId}`,
@@ -145,7 +144,6 @@ export default function SellerDetail() {
     );
   }
 
-  // Reemplazar el manejo de error simple por ApiErrorAlert
   if (hasError && !seller) {
     return (
       <div className="container mt-4">
@@ -186,7 +184,6 @@ export default function SellerDetail() {
 
   return (
     <div className="product-page">
-      {/* Mostrar ApiErrorAlert incluso si tenemos datos (para errores no críticos) */}
       {hasError && (
         <div className="container mt-3">
           <ApiErrorAlert 
