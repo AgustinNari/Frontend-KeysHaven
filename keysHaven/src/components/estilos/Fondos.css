@@ -54,3 +54,26 @@ body{
   background-color: #7f13ec !important;
   color: white !important;
 }
+
+
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.button-overlay {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(200, 200, 200, 0.3);
+  transition: background-color 0.3s ease;
+  opacity: 0;
+}
+
+.btn:hover .button-overlay {
+  opacity: 1;
+  background-color: rgba(200, 200, 200, 0.5);
+}

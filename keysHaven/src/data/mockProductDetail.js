@@ -1,7 +1,7 @@
 
 export const MOCK_PRODUCT_DETAIL = {
-  id: 2,
-  sellerId: 10,
+  id: 1,
+  sellerId: 1,
   sku: "GTA-V-001",
   sellerDisplayName: "CarlosR",
   title: "Grand Theft Auto V",

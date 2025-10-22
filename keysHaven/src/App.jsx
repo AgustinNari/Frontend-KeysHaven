@@ -12,6 +12,7 @@ import Login from './views/Login';
 import Register from './views/Register';
 import NotFound from './views/NotFound';
 import Profile from './views/Profile';
+import SellerDetail from './views/SellerDetail';
 
 import Checkout from './views/Checkout';
 import OrderConfirmation from './views/OrderConfirmation';
@@ -31,7 +32,7 @@ import SellerCoupons from './components/seller/SellerCoupons';
 import KeyManagement from './components/seller/KeyManagement';
 import ReviewsManagement from './components/admin/ReviewsManagement';
 
-import SellerDetail from './views/SellerDetail';
+
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/seller-detail/:sellerId" element={<SellerDetail />} />
           
 
           <Route path="/admin/*" element={<AdminPanel />} />
@@ -69,7 +71,7 @@ export default function App() {
           <Route path="/seller/analytics" element={<SalesAnalytics />} />
           <Route path="/seller/coupons" element={<SellerCoupons />} />
           <Route path="/seller/keys" element={<KeyManagement />} />
-          <Route path="/seller/:sellerId" element={<SellerDetail />} />
+          
 
           <Route path="/404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/404" replace />} />

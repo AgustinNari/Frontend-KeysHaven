@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router-dom";
 import "../estilos/Fondos.css";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../store/cart.jsx";
+import DoppyThumbsUp from "../../assets/doppyKnight/doppyThumbsUp.png";
 
 export default function Navigation() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -10,6 +11,7 @@ export default function Navigation() {
   const cartCount = items.reduce((acc, it) => acc + (it.qty ?? 0), 0);
 
   const briefName = user?.displayName ?? user?.email ?? "";
+  const avatar = user?.avatarDataUrl ?? DoppyThumbsUp;
 
   return (
     <nav className="navbar navbar-expand-lg sticky-top navbar-dark bg-primary-dark border-bottom border-light">
@@ -52,7 +54,7 @@ export default function Navigation() {
 
           <div className="d-flex gap-2 align-items-center">
             <NavLink to="/cart" className="nav-link" aria-label="Carrito">
-              <button className="btn btn-outline-primary rounded-circle p-2 position-relative" title="Carrito">
+              <button className="btn btn-outline-primary rounded-circle p-2 position-relative" title="Carrito"style={{width:"50px",height:"50px"}}>
                 <span className="material-symbols-outlined">shopping_cart</span>
                 {cartCount > 0 && (
                   <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
@@ -80,9 +82,23 @@ export default function Navigation() {
             {isAuthenticated ? (
               <>
                 <NavLink to="/profile" className="nav-link" title="Perfil">
-                  <button className="btn btn-outline-secondary rounded-circle p-2">
-                    <span className="material-symbols-outlined">person</span>
-                  </button>
+                  <button
+                  className="btn btn-outline-secondary rounded-circle p-2"
+                  style={{
+                    background: `url(${avatar})`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "100%",
+                    backgroundPosition: "center",
+                    width: "50px",  // Fixed width
+                    height: "50px", // Fixed height
+                    padding: "0",    // Remove default padding
+                    position: "relative",  // Needed to position the pseudo-element
+                    overflow: "hidden", // Hide anything outside the button's borders
+                    transition: "background-color 0.3s ease", // Smooth transition for background change
+                  }}
+                >
+                  <span className="button-overlay"></span>  {/* This span will be used for the gloss effect */}
+                </button>
                 </NavLink>
 
                 <div style={{ color: "#7f13ec", fontWeight: 600 }}>
@@ -99,8 +115,22 @@ export default function Navigation() {
               </>
             ) : (
               <NavLink to="/login" className="nav-link" aria-label="Iniciar sesión">
-                <button className="btn btn-outline-secondary rounded-circle p-2">
-                  <span className="material-symbols-outlined">person</span>
+                <button
+                  className="btn btn-outline-secondary rounded-circle p-2"
+                  style={{
+                    background: `url(${avatar})`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "100%",
+                    backgroundPosition: "center",
+                    width: "50px",  // Fixed width
+                    height: "50px", // Fixed height
+                    padding: "0",    // Remove default padding
+                    position: "relative",  // Needed to position the pseudo-element
+                    overflow: "hidden", // Hide anything outside the button's borders
+                    transition: "background-color 0.3s ease", // Smooth transition for background change
+                  }}
+                >
+                  <span className="button-overlay"></span>  {/* This span will be used for the gloss effect */}
                 </button>
               </NavLink>
             )}
@@ -110,3 +140,32 @@ export default function Navigation() {
     </nav>
   );
 }
+/*<img
+                    src={avatar}
+                    alt="Avatar"
+                    className="rounded-circle"
+                    style={{ width: '30px', height: '30px' }} // Adjust size as needed
+                  />
+                  
+                  
+                  
+<button className="btn btn-outline-secondary rounded-circle p-2"style={{
+                  background:
+                    ("url('/src/assets/homeImage.png')"),
+                  backgroundRepeat: "no-repeat",
+                  backgroundSize: "contain",
+                  backgroundPosition: "center",
+                  width: "50px",
+                  height: "50px",
+                  padding: "0",
+                  transition: "box-shadow 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                  // Adding the glow effect when mouse enters
+                  e.target.style.boxShadow = "0 0 15px rgba(255, 255, 255, 0.7)";
+                  }}
+                  onMouseLeave={(e) => {
+                    // Removing the glow effect when mouse leaves
+                    e.target.style.boxShadow = "none";
+                  }}>
+                </button>*/
