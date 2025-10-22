@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createDiscount, getDiscounts, updateDiscount, getCategories, getUsers } from '../../services/adminService';
 import ConfirmModal from '../profile/ConfirmModal';
+import { useNavigate } from 'react-router-dom';
 
 export default function CouponManagement() {
   const [discounts, setDiscounts] = useState([]);
@@ -10,6 +11,8 @@ export default function CouponManagement() {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+    const navigate = useNavigate();
+  
 
   const emptyForm = {
     code: '',
@@ -114,7 +117,17 @@ export default function CouponManagement() {
       setFormData(emptyForm);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Error guardando descuento');
+      if (err && err.status === 401) {
+        setError('No autorizado. Por favor iniciá sesión.');
+        navigate('/login', { replace: true });
+        return;
+      }
+      if (err && err.status === 403) {
+        setError('No tenés permisos para realizar esta acción.');
+        return;
+      }
+      const msg = (err && err.body && err.body.message) ? err.body.message : (err && err.message) ? err.message : 'Error guardando descuento';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -140,6 +153,15 @@ export default function CouponManagement() {
       await loadData();
     } catch (err) {
       console.error(err);
+      if (err && err.status === 401) {
+        setError('No autorizado. Por favor iniciá sesión.');
+        navigate('/login', { replace: true });
+        return;
+      }
+      if (err && err.status === 403) {
+        setError('No tenés permisos para desactivar este cupón.');
+        return;
+      }
       setError('Error desactivando descuento');
     } finally {
       setLoading(false);
@@ -154,12 +176,20 @@ export default function CouponManagement() {
       await loadData();
     } catch (err) {
       console.error(err);
+      if (err && err.status === 401) {
+        setError('No autorizado. Por favor iniciá sesión.');
+        navigate('/login', { replace: true });
+        return;
+      }
+      if (err && err.status === 403) {
+        setError('No tenés permisos para activar este cupón.');
+        return;
+      }
       setError('Error activando descuento');
     } finally {
       setLoading(false);
     }
   };
-
   const categoryDiscounts = discounts.filter(d => d.scope === 'CATEGORY');
 
   return (

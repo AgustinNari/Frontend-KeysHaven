@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getAllProducts, updateProduct } from '../../services/adminService';
-import { mockProducts } from '../../data/mockData';
 import ConfirmModal from '../profile/ConfirmModal';
 
 export default function ProductManagement() {
@@ -40,12 +39,17 @@ export default function ProductManagement() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      // Usar datos mock importados desde mockData.js
-      await new Promise(resolve => setTimeout(resolve, 800)); // Simular delay de red
-      setProducts(mockProducts);
+      const prods = await getAllProducts();
+      setProducts(prods || []);
     } catch (err) {
       console.error('Error cargando productos:', err);
-      setError('Error al cargar productos');
+      if (err && err.status === 401) {
+        setError('No autorizado. Iniciá sesión.');
+      } else if (err && err.status === 403) {
+        setError('Acceso denegado.');
+      } else {
+        setError('Error al cargar productos (revisá que el API_BASE sea correcto)');
+      }
     } finally {
       setLoading(false);
     }
@@ -69,7 +73,7 @@ export default function ProductManagement() {
   const handleDeactivateConfirmed = async (productId) => {
     setActionLoading(`status-${productId}`);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await updateProduct(productId, { active: false });
 
       setProducts(prevProducts =>
         prevProducts.map(p =>
@@ -90,8 +94,8 @@ export default function ProductManagement() {
   const handleActivate = async (productId) => {
     setActionLoading(`status-${productId}`);
     try {
+      await updateProduct(productId, { active: true });
 
-      await new Promise(resolve => setTimeout(resolve, 500));
       setProducts(prevProducts =>
         prevProducts.map(p =>
           p.id === productId ? { ...p, active: true } : p
@@ -109,30 +113,74 @@ export default function ProductManagement() {
 
   const handleToggleFeatured = async (product) => {
     setActionLoading(`featured-${product.id}`);
+    const originalFeatured = product.featured;
+
+    setProducts(prevProducts =>
+      prevProducts.map(p =>
+        p.id === product.id ? { ...p, featured: !p.featured } : p
+      )
+    );
+
     try {
-      // Simular llamada al API
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await updateProduct(product.id, { featured: !originalFeatured });
 
-      // Actualización optimista
-      setProducts(prevProducts =>
-        prevProducts.map(p =>
-          p.id === product.id ? { ...p, featured: !p.featured } : p
-        )
-      );
-
-      console.log(`Producto ${product.id} - Destacado actualizado: ${!product.featured}`);
+      console.log(`Producto ${product.id} - Destacado actualizado: ${!originalFeatured}`);
     } catch (err) {
       console.error('Error actualizando producto:', err);
       setError('Error al actualizar producto');
-      // Revertir en caso de error
+
       setProducts(prevProducts =>
         prevProducts.map(p =>
-          p.id === product.id ? { ...p, featured: product.featured } : p
+          p.id === product.id ? { ...p, featured: originalFeatured } : p
         )
       );
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const deriveAvailableStock = (product) => {
+    if (!product) return 0;
+
+
+    const candidates = [
+      product.availableStock,
+      product.available_stock,
+      product.available_stock_count,
+      product.available,
+      product.stock,
+      product.availableQuantity,
+      product.available_quantity,
+      product.availableQty,
+      product.available_qty,
+      product.quantity,
+      product.qty
+    ];
+
+    for (const c of candidates) {
+      if (typeof c === 'number' && !Number.isNaN(c)) return c;
+
+      if (typeof c === 'string' && c.trim() !== '' && !Number.isNaN(Number(c))) {
+        return Number(c);
+      }
+    }
+
+
+    try {
+      if (product.inventory && typeof product.inventory === 'object') {
+        const inv = product.inventory;
+        const invCandidates = [inv.available, inv.availableStock, inv.stock, inv.qty, inv.quantity];
+        for (const ic of invCandidates) {
+          if (typeof ic === 'number' && !Number.isNaN(ic)) return ic;
+          if (typeof ic === 'string' && ic.trim() !== '' && !Number.isNaN(Number(ic))) return Number(ic);
+        }
+      }
+    } catch (e) {
+
+    }
+
+
+    return 0;
   };
 
 
@@ -144,7 +192,6 @@ export default function ProductManagement() {
       return false;
     }
   };
-
 
   const checkImageExists = (url) => {
     return new Promise((resolve) => {
@@ -162,7 +209,7 @@ export default function ProductManagement() {
     setImageError('');
   };
 
-  // Función para manejar categorías
+
   const handleCategoryToggle = (category) => {
     setSelectedCategories(prev =>
       prev.includes(category)
@@ -171,7 +218,7 @@ export default function ProductManagement() {
     );
   };
 
-  // Función mejorada para agregar imagen
+
   const addImage = async () => {
     if (!newImage.name.trim()) {
       setImageError('El nombre de la imagen es requerido');
@@ -265,7 +312,7 @@ export default function ProductManagement() {
     try {
       const imageUrls = selectedProduct.images.map(img => img.url);
 
-      // Simular llamada al API
+
       await new Promise(resolve => setTimeout(resolve, 800));
 
       // Actualizar el producto en la lista
@@ -697,7 +744,8 @@ export default function ProductManagement() {
                   </td>
                 </tr>
               ) : filteredProducts.map(product => {
-                const stockStatus = getStockStatus(product.availableStock);
+                const availableStock = deriveAvailableStock(product);
+                const stockStatus = getStockStatus(availableStock);
                 const isStatusLoading = actionLoading === `status-${product.id}`;
                 const isFeaturedLoading = actionLoading === `featured-${product.id}`;
 
@@ -733,7 +781,7 @@ export default function ProductManagement() {
                     </td>
                     <td>
                       <span className={`badge ${stockStatus.class}`}>
-                        {product.availableStock} - {stockStatus.text}
+                        {availableStock} - {stockStatus.text}
                       </span>
                     </td>
                     <td>

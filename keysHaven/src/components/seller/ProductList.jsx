@@ -1,24 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { getSellerProducts, updateProduct } from '../../services/sellerService';
+import { getSellerProducts, getProductDetail, updateProduct } from '../../services/sellerService';
+import { useAuth } from '../../context/AuthContext';
 import ConfirmModal from '../profile/ConfirmModal';
 
 export default function ProductList({ onEditProduct }) {
+  const { user } = useAuth();
+  const sellerId = user?.id;
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [confirm, setConfirm] = useState({ show:false, title:'', message:'', onConfirm:null });
 
-  useEffect(() => { loadProducts(); }, []);
+  useEffect(() => { loadProducts(); }, [sellerId]);
 
   const loadProducts = async () => {
     setLoading(true);
+    setError('');
     try {
-      const data = await getSellerProducts();
-      setProducts(data || []);
+      if (!sellerId) { setProducts([]); setLoading(false); return; }
+      const data = await getSellerProducts(sellerId);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
       setError('Error cargando productos');
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -32,10 +39,7 @@ export default function ProductList({ onEditProduct }) {
         show: true,
         title: 'Desactivar Producto',
         message: `¿Desactivar "${product.title}"? Podrás activarlo luego.`,
-        onConfirm: async () => {
-          await handleToggleConfirmed(product);
-          closeConfirm();
-        }
+        onConfirm: async () => { await handleToggleConfirmed(product); closeConfirm(); }
       });
     } else {
       handleToggleConfirmed(product);
@@ -50,6 +54,25 @@ export default function ProductList({ onEditProduct }) {
     } catch (err) {
       console.error(err);
       setError('Error actualizando producto');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditClick = async (prod) => {
+    setLoading(true);
+    setError('');
+    try {
+      const detail = await getProductDetail(prod.id);
+      if (!detail) {
+        setError('No se pudo obtener el detalle del producto');
+        setLoading(false);
+        return;
+      }
+      onEditProduct(detail);
+    } catch (err) {
+      console.error("Error fetching product detail:", err);
+      setError('Error cargando detalle del producto');
     } finally {
       setLoading(false);
     }
@@ -77,13 +100,12 @@ export default function ProductList({ onEditProduct }) {
             <option value="active">Activos</option>
             <option value="inactive">Inactivos</option>
           </select>
-          <button className="btn btn-primary btn-sm" onClick={()=> onEditProduct(null)}><i className="fas fa-plus me-1"></i>Nuevo</button>
+          <button className="btn btn-primary btn-sm" onClick={() => onEditProduct(null)}><i className="fas fa-plus me-1"></i>Nuevo</button>
         </div>
       </div>
 
       <div className="card-body">
         {error && <div className="alert alert-danger">{error}</div>}
-
         <div className="table-responsive">
           <table className="table table-dark table-borderless mb-0">
             <thead>
@@ -93,7 +115,7 @@ export default function ProductList({ onEditProduct }) {
             </thead>
             <tbody>
               {filtered.map(product => {
-                const thumb = (product.images && product.images.length>0) ? (product.images.find(i=>i.isPrimary)?.dataUrl || product.images[0].dataUrl) : null;
+                const thumb = (product.primaryImageDataUrl) ? product.primaryImageDataUrl : (product.imageUrls && product.imageUrls.length>0 ? product.imageUrls[0] : null);
                 const stockStatus = getStockStatus(product.availableStock || 0);
                 return (
                   <tr key={product.id}>
@@ -118,7 +140,7 @@ export default function ProductList({ onEditProduct }) {
                     <td><span className={`badge ${product.featured ? 'bg-warning' : 'bg-secondary'}`}>{product.featured ? 'Sí' : 'No'}</span></td>
                     <td>
                       <div className="btn-group btn-group-sm">
-                        <button className="btn btn-outline-primary" onClick={()=> onEditProduct(product) } title="Editar producto"><i className="fas fa-edit"></i></button>
+                        <button className="btn btn-outline-primary" onClick={() => handleEditClick(product)} title="Editar producto"><i className="fas fa-edit"></i></button>
                         <button className="btn btn-outline-warning" onClick={()=> requestToggleStatus(product) } title={product.active ? 'Desactivar' : 'Activar'}><i className={`fas ${product.active ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
                       </div>
                     </td>
@@ -132,7 +154,6 @@ export default function ProductList({ onEditProduct }) {
         {filtered.length === 0 && <div className="text-center text-muted py-5">{products.length===0 ? (
           <div><i className="fas fa-box fa-3x mb-3"></i><h5>No tienes productos</h5><p>Agrega tu primer producto</p><button className="btn btn-primary" onClick={()=>onEditProduct(null)}><i className="fas fa-plus me-2"></i>Crear</button></div>
         ) : (<div><i className="fas fa-filter fa-3x mb-3"></i><h5>No hay productos con los filtros</h5><button className="btn btn-outline-primary" onClick={()=>setStatusFilter('all')}>Mostrar todos</button></div>)}</div>}
-
       </div>
 
       <ConfirmModal show={confirm.show} title={confirm.title} message={confirm.message} onConfirm={()=>{ confirm.onConfirm && confirm.onConfirm(); }} onCancel={closeConfirm} confirmText="Desactivar" cancelText="Cancelar" />
