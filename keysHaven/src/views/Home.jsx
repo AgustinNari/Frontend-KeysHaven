@@ -216,17 +216,23 @@ export default function Home() {
               <div
                 key={cat.id || i}
                 className="col-6 col-md-4 col-lg-2 position-relative overflow-hidden rounded shadow"
+              ><button
+                type="button"
+                onClick={() => navigate(`/catalog?categoryId=${encodeURIComponent(cat.id)}`)}
+                className="border-0 bg-transparent p-0 text-start w-100"
+                style={{ cursor: "pointer" }}
               >
                 <img
                   src={HomeBanner}
                   width={80}
                   height={70}
                   className="w-100 rounded"
-                  alt={cat.descripion}
+                  alt={cat.description || cat.descripion || `Categoria ${cat.id}`}
                 />
                 <div className="position-absolute bottom-0 start-0 w-100 p-2 text-white bg-dark bg-opacity-50 fw-bold">
-                  {cat.description}
+                  {cat.description || cat.name || `Categoria ${cat.id}`}
                 </div>
+              </button>
               </div>
             ))}
           </div>

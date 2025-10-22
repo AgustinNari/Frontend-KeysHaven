@@ -30,7 +30,21 @@ export default function Catalog() {
   const [loading, setLoading] = useState(false);
   const [categoriesOptions, setCategoriesOptions] = useState([]);
 
+  const queryCategoryId = queryParams.get("categoryId");
+
   const { add } = useCart();
+
+  useEffect(() => {
+    if (queryCategoryId) {
+      const idNum = Number(queryCategoryId);
+      if (!Number.isNaN(idNum)) {
+        setAppliedFilters(prev => ({ ...prev, categories: [idNum] }));
+        setWorkingFilters(prev => ({ ...prev, categories: [idNum] }));
+        setPage(1);
+      }
+    }
+  }, [queryCategoryId]);
+
 
   useEffect(() => {
     if (querySellerId) {
@@ -107,6 +121,11 @@ export default function Catalog() {
     if (querySellerId) {
       setWorkingFilters({ sellerId: Number(querySellerId) });
       setAppliedFilters({ sellerId: Number(querySellerId) });
+      setSearchText("");
+    } else if (queryCategoryId) {
+      const idNum = Number(queryCategoryId);
+      setWorkingFilters({ categories: [idNum] });
+      setAppliedFilters({ categories: [idNum] });
       setSearchText("");
     } else {
       setWorkingFilters({});
