@@ -218,7 +218,7 @@ export default function Home() {
                 className="col-6 col-md-4 col-lg-2 position-relative overflow-hidden rounded shadow"
               >
                 <img
-                  src={"url('/src/assets/keyLogo.svg')"}
+                  src={HomeBanner}
                   width={80}
                   height={70}
                   className="w-100 rounded"
