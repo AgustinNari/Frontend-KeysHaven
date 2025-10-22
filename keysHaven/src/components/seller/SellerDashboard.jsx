@@ -1,20 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { updateUser } from '../../services/usersService';
+
 import ProductList from './ProductList';
 import ProductForm from './ProductForm';
 import KeyManagement from './KeyManagement';
 import SalesAnalytics from './SalesAnalytics';
 import SellerCoupons from './SellerCoupons';
-import { 
-  getSellerProducts, 
-  createProduct, 
-  updateProduct,
-  deleteProduct,
-  getSellerStats,
-  getSellerOrders
-} from '../../services/sellerService';
-import { mockUsers } from '../../data/mockData';
+import ErrorBoundary from '../common/ErrorBoundary';
 
 export default function SellerDashboard() {
+  const { user, loading: authLoading, isAuthenticated, hasRole, refreshUser, setUser } = useAuth();
+  const navigate = useNavigate();
+
   const [activeSection, setActiveSection] = useState('dashboard');
   const [editingProduct, setEditingProduct] = useState(null);
   const [sellerData, setSellerData] = useState({
@@ -28,54 +27,51 @@ export default function SellerDashboard() {
   });
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [descriptionLoading, setDescriptionLoading] = useState(false);
+  const [descriptionError, setDescriptionError] = useState('');
 
-  // Cargar datos del vendedor desde mockUsers
   useEffect(() => {
-    loadSellerData();
-  }, []);
-
-  const loadSellerData = () => {
-    try {
-      // Buscar el usuario vendedor (ID 2 en mockUsers)
-      const sellerUser = mockUsers.find(user => user.id === 2 && user.role === 'SELLER');
-      
-      if (sellerUser) {
-        setSellerData({
-          displayName: sellerUser.displayName || '',
-          firstName: sellerUser.firstName || '',
-          lastName: sellerUser.lastName || '',
-          email: sellerUser.email || '',
-          phone: sellerUser.phone || '',
-          country: sellerUser.country || '',
-          sellerDescription: sellerUser.sellerDescription || ''
-        });
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        navigate('/login', { replace: true });
+      } else if (!hasRole || !hasRole('SELLER')) {
+        if (user?.role !== 'SELLER') navigate('/403', { replace: true });
+      } else {
+        if (user) {
+          setSellerData({
+            displayName: user.displayName || '',
+            firstName: user.firstName || '',
+            lastName: user.lastName || '',
+            email: user.email || '',
+            phone: user.phone || '',
+            country: user.country || '',
+            sellerDescription: user.sellerDescription || ''
+          });
+        }
       }
-    } catch (error) {
-      console.error('Error cargando datos del vendedor:', error);
     }
-  };
+  }, [authLoading, isAuthenticated, hasRole, navigate, user]);
 
   const handleUpdateDescription = async () => {
-    if (!sellerData.sellerDescription.trim()) return;
-    
+    if (!sellerData.sellerDescription || !sellerData.sellerDescription.trim()) return;
     setDescriptionLoading(true);
+    setDescriptionError('');
     try {
-      // Simulación de actualización - en una app real esto llamaría a la API
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Actualizar el mockUser (en una app real esto se haría en el backend)
-      const sellerIndex = mockUsers.findIndex(user => user.id === 2);
-      if (sellerIndex !== -1) {
-        mockUsers[sellerIndex] = {
-          ...mockUsers[sellerIndex],
-          sellerDescription: sellerData.sellerDescription
-        };
-      }
-      
+      const updatedUser = await updateUser(user.id, { sellerDescription: sellerData.sellerDescription });
+      setSellerData(prev => ({ ...prev, sellerDescription: updatedUser.sellerDescription ?? sellerData.sellerDescription }));
       setIsEditingDescription(false);
-      console.log('Descripción actualizada:', sellerData.sellerDescription);
-    } catch (error) {
-      console.error('Error actualizando descripción:', error);
+
+      try {
+        if (typeof refreshUser === 'function') {
+          await refreshUser();
+        } else if (typeof setUser === 'function') {
+          setUser(updatedUser);
+        }
+      } catch (ctxErr) {
+        console.warn("No se pudo refrescar AuthContext:", ctxErr);
+      }
+    } catch (err) {
+      console.error("Error actualizando descripción:", err);
+      setDescriptionError(err?.message || 'Error actualizando descripción');
     } finally {
       setDescriptionLoading(false);
     }
@@ -86,77 +82,39 @@ export default function SellerDashboard() {
       case 'dashboard':
         return (
           <div>
-            {/* Sección de descripción del vendedor */}
             <div className="card bg-primary-dark border-0 mb-4">
               <div className="card-header bg-primary-mid d-flex justify-content-between align-items-center">
                 <h5 className="text-primary-light mb-0">Descripción del Vendedor</h5>
                 {!isEditingDescription ? (
-                  <button 
-                    className="btn btn-outline-primary btn-sm"
-                    onClick={() => setIsEditingDescription(true)}
-                  >
-                    <i className="fas fa-edit me-1"></i>
-                    Editar Descripción
+                  <button className="btn btn-outline-primary btn-sm" onClick={() => setIsEditingDescription(true)}>
+                    <i className="fas fa-edit me-1"></i> Editar Descripción
                   </button>
                 ) : (
                   <div className="btn-group btn-group-sm">
-                    <button 
-                      className="btn btn-primary btn-sm"
-                      onClick={handleUpdateDescription}
-                      disabled={descriptionLoading || !sellerData.sellerDescription.trim()}
-                    >
-                      {descriptionLoading ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-1" role="status"></span>
-                          Guardando...
-                        </>
-                      ) : (
-                        <>
-                          <i className="fas fa-check me-1"></i>
-                          Guardar
-                        </>
-                      )}
+                    <button className="btn btn-primary btn-sm" onClick={handleUpdateDescription} disabled={descriptionLoading}>
+                      {descriptionLoading ? (<><span className="spinner-border spinner-border-sm me-1"></span>Guardando...</>) : (<> <i className="fas fa-check me-1"></i> Guardar</>)}
                     </button>
-                    <button 
-                      className="btn btn-outline-secondary btn-sm"
-                      onClick={() => {
-                        setIsEditingDescription(false);
-                        loadSellerData(); // Recargar valor original
-                      }}
-                      disabled={descriptionLoading}
-                    >
-                      <i className="fas fa-times me-1"></i>
-                      Cancelar
+                    <button className="btn btn-outline-secondary btn-sm" onClick={() => { setIsEditingDescription(false); setSellerData(prev => ({ ...prev, sellerDescription: user?.sellerDescription || '' })); }}>
+                      <i className="fas fa-times me-1"></i> Cancelar
                     </button>
                   </div>
                 )}
               </div>
               <div className="card-body">
+                {descriptionError && <div className="alert alert-danger">{descriptionError}</div>}
                 {isEditingDescription ? (
                   <div>
-                    <textarea
-                      className="form-control bg-dark border-secondary text-white"
-                      rows="4"
-                      value={sellerData.sellerDescription}
-                      onChange={(e) => setSellerData({...sellerData, sellerDescription: e.target.value})}
-                      placeholder="Describe tu negocio, experiencia, tipos de productos que ofreces, etc..."
-                      disabled={descriptionLoading}
-                    />
-                    <small className="text-muted mt-2">
-                      Esta descripción será visible para los compradores en tu perfil de vendedor.
-                    </small>
+                    <textarea className="form-control bg-dark border-secondary text-white" rows="4" value={sellerData.sellerDescription} onChange={(e) => setSellerData({ ...sellerData, sellerDescription: e.target.value })} />
+                    <small className="text-muted mt-2">Esta descripción será visible para los compradores en tu perfil de vendedor.</small>
                   </div>
                 ) : (
                   <div>
-                    <p className="text-primary-light mb-0">
-                      {sellerData.sellerDescription || 'No hay descripción disponible. Haz clic en "Editar Descripción" para agregar una.'}
-                    </p>
+                    <p className="text-primary-light mb-0">{sellerData.sellerDescription || 'No hay descripción disponible. Haz clic en "Editar Descripción" para agregar una.'}</p>
                   </div>
                 )}
               </div>
             </div>
-            
-            {/* Información del vendedor */}
+
             <div className="card bg-primary-dark border-0 mb-4">
               <div className="card-header bg-primary-mid">
                 <h5 className="text-primary-light mb-0">Información del Vendedor</h5>
@@ -186,71 +144,59 @@ export default function SellerDashboard() {
                 </div>
               </div>
             </div>
-            
-            {/* Dashboard normal */}
-            <SalesAnalytics />
+
+            <SalesAnalytics sellerId={user?.id} />
           </div>
         );
+
       case 'products':
-        return <ProductList onEditProduct={(product) => {
-          setEditingProduct(product);
-          setActiveSection('add-product');
-        }} />;
+        return <ProductList onEditProduct={async (product) => { setEditingProduct(product); setActiveSection('add-product'); }} />;
+
       case 'add-product':
-        return <ProductForm 
-          product={editingProduct} 
-          onSuccess={() => {
-            setEditingProduct(null);
-            setActiveSection('products');
-          }} 
-        />;
+        return (
+          <ErrorBoundary>
+            <ProductForm product={editingProduct} onSuccess={() => { setEditingProduct(null); setActiveSection('products'); }} />
+          </ErrorBoundary>
+        );
       case 'keys':
         return <KeyManagement />;
+
       case 'coupons':
         return <SellerCoupons />;
+
       default:
-        return <SalesAnalytics />;
+        return <SalesAnalytics sellerId={user?.id} />;
     }
   };
 
-  const getSectionTitle = () => {
-    switch (activeSection) {
-      case 'dashboard': return 'Dashboard de Ventas';
-      case 'products': return 'Mis Productos';
-      case 'add-product': return editingProduct ? 'Editar Producto' : 'Crear Producto';
-      case 'keys': return 'Gestión de Claves';
-      case 'coupons': return 'Cupones y Descuentos';
-      default: return 'Dashboard de Ventas';
-    }
-  };
+  if (authLoading) {
+    return (
+      <div className="text-center text-muted py-5">
+        <div className="spinner-border" role="status"></div>
+        <div className="mt-2">Verificando permisos...</div>
+      </div>
+    );
+  }
 
   return (
     <div data-bs-theme="dark" className="bg-body text-body min-vh-100">
       <div className="container-fluid py-4">
         <div className="row">
-          {/* Sidebar */}
           <div className="col-md-3 col-lg-2">
-            <div className="card bg-primary-dark border-0 sticky-top" style={{top: '86px'}}>
+            <div className="card bg-primary-dark border-0 sticky-top" style={{ top: '86px' }}>
               <div className="card-body">
                 <div className="text-center mb-4">
-                  <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" 
-                       style={{width: '60px', height: '60px'}}>
+                  <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" style={{ width: '60px', height: '60px' }}>
                     <span className="fw-bold">V</span>
                   </div>
                   <h6 className="text-primary-light mt-2 mb-1">{sellerData.displayName}</h6>
                   <small className="text-muted">Vendedor Verificado</small>
                   {sellerData.sellerDescription && (
                     <div className="mt-2">
-                      <small className="text-muted" style={{fontSize: '0.7rem'}}>
-                        {sellerData.sellerDescription.length > 50 
-                          ? `${sellerData.sellerDescription.substring(0, 50)}...` 
-                          : sellerData.sellerDescription
-                        }
-                      </small>
+                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>{sellerData.sellerDescription.length > 50 ? `${sellerData.sellerDescription.substring(0, 50)}...` : sellerData.sellerDescription}</small>
                     </div>
                   )}
                 </div>
-
                 <nav className="nav flex-column">
                   {[
                     { id: 'dashboard', icon: 'fas fa-chart-bar', label: 'Dashboard' },
@@ -259,18 +205,8 @@ export default function SellerDashboard() {
                     { id: 'keys', icon: 'fas fa-key', label: 'Gestión de Claves' },
                     { id: 'coupons', icon: 'fas fa-tag', label: 'Cupones' }
                   ].map(item => (
-                    <button 
-                      key={item.id}
-                      className={`nav-link text-start btn btn-link text-decoration-none p-2 mb-1 ${
-                        activeSection === item.id ? 'bg-primary-mid text-primary' : 'text-primary-light'
-                      }`}
-                      onClick={() => {
-                        setActiveSection(item.id);
-                        if (item.id !== 'add-product') setEditingProduct(null);
-                      }}
-                    >
-                      <i className={`${item.icon} me-2`}></i>
-                      {item.label}
+                    <button key={item.id} className={`nav-link text-start btn btn-link text-decoration-none p-2 mb-1 ${activeSection === item.id ? 'bg-primary-mid text-primary' : 'text-primary-light'}`} onClick={() => { setActiveSection(item.id); if (item.id !== 'add-product') setEditingProduct(null); }}>
+                      <i className={`${item.icon} me-2`}></i>{item.label}
                     </button>
                   ))}
                 </nav>
@@ -278,34 +214,17 @@ export default function SellerDashboard() {
             </div>
           </div>
 
-          {/* Contenido Principal */}
           <div className="col-md-9 col-lg-10">
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <h1 className="text-primary-light">{getSectionTitle()}</h1>
+              <h1 className="text-primary-light">{activeSection === 'add-product' ? (editingProduct ? 'Editar Producto' : 'Crear Producto') : (activeSection === 'products' ? 'Mis Productos' : activeSection === 'dashboard' ? 'Dashboard de Ventas' : 'Dashboard')}</h1>
               {activeSection === 'add-product' && editingProduct && (
-                <button 
-                  className="btn btn-outline-secondary"
-                  onClick={() => {
-                    setEditingProduct(null);
-                    setActiveSection('products');
-                  }}
-                >
-                  ← Volver a productos
-                </button>
+                <button className="btn btn-outline-secondary" onClick={() => { setEditingProduct(null); setActiveSection('products'); }}>← Volver a productos</button>
               )}
               {activeSection === 'products' && (
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => {
-                    setEditingProduct(null);
-                    setActiveSection('add-product');
-                  }}
-                >
-                  <i className="fas fa-plus me-2"></i>
-                  Nuevo Producto
-                </button>
+                <button className="btn btn-primary" onClick={() => { setEditingProduct(null); setActiveSection('add-product'); }}><i className="fas fa-plus me-2"></i> Nuevo Producto</button>
               )}
             </div>
+
             {renderContent()}
           </div>
         </div>

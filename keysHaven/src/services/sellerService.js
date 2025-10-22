@@ -1,294 +1,311 @@
-import { mockProducts, mockCategories, mockDigitalKeys, mockSellerDiscounts, mockOrders, mockUsers } from '../data/mockData';
+import apiClient from "../api/apiClient";
 
-const delay = (ms) => new Promise(res => setTimeout(res, ms));
-const _genId = (prefix='') => Date.now() + Math.floor(Math.random()*1000);
-
-
-function _generateCode(prefix = 'CPN') {
-  return `${prefix}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+function buildQueryString(params = {}) {
+  const usp = new URLSearchParams();
+  for (const k of Object.keys(params || {})) {
+    const val = params[k];
+    if (val === undefined || val === null) continue;
+    if (Array.isArray(val)) val.forEach(v => usp.append(k, String(v)));
+    else usp.append(k, String(val));
+  }
+  const qs = usp.toString();
+  return qs ? `?${qs}` : "";
 }
-let sellerProducts = mockProducts
-  .filter(p => p.sellerId === 2)
-  .map(p => {
-    const images = (p.imageUrls || []).map((url, idx) => ({
-      id: _genId('img'),
-      productId: p.id,
-      name: `Imagen ${idx+1}`,
-      isPrimary: idx === 0,
-      dataUrl: url,
-      contentType: null
-    }));
-    return { ...p, images };
-  });
 
-let digitalKeys = [...mockDigitalKeys];
-let sellerDiscounts = [...mockSellerDiscounts];
+function dataUrlToBlob(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== "string") return null;
+  if (dataUrl.startsWith("data:")) {
+    const parts = dataUrl.split(",");
+    const meta = parts[0];
+    const base64 = parts[1];
+    const mime = (meta.split(":")[1] || "application/octet-stream").split(";")[0];
+    const binary = atob(base64);
+    const len = binary.length;
+    const u8 = new Uint8Array(len);
+    for (let i = 0; i < len; i++) u8[i] = binary.charCodeAt(i);
+    return new Blob([u8], { type: mime });
+  }
+  return null;
+}
 
-export const getSellerProducts = async () => { await delay(300); return sellerProducts.map(p=> ({ ...p, images: (p.images||[]).map(i=>({...i})) })); };
+
+
+export const getSellerProducts = async (sellerId) => {
+  try {
+    const qs = buildQueryString({ page: 0, size: 2147483647, sellerId });
+    const res = await apiClient.apiFetch(`/api/v1/products/filtered/all${qs}`, { method: "GET" });
+    if (!res) return [];
+    if (Array.isArray(res)) return res;
+    return res.content ?? res.items ?? [];
+  } catch (err) {
+    console.error("getSellerProducts error:", err);
+    return [];
+  }
+};
+
+export const getSellerActiveProducts = async (sellerId) => {
+  try {
+    const qs = buildQueryString({ page: 0, size: 2147483647, sellerId });
+    const res = await apiClient.apiFetch(`/api/v1/products/filtered/active${qs}`, { method: "GET" });
+    if (!res) return [];
+    return res.content ?? res.items ?? [];
+  } catch (err) {
+    console.error("getSellerActiveProducts error:", err);
+    return [];
+  }
+};
+
+
+export const getProductDetail = async (productId) => {
+  try {
+    if (!productId) return null;
+    return await apiClient.apiFetch(`/products/${productId}/detail`, { method: "GET" });
+  } catch (err) {
+    console.error("getProductDetail error:", err);
+    return null;
+  }
+};
 
 export const createProduct = async (productData) => {
-  await delay(400);
-  const imagesInput = productData.images || productData.imageUrls || [];
-  if (!Array.isArray(imagesInput) || imagesInput.length === 0) throw new Error('El producto debe tener al menos una imagen');
-
-  const newId = _genId('prod');
-  const images = imagesInput.map((img, idx) => ({
-    id: _genId('img'),
-    productId: newId,
-    name: img.name || `Imagen ${idx+1}`,
-    isPrimary: !!img.isPrimary || idx === 0,
-    dataUrl: img.dataUrl || img.url || img,
-    contentType: img.contentType || null
-  }));
-  if (!images.some(i=>i.isPrimary)) images[0].isPrimary = true;
-  if (images.filter(i=>i.isPrimary).length > 1) {
-    let found=false;
-    images.forEach(im => { if (im.isPrimary){ if (!found) found=true; else im.isPrimary=false }});
+  try {
+    return await apiClient.apiFetch(`/products`, { method: "POST", body: JSON.stringify(productData) });
+  } catch (err) {
+    console.error("createProduct error:", err);
+    throw err;
   }
-
-  const newProduct = {
-    id: newId, sellerId: 2, sellerDisplayName: "Sofía Ramírez",
-    sku: productData.sku || null,
-    title: productData.title || '',
-    description: productData.description || '',
-    price: productData.price || 0, currency: productData.currency || 'USD',
-    categories: (productData.categoryIds || []).map(id => ({ id })),
-    platform: productData.platform || 'PC', region: productData.region || 'Global',
-    minPurchaseQuantity: productData.minPurchaseQuantity || 1,
-    maxPurchaseQuantity: productData.maxPurchaseQuantity || 10,
-    releaseDate: productData.releaseDate || null,
-    developer: productData.developer || null, publisher: productData.publisher || null,
-    metacriticScore: productData.metacriticScore ?? null,
-    availableStock: productData.availableStock ?? 0, featured: productData.featured ?? false,
-    active: productData.active ?? true,
-    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    images
-  };
-
-  sellerProducts.push(newProduct);
-  return { ...newProduct, images: newProduct.images.map(i=>({...i})) };
 };
 
 export const updateProduct = async (productId, productData) => {
-  await delay(300);
-  const idx = sellerProducts.findIndex(p => p.id === productId);
-  if (idx === -1) throw new Error('Producto no encontrado');
-
-  if (Array.isArray(productData.images)) {
-    const imgs = productData.images.map((img,i) => ({
-      id: img.id || _genId('img'),
-      productId,
-      name: img.name || `Imagen ${i+1}`,
-      isPrimary: !!img.isPrimary,
-      dataUrl: img.dataUrl || img.url || img,
-      contentType: img.contentType || null
-    }));
-    if (!imgs.some(x=>x.isPrimary) && imgs.length>0) imgs[0].isPrimary=true;
-    productData = { ...productData, images: imgs };
+  try {
+    return await apiClient.apiFetch(`/products/${productId}`, { method: "PUT", body: JSON.stringify(productData) });
+  } catch (err) {
+    console.error("updateProduct error:", err);
+    throw err;
   }
-  sellerProducts[idx] = { ...sellerProducts[idx], ...productData, updatedAt: new Date().toISOString() };
-  return { ...sellerProducts[idx], images: sellerProducts[idx].images.map(i=>({...i})) };
 };
 
-export const deleteProduct = async (productId) => {
-  await delay(250);
-  const idx = sellerProducts.findIndex(p => p.id === productId);
-  if (idx === -1) throw new Error('Producto no encontrado');
-  sellerProducts[idx].active = false;
-  sellerProducts[idx].updatedAt = new Date().toISOString();
-  return { success: true, product: { ...sellerProducts[idx] } };
-};
-
-
-export const addProductImage = async (productId, { name, dataUrl, contentType }) => {
-  await delay(250);
-  const pIdx = sellerProducts.findIndex(p=>p.id===productId);
-  if (pIdx === -1) throw new Error('Producto no encontrado');
-  const imgs = sellerProducts[pIdx].images || [];
-  const newImg = { id: _genId('img'), productId, name: name || `Imagen ${imgs.length+1}`, isPrimary: imgs.length===0, dataUrl, contentType: contentType || null };
-  if (newImg.isPrimary) imgs.forEach(i=> i.isPrimary=false);
-  imgs.push(newImg);
-  sellerProducts[pIdx].images = imgs;
-  sellerProducts[pIdx].updatedAt = new Date().toISOString();
-  return { ...newImg };
-};
-
-export const updateProductImage = async (productId, imageId, { name, isPrimary, dataUrl, contentType }) => {
-  await delay(250);
-  const pIdx = sellerProducts.findIndex(p=>p.id===productId);
-  if (pIdx === -1) throw new Error('Producto no encontrado');
-  const imgs = sellerProducts[pIdx].images || [];
-  const iIdx = imgs.findIndex(i=>i.id===imageId);
-  if (iIdx === -1) throw new Error('Imagen no encontrada');
-  if (typeof name === 'string') imgs[iIdx].name = name;
-  if (typeof dataUrl === 'string' && dataUrl.trim() !== '') { imgs[iIdx].dataUrl = dataUrl; imgs[iIdx].contentType = contentType || imgs[iIdx].contentType || null; }
-  if (typeof isPrimary === 'boolean') {
-    if (isPrimary) imgs.forEach((im,ii)=> imgs[ii].isPrimary = (im.id === imageId));
-    else { imgs[iIdx].isPrimary = false; if (!imgs.some(im=>im.isPrimary) && imgs.length>0) imgs[0].isPrimary = true; }
+export const toggleProductActivity = async (productId, isActive) => {
+  try {
+    return await apiClient.apiFetch(`/products/${productId}/active?active=${isActive}`, { method: "PATCH" });
+  } catch (err) {
+    console.error("toggleProductActivity error:", err);
+    throw err;
   }
-  sellerProducts[pIdx].images = imgs;
-  sellerProducts[pIdx].updatedAt = new Date().toISOString();
-  return { ...imgs[iIdx] };
 };
 
-export const deleteProductImage = async (productId, imageId) => {
-  await delay(200);
-  const pIdx = sellerProducts.findIndex(p=>p.id===productId);
-  if (pIdx === -1) throw new Error('Producto no encontrado');
-  const imgs = sellerProducts[pIdx].images || [];
-  if (imgs.length <= 1) throw new Error('No se puede eliminar la última imagen del producto');
-  const iIdx = imgs.findIndex(i=>i.id===imageId);
-  if (iIdx === -1) throw new Error('Imagen no encontrada');
-  const removed = imgs.splice(iIdx,1)[0];
-  if (removed.isPrimary && imgs.length>0) imgs[0].isPrimary = true;
-  sellerProducts[pIdx].images = imgs;
-  sellerProducts[pIdx].updatedAt = new Date().toISOString();
-  return { success: true, deletedImageId: removed.id };
+export const addProductImage = async (productId, { name, dataUrl, contentType, isPrimary = false }) => {
+  const form = new FormData();
+  form.append("productId", String(productId));
+  form.append("name", name || "");
+  form.append("isPrimary", String(Boolean(isPrimary)));
+
+  try {
+
+    if (dataUrl && typeof dataUrl === "string") {
+      if (dataUrl.startsWith("data:")) {
+        const blob = dataUrlToBlob(dataUrl);
+        if (!blob) throw new Error("No se pudo convertir data URL a archivo");
+        form.append("file", blob, name || "image.png");
+      } else if (dataUrl.startsWith("http")) {
+
+        try {
+          const resp = await fetch(dataUrl);
+          if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
+          const blob = await resp.blob();
+          const filename = (name || "image").replace(/\s+/g, "_") + ".png";
+          form.append("file", blob, filename);
+        } catch (err) {
+          console.warn("No se pudo obtener la URL remota para subirla al backend (CORS?):", err);
+          throw new Error("No se pudo obtener la imagen remota (posible problema de CORS). Sube un archivo en su lugar.");
+        }
+      } else {
+        throw new Error("Formato de imagen inválido. Usa un archivo o un dataURL o una URL pública (con CORS).");
+      }
+    } else {
+      throw new Error("Imagen inválida: no hay dataUrl ni archivo");
+    }
+
+    return await apiClient.apiFetch(`/product_images`, { method: "POST", body: form });
+  } catch (err) {
+    console.error("addProductImage error:", err);
+    throw err;
+  }
+};
+
+export const updateProductImage = async (imageId, { name, isPrimary, dataUrl, contentType }) => {
+  const form = new FormData();
+  if (typeof name !== "undefined") form.append("name", name);
+  if (typeof isPrimary !== "undefined") form.append("isPrimary", String(Boolean(isPrimary)));
+  try {
+    if (dataUrl && dataUrl.startsWith("data:")) {
+      const blob = dataUrlToBlob(dataUrl);
+      if (blob) form.append("file", blob, name || "image.png");
+    } else if (dataUrl && dataUrl.startsWith("http")) {
+
+      const resp = await fetch(dataUrl);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const filename = (name || "image").replace(/\s+/g, "_") + ".png";
+        form.append("file", blob, filename);
+      }
+    }
+    return await apiClient.apiFetch(`/product_images/${imageId}`, { method: "PUT", body: form });
+  } catch (err) {
+    console.error("updateProductImage error:", err);
+    throw err;
+  }
+};
+
+export const deleteProductImage = async (imageId) => {
+  try {
+    return await apiClient.apiFetch(`/product_images/${imageId}`, { method: "DELETE" });
+  } catch (err) {
+    console.error("deleteProductImage error:", err);
+    throw err;
+  }
+};
+
+export const setPrimaryImage = async (imageId) => {
+  try {
+    return await apiClient.apiFetch(`/product_images/${imageId}/primary`, { method: "PATCH" });
+  } catch (err) {
+    console.error("setPrimaryImage error:", err);
+    throw err;
+  }
 };
 
 
-export const getCategories = async () => { await delay(200); return mockCategories; };
-export const getSellerStats = async () => { await delay(300); return { totalSales:45, totalRevenue:2245.5, activeProducts: sellerProducts.filter(p=>p.active).length, totalProducts: sellerProducts.length, averageRating:4.7, pendingOrders:3 }; };
-export const getSellerOrders = async () => { await delay(300); return mockOrders; };
-export const addDigitalKey = async (keyData) => { await delay(200); const newKey={ id: _genId('key'), ...keyData, used:false, createdAt: new Date().toISOString() }; digitalKeys.push(newKey); return newKey; };
-export const addBulkDigitalKeys = async (bulkKeyData) => { await delay(400); const newKeys = bulkKeyData.keyCodes.map((k,i)=>({ id:_genId('key')+i, productId: bulkKeyData.productId, keyCode: k, used:false, createdAt: new Date().toISOString() })); digitalKeys.push(...newKeys); return { success:true, keys: newKeys, count: newKeys.length }; };
-export const getProductKeys = async (productId) => { await delay(250); return digitalKeys.filter(k=>k.productId===parseInt(productId)); };
 
+export const getProductKeys = async (productId) => {
+  try {
+    return await apiClient.apiFetch(`/digital_keys/product/${productId}`, { method: "GET" });
+  } catch (err) {
+    console.error("getProductKeys error:", err);
+    return [];
+  }
+};
 
+export const addBulkDigitalKeys = async (payload) => {
+  try {
+    return await apiClient.apiFetch(`/digital_keys`, { method: "POST", body: JSON.stringify(payload) });
+  } catch (err) {
+    console.error("addBulkDigitalKeys error:", err);
+    throw err;
+  }
+};
 
-
-
-
-const SELLER_ID = 2;
 
 
 export const getSellerDiscounts = async () => {
-  await delay(250);
-
-  return sellerDiscounts.map(d => ({ ...d }));
+  try {
+    const qs = buildQueryString({ page: 0, size: 2147483647 });
+    const res = await apiClient.apiFetch(`/discounts/seller/me${qs}`, { method: "GET" });
+    if (!res) return [];
+    return res.content ?? res;
+  } catch (err) {
+    console.error("getSellerDiscounts error:", err);
+    return [];
+  }
 };
 
 export const createDiscount = async (discountData) => {
-  await delay(300);
-
-
-  const allowedScopes = ['PRODUCT', 'SELLER'];
-  const allowedTypes = ['PERCENT', 'FIXED'];
-
-  if (!discountData || !discountData.type || !allowedTypes.includes(discountData.type)) {
-    throw new Error('Tipo de descuento inválido (PERCENT o FIXED)');
+  const payload = { ...discountData, targetBuyerId: null };
+  try {
+    return await apiClient.apiFetch(`/discounts`, { method: "POST", body: JSON.stringify(payload) });
+  } catch (err) {
+    console.error("createDiscount error:", err);
+    throw err;
   }
-  if (!discountData.scope || !allowedScopes.includes(discountData.scope)) {
-    throw new Error('Scope inválido. Para sellers solo se permiten PRODUCT o SELLER');
-  }
-
-  const payload = { ...discountData };
-
-
-  payload.value = payload.value !== undefined && payload.value !== null ? Number(payload.value) : 0;
-
-  if (payload.type === 'PERCENT') {
-    if (Number.isNaN(payload.value) || payload.value < 0 || payload.value > 100) {
-      throw new Error('Valor de porcentaje inválido (0-100)');
-    }
-    payload.code = payload.code ? String(payload.code).toUpperCase() : null;
-    payload.targetBuyerId = null;
-  } else {
-    if (!payload.code || String(payload.code).trim() === '') {
-      payload.code = _generateCode('CPN');
-    } else {
-      payload.code = String(payload.code).toUpperCase();
-    }
-
-
-    if (!payload.targetBuyerId) {
-      const buyer = (mockUsers || []).find(u => u.role === 'BUYER' && u.id !== SELLER_ID);
-      if (!buyer) throw new Error('No hay compradores disponibles para asignar el cupón (mock)');
-      payload.targetBuyerId = buyer.id;
-    } else {
-
-      if (payload.targetBuyerId === SELLER_ID) {
-        throw new Error('No puedes asignar un cupón a ti mismo');
-      }
-    }
-
-    payload.value = Number(payload.value || 0);
-    if (Number.isNaN(payload.value) || payload.value < 0) throw new Error('Valor de monto fijo inválido');
-  }
-
-
-  if (payload.scope === 'PRODUCT') {
-    if (!payload.targetProductId) throw new Error('Debe seleccionar un producto objetivo cuando el scope es PRODUCT');
-
-    const productOk = (mockProducts || []).find(p => p.id === Number(payload.targetProductId) && p.sellerId === SELLER_ID);
-    if (!productOk) throw new Error('Producto inválido o no pertenece a este vendedor (mock)');
-  } else if (payload.scope === 'SELLER') {
-
-    payload.targetSellerId = SELLER_ID;
-    payload.targetProductId = null;
-  }
-
-  payload.id = _genId('d');
-  payload.active = true;
-  payload.createdAt = new Date().toISOString();
-  payload.startsAt = payload.startsAt ?? null;
-  payload.endsAt = payload.endsAt ?? null;
-  payload.expiresAt = payload.expiresAt ?? null;
-
-  sellerDiscounts.push(payload);
-  return { ...payload };
 };
 
 export const updateDiscount = async (discountId, discountData) => {
-  await delay(300);
-  const idx = sellerDiscounts.findIndex(d => d.id === discountId);
-  if (idx === -1) throw new Error('Descuento no encontrado');
-
-  const existing = { ...sellerDiscounts[idx] };
-  const next = { ...existing, ...discountData };
-
-
-  if (next.scope && !['PRODUCT','SELLER'].includes(next.scope)) {
-    throw new Error('Scope inválido. Sellers solo pueden PRODUCT o SELLER');
+  const payload = { ...discountData };
+  if (!("targetBuyerId" in payload)) payload.targetBuyerId = null;
+  try {
+    return await apiClient.apiFetch(`/discounts/${discountId}`, { method: "PUT", body: JSON.stringify(payload) });
+  } catch (err) {
+    console.error("updateDiscount error:", err);
+    throw err;
   }
+};
 
 
-  if (next.type === 'PERCENT') {
-    next.code = null;
-    next.targetBuyerId = null;
-    next.value = Number(next.value);
-    if (Number.isNaN(next.value) || next.value < 0 || next.value > 100) throw new Error('Valor de porcentaje inválido');
-  } else if (next.type === 'FIXED') {
 
-    next.value = Number(next.value || 0);
-    if (Number.isNaN(next.value) || next.value < 0) throw new Error('Valor de monto fijo inválido');
+export const getSellerOrders = async ({ sellerId, limit = 10, status } = {}) => {
+  if (!sellerId) return { items: [], total: 0 };
+  try {
+    const qs = buildQueryString({ page: 0, size: limit, status });
+    const resp = await apiClient.apiFetch(`/orders/seller/${sellerId}${qs}`, { method: "GET" });
+    if (!resp) return { items: [], total: 0 };
+    if (Array.isArray(resp)) return { items: resp, total: resp.length };
+    return { items: resp.content ?? resp.items ?? [], total: resp.totalElements ?? resp.total ?? 0 };
+  } catch (err) {
+    console.error("getSellerOrders error:", err);
+    return { items: [], total: 0 };
+  }
+};
 
-    if (!next.code || String(next.code).trim() === '') next.code = _generateCode('CPN');
 
-    if (!next.targetBuyerId) {
-      const buyer = (mockUsers || []).find(u => u.role === 'BUYER' && u.id !== SELLER_ID);
-      if (!buyer) throw new Error('No hay compradores disponibles (mock)');
-      next.targetBuyerId = buyer.id;
-    } else if (next.targetBuyerId === SELLER_ID) {
-      throw new Error('No puedes asignar un cupón a ti mismo');
+export const getSellerStats = async (sellerId) => {
+  try {
+    if (!sellerId) return null;
+    const sellerDetail = await apiClient.apiFetch(`/users/seller/${sellerId}/detail`, { method: "GET" });
+    if (!sellerDetail) return null;
+    const products = await getSellerProducts(sellerId);
+    const ordersResp = await getSellerOrders({ sellerId, limit: 1000 });
+    const orders = ordersResp.items || [];
+    const totalSales = orders.length;
+    let totalRevenue = 0;
+    orders.forEach(o => {
+      const amount = o.totalAmount ?? o.amount ?? 0;
+      totalRevenue += Number(amount || 0);
+    });
+    const activeProducts = (products || []).filter(p => p.active).length;
+    const totalProducts = (products || []).length;
+    return {
+      avgRating: sellerDetail.avgRating ?? 0,
+      ratingCount: sellerDetail.ratingCount ?? 0,
+      soldKeys: sellerDetail.soldKeys ?? 0,
+      amountSold: sellerDetail.amountSold ?? 0,
+      totalSales,
+      totalRevenue,
+      activeProducts,
+      totalProducts
+    };
+  } catch (err) {
+    console.warn("getSellerStats fallback: ", err);
+
+    try {
+      const products = await getSellerProducts(sellerId);
+      const ordersResp = await getSellerOrders({ sellerId, limit: 1000 });
+      const orders = ordersResp.items || [];
+      const totalSales = orders.length;
+      let totalRevenue = 0;
+      orders.forEach(o => {
+        const amount = o.totalAmount ?? o.amount ?? 0;
+        totalRevenue += Number(amount || 0);
+      });
+      const activeProducts = (products || []).filter(p => p.active).length;
+      const totalProducts = (products || []).length;
+      return { avgRating: 0, ratingCount: 0, soldKeys: 0, amountSold: 0, totalSales, totalRevenue, activeProducts, totalProducts };
+    } catch (err2) {
+      console.error("Error computing fallback stats:", err2);
+      return { avgRating: 0, ratingCount: 0, soldKeys: 0, amountSold: 0, totalSales: 0, totalRevenue: 0, activeProducts: 0, totalProducts: 0 };
     }
-  } else {
-    throw new Error('Tipo de descuento inválido');
   }
+};
 
 
-  if (next.scope === 'PRODUCT') {
-    if (!next.targetProductId) throw new Error('Debe seleccionar producto objetivo cuando scope = PRODUCT');
-    const prodOk = (mockProducts || []).find(p => p.id === Number(next.targetProductId) && p.sellerId === SELLER_ID);
-    if (!prodOk) throw new Error('Producto inválido o no pertenece a este vendedor (mock)');
-    next.targetSellerId = null;
-  } else if (next.scope === 'SELLER') {
-    next.targetSellerId = SELLER_ID;
-    next.targetProductId = null;
+export const getCategories = async () => {
+  try {
+    const qs = buildQueryString({ page: 0, size: 2147483647 });
+    const res = await apiClient.apiFetch(`/categories${qs}`, { method: "GET" });
+    if (!res) return [];
+
+    if (Array.isArray(res)) return res;
+    return res.content ?? [];
+  } catch (err) {
+    console.error("getCategories error:", err);
+    return [];
   }
-
-  if (typeof discountData.active === 'boolean') next.active = discountData.active;
-
-  sellerDiscounts[idx] = { ...next };
-  return { ...sellerDiscounts[idx] };
 };

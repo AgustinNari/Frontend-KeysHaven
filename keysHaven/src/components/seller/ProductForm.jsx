@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  createProduct, updateProduct, getCategories,
-  addProductImage, updateProductImage, deleteProductImage
+  createProduct,
+  updateProduct,
+  getCategories,
+  addProductImage,
+  updateProductImage,
+  deleteProductImage,
+  setPrimaryImage
 } from '../../services/sellerService';
 import ConfirmModal from '../profile/ConfirmModal';
 
@@ -43,13 +48,11 @@ export default function ProductForm({ product, onSuccess }) {
         images: (product.images || []).map(i => ({ id: i.id, name: i.name || '', dataUrl: i.dataUrl || '', isPrimary: !!i.isPrimary, contentType: i.contentType || null }))
       });
     } else {
-
       setFormData(prev => ({ ...prev, title:'', description:'', price:'', images: [] }));
     }
   }, [product]);
 
   const closeConfirm = () => setConfirm({ show:false, title:'', message:'', onConfirm:null });
-
 
   const fileToDataUrl = (file) => new Promise((res, rej) => {
     const reader = new FileReader();
@@ -57,6 +60,7 @@ export default function ProductForm({ product, onSuccess }) {
     reader.onerror = rej;
     reader.readAsDataURL(file);
   });
+
 
 
   const addImage = async () => {
@@ -73,20 +77,19 @@ export default function ProductForm({ product, onSuccess }) {
       }
 
       if (product && product.id) {
-        const added = await addProductImage(product.id, { name: newImg.name.trim(), dataUrl, contentType });
+
+        const added = await addProductImage(product.id, { name: newImg.name.trim(), dataUrl, contentType, isPrimary: false });
         setFormData(prev => ({
           ...prev,
           images: [...prev.images, { id: added.id, name: added.name, dataUrl: added.dataUrl, isPrimary: added.isPrimary, contentType: added.contentType }]
         }));
       } else {
-
         const tmpId = 't'+Math.random().toString(36).slice(2,9);
         setFormData(prev => ({
           ...prev,
           images: [...prev.images, { id: tmpId, name: newImg.name.trim(), dataUrl, isPrimary: prev.images.length===0, contentType }]
         }));
       }
-
 
       setNewImg({ name:'', file:null, url:'' });
       if (newFileRef.current) { newFileRef.current.value = ''; }
@@ -99,31 +102,37 @@ export default function ProductForm({ product, onSuccess }) {
     }
   };
 
-
   const setPrimary = async (img) => {
     setLoading(true);
+    setError('');
     try {
       if (product && product.id && String(img.id).startsWith('t') === false) {
-        await updateProductImage(product.id, img.id, { isPrimary: true });
+        await setPrimaryImage(img.id);
+        setFormData(prev => ({ ...prev, images: prev.images.map(i => ({ ...i, isPrimary: i.id === img.id })) }));
+      } else {
+        setFormData(prev => ({ ...prev, images: prev.images.map(i => ({ ...i, isPrimary: i.id === img.id })) }));
       }
-      setFormData(prev => ({ ...prev, images: prev.images.map(i => ({ ...i, isPrimary: i.id === img.id })) }));
     } catch (err) {
       console.error(err);
-      setError('Error marcando principal');
+      setError(err?.message || 'Error marcando imagen principal');
     } finally { setLoading(false); }
   };
-
 
   const replaceFile = async (imgId, file) => {
     if (!file) return;
     setLoading(true);
+    setError('');
     try {
       const r = await fileToDataUrl(file);
+
+      const current = formData.images.find(i => i.id === imgId);
+      if (!current) throw new Error('Imagen no encontrada');
+
       if (product && product.id && String(imgId).startsWith('t') === false) {
-        await updateProductImage(product.id, imgId, { dataUrl: r.dataUrl, contentType: r.contentType });
+
+        await updateProductImage(imgId, { dataUrl: r.dataUrl, contentType: r.contentType, isPrimary: !!current.isPrimary, name: current.name || '' });
       }
       setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === imgId ? { ...i, dataUrl: r.dataUrl, contentType: r.contentType } : i) }));
-
       if (replaceFileRefs.current[imgId]) replaceFileRefs.current[imgId].value = '';
     } catch (err) {
       console.error(err);
@@ -131,14 +140,21 @@ export default function ProductForm({ product, onSuccess }) {
     } finally { setLoading(false); }
   };
 
-
   const renameImage = async (imgId, newName) => {
+    setError('');
     setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === imgId ? { ...i, name: newName } : i) }));
-    if (product && product.id && String(imgId).startsWith('t') === false) {
-      try { await updateProductImage(product.id, imgId, { name: newName }); } catch (err) { console.error('Error guardando nombre', err); }
+
+    try {
+      const current = formData.images.find(i => i.id === imgId) || {};
+      if (product && product.id && String(imgId).startsWith('t') === false) {
+
+        await updateProductImage(imgId, { name: newName, isPrimary: !!current.isPrimary });
+      }
+    } catch (err) {
+      console.error('Error guardando nombre', err);
+      setError(err?.message || 'Error guardando nombre');
     }
   };
-
 
   const requestDeleteImage = (img) => {
     if ((formData.images || []).length <= 1) { setError('No se puede eliminar la última imagen'); return; }
@@ -148,19 +164,24 @@ export default function ProductForm({ product, onSuccess }) {
       message: `¿Eliminar "${img.name}"?`,
       onConfirm: async () => {
         setLoading(true);
+        setError('');
         try {
           if (product && product.id && String(img.id).startsWith('t') === false) {
-            await deleteProductImage(product.id, img.id);
+            await deleteProductImage(img.id);
             setFormData(prev => ({ ...prev, images: prev.images.filter(i => i.id !== img.id) }));
           } else {
+
             setFormData(prev => ({ ...prev, images: prev.images.filter(i => i.id !== img.id) }));
           }
         } catch (err) {
-          console.error(err); setError(err.message || 'Error eliminando imagen');
+          console.error(err);
+          setError(err?.message || 'Error eliminando imagen');
         } finally { setLoading(false); closeConfirm(); }
       }
     });
   };
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -171,8 +192,6 @@ export default function ProductForm({ product, onSuccess }) {
       if (parseInt(formData.minPurchaseQuantity) > parseInt(formData.maxPurchaseQuantity)) { setError('Cantidad mínima no puede ser mayor a la máxima'); setLoading(false); return; }
       if (formData.images.length === 0) { setError('Debes agregar al menos una imagen'); setLoading(false); return; }
 
-
-      const imagesForServer = formData.images.map(i => ({ name: i.name, dataUrl: i.dataUrl, isPrimary: !!i.isPrimary, contentType: i.contentType || null }));
       const payload = {
         title: formData.title,
         description: formData.description,
@@ -186,20 +205,48 @@ export default function ProductForm({ product, onSuccess }) {
         releaseDate: formData.releaseDate || null,
         developer: formData.developer || null,
         publisher: formData.publisher || null,
-        metacriticScore: formData.metacriticScore ? parseInt(formData.metacriticScore) : null,
-        images: imagesForServer
+        metacriticScore: formData.metacriticScore ? parseInt(formData.metacriticScore) : null
       };
 
       if (product && product.id) {
+
         await updateProduct(product.id, payload);
+
+        const tempImages = formData.images.filter(i => String(i.id).startsWith('t'));
+
+        tempImages.sort((a,b) => (b.isPrimary === true ? 1 : 0) - (a.isPrimary === true ? 1 : 0));
+        for (const ti of tempImages) {
+          try {
+            const added = await addProductImage(product.id, { name: ti.name, dataUrl: ti.dataUrl, contentType: ti.contentType, isPrimary: !!ti.isPrimary });
+            setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === ti.id ? { id: added.id, name: added.name, dataUrl: added.dataUrl, isPrimary: added.isPrimary, contentType: added.contentType } : i) }));
+          } catch (imgErr) {
+            console.error('Error subiendo imagen al actualizar producto:', imgErr);
+            throw imgErr;
+          }
+        }
       } else {
-        await createProduct(payload);
+        const created = await createProduct(payload);
+        const createdProductId = created.id;
+        if (!createdProductId) throw new Error('No se recibió id del producto creado');
+
+        const imagesSorted = [...formData.images].sort((a,b) => (b.isPrimary === true ? 1 : 0) - (a.isPrimary === true ? 1 : 0));
+        const uploaded = [];
+        for (const img of imagesSorted) {
+          try {
+            const added = await addProductImage(createdProductId, { name: img.name, dataUrl: img.dataUrl, contentType: img.contentType, isPrimary: !!img.isPrimary });
+            uploaded.push(added);
+            setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === img.id ? { id: added.id, name: added.name, dataUrl: added.dataUrl, isPrimary: added.isPrimary, contentType: added.contentType } : i) }));
+          } catch (imgErr) {
+            console.error('Error subiendo imagen durante creación de producto:', imgErr);
+            throw imgErr;
+          }
+        }
       }
 
       onSuccess();
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Error guardando producto');
+      setError(err?.message || 'Error guardando producto');
     } finally { setLoading(false); }
   };
 

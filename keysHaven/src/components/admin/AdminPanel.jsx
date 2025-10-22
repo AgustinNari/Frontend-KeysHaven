@@ -1,13 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import UserManagement from './UserManagement';
 import ProductManagement from './ProductManagement';
 import CategoryManagement from './CategoryManagement';
 import CouponManagement from './CouponManagement';
 import AdminDashboard from './AdminDashboard';
 import ReviewsManagement from './ReviewsManagement';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminPanel() {
   const [activeSection, setActiveSection] = useState('dashboard');
+  const { user, loading: authLoading, isAuthenticated, hasRole } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        navigate('/login', { replace: true });
+      } else if (!hasRole('ADMIN')) {
+        navigate('/403', { replace: true });
+      }
+    }
+  }, [authLoading, isAuthenticated, hasRole, navigate]);
+
+  if (authLoading) {
+    return (
+      <div className="text-center text-muted py-5">
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Cargando...</span>
+        </div>
+        <div className="mt-2">Verificando permisos...</div>
+      </div>
+    );
+  }
 
   const renderContent = () => {
     switch (activeSection) {
@@ -19,12 +44,11 @@ export default function AdminPanel() {
         return <CategoryManagement />;
       case 'coupons':
         return <CouponManagement />;
+      case 'reviews':
+        return <ReviewsManagement />;
       case 'dashboard':
       default:
         return <AdminDashboard />;
-      case 'reviews':
-        return <ReviewsManagement />;
-
     }
   };
 
@@ -35,6 +59,7 @@ export default function AdminPanel() {
       case 'products': return 'Gestión Global de Productos';
       case 'categories': return 'Gestión de Categorías';
       case 'coupons': return 'Cupones Globales';
+      case 'reviews': return 'Gestión de Reseñas';
       default: return 'Dashboard de Administración';
     }
   };
@@ -48,7 +73,7 @@ export default function AdminPanel() {
             <div className="card bg-primary-dark border-0 sticky-top" style={{top: '86px'}}>
               <div className="card-body">
                 <div className="text-center mb-4">
-                  <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" 
+                  <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center"
                        style={{width: '60px', height: '60px'}}>
                     <span className="fw-bold">A</span>
                   </div>
@@ -65,7 +90,7 @@ export default function AdminPanel() {
                     { id: 'coupons', icon: 'fas fa-tag', label: 'Cupones' },
                     { id: 'reviews', icon: 'fas fa-comments', label: 'Reseñas' }
                   ].map(item => (
-                    <button 
+                    <button
                       key={item.id}
                       className={`nav-link text-start btn btn-link text-decoration-none p-2 mb-1 ${
                         activeSection === item.id ? 'bg-primary-mid text-primary' : 'text-primary-light'
