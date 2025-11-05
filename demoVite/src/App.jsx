@@ -26,8 +26,6 @@ function App() {
             </Routes>
             <button onClick={handleClick}> Ir a contactos </button>
             <p>Estás en la ruta: {location.pathname}</p>
-
-            <PostList  />   
         </>
     );
 }
