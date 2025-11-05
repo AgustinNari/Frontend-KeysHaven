@@ -187,7 +187,7 @@ export default function Home() {
         className="position-relative text-center text-white py-5"
         style={{
           background:
-            ("linear-gradient(to top, rgba(25,16,34,0.9), rgba(25,16,34,0)), url('/src/assets/homeImage.png')"),
+            (`url(${HomeBanner})`),
           backgroundRepeat: "no-repeat",
           backgroundSize: "cover",
           backgroundPosition: "center",

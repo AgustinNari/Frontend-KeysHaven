@@ -90,7 +90,7 @@ export default function NotFound() {
           backgroundPosition: "center",
           minHeight: "850px",
         }}>
-         <div style={{ position: "relative", zIndex: 2}}>
+        <div style={{ position: "relative", zIndex: 2}}>
           <div style={{ position: "relative", zIndex: 2000}}>
             <h2 className="text-primary">{messageText}</h2>
             <h3 className="text-primary">{error?.message || "Error Grave......GRAVÍSIMO!!!!!!!"}</h3>
@@ -99,27 +99,27 @@ export default function NotFound() {
                 Volver al Home
               </Link>
             </p>
-           </div>
-           <div style={{position: "relative", zIndex: 2}}>
-             <img
-               src=  {imageTop}
-               alt= "Doppy"
-               width={550}
-               height={700}
-               style={{ display: "block", margin: "0 auto", marginTop: "-90px" }}
-             />
-             <div style={{ position: "relative", zIndex: 3 }}>
+            </div>
+            <div style={{position: "relative", zIndex: 2}}>
+              <img
+                src=  {imageTop}
+                alt= "Doppy"
+                width={550}
+                height={700}
+                style={{ display: "block", margin: "0 auto", marginTop: "-90px" }}
+              />
+              <div style={{ position: "relative", zIndex: 3 }}>
               {imageBottom &&(
-               <img
-                 src={imageBottom}
-                 alt={imageBottom ? "NumberError" : null}
-                 width={350}
-                 height={170}
-                 style={{ display: "block", margin: "0 auto", marginTop: "-805px"}}
-               />)}
-             </div>
-           </div>
-         </div>
-     </section>
-   );
+                <img
+                  src={imageBottom}
+                  alt={imageBottom ? "NumberError" : null}
+                  width={350}
+                  height={170}
+                  style={{ display: "block", margin: "0 auto", marginTop: "-805px"}}
+                />)}
+              </div>
+            </div>
+          </div>
+      </section>
+    );
 }
