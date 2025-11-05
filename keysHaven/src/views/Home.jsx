@@ -4,7 +4,8 @@ import "../components/estilos/Fondos.css";
 import { getFeaturedCategories } from '../services/categories';
 import { getTopSellers } from "../services/sellers";
 import productsService from "../services/productsService";
-import HomeBanner from '/src/assets/homeImage.png';
+import HomeBanner from '../assets/homeImage.png';
+import Loading from "../assets/doppyKnight/doppyTimeCheck.png"
 
 export default function Home() {
   const [theme, setTheme] = useState("bg-primary-dark");
@@ -16,6 +17,8 @@ export default function Home() {
   
   //Sellers Variables
   const [sellers, setSellers] = useState([]);
+  const [loadingSellers, setLoadingSellers] = useState(true);
+  const [sellersError, setSellersError] = useState(null);
 
   // Products Variables
   const [products, setProducts] = useState([]);
@@ -43,12 +46,27 @@ export default function Home() {
   };
   const [searchText, setSearchText] = useState("");
 
-  //Seller
+ 
+  // Seller
   useEffect(() => {
-    getTopSellers()
-      .then(data => setSellers(data.content))
-      .catch(err => console.error("Failed to load sellers", err));
+    const fetchSellers = async () => {
+      try {
+        setLoadingSellers(true);
+        const page = await getTopSellers();
+        const fetchedSellers = page.content || [];
+        setSellers(fetchedSellers);
+      } catch (err) {
+        console.error("Failed to load top sellers", err);
+        setSellersError(err.message);
+      } finally {
+        setLoadingSellers(false);
+      }
+    };
+
+    fetchSellers();
   }, []);
+
+
 
   //Category
   useEffect(() => {
@@ -59,7 +77,7 @@ export default function Home() {
         const fetchedCats = page.content || [];
         setCategories(fetchedCats);
       } catch (err) {
-        console.error(err);
+        console.error("Failed to load top categories",err);
         setCategoriesError(err.message);
       } finally {
         setLoadingCategories(false);
@@ -207,8 +225,13 @@ export default function Home() {
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Categorías Destacadas</h2>
           <div className="row g-4 justify-content-center">
-            {loadingCategories && <p className="text-light">Cargando categorías…</p>}
-            {categoriesError && <p className="text-danger">Error: {categoriesError}</p>}
+            {loadingCategories && (<div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
+              <img
+                src={Loading}
+                alt="Loading..."
+                style={{ width: "120px", height: "160px" }}
+              />
+            </div>)}
             {!loadingCategories && !categoriesError && categories.length === 0 && (
               <p className="text-light">No categories found.</p>
             )}
@@ -244,9 +267,33 @@ export default function Home() {
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Vendedores más Elegidos</h2>
           <div className="row g-5 justify-content-center">
-            {sellers.map((seller, i) => (
-              <div key={seller.id || i} className="col-6 col-md-3">
-                <a href={`/seller-detail/${seller.id}`} className="text-decoration-none text-body text-primary-light">
+            {loadingSellers && (
+              <div
+                className="col-12 d-flex justify-content-center align-items-center"
+                style={{ height: "40px" }}
+              >
+                <img
+                  src={Loading}
+                  alt="Loading..."
+                  style={{ width: "120px", height: "160px" }}
+                />
+              </div>
+            )}
+
+            {sellersError && (
+              <p className="text-danger">Error: {sellersError}</p>
+            )}
+
+            {!loadingSellers && !sellersError && sellers.length === 0 && (
+              <p className="text-light">No sellers found.</p>
+            )}
+
+            {!loadingSellers && !sellersError && sellers.map((seller, i) => (
+              <div key={seller.id || i} className="col-6 col-md-3 text-center">
+                <a
+                  href={`/seller-detail/${seller.id}`}
+                  className="text-decoration-none text-body text-primary-light"
+                >
                   <img
                     src={seller.avatarDataUrl || "/src/assets/react.svg"}
                     className="rounded-circle border border-primary border-3 mb-3"
@@ -254,8 +301,10 @@ export default function Home() {
                     height="160"
                     alt={seller.displayName}
                   />
-                  <h5>{seller.displayName}</h5>
-                  <small className="text-light">{seller.amountSold} keys sold • {seller.avgRating}★</small>
+                  <h5 className="text-light fw-bold">{seller.displayName}</h5>
+                  <small className="text-light">
+                    {seller.amountSold} keys sold • {seller.avgRating}★
+                  </small>
                 </a>
               </div>
             ))}
@@ -268,7 +317,13 @@ export default function Home() {
         <div className="container">
           <h2 className="fw-bold text-center mb-5 text-primary-light">Llaves más Elegidas</h2>
 
-          {loadingProducts && <p className="text-light text-center">Cargando juegos...</p>}
+           {loadingProducts && (<div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
+              <img
+                src={Loading}
+                alt="Loading..."
+                style={{ width: "120px", height: "160px" }}
+              />
+            </div>)}
           {productsError && <p className="text-danger text-center">Error: {productsError}</p>}
           {!loadingProducts && !productsError && products.length === 0 && (
             <p className="text-light text-center">No games found.</p>
