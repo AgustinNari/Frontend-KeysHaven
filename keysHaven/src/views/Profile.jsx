@@ -317,7 +317,6 @@ export default function Profile() {
 
               <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "center" }}>
                 <button className="btn btn-outline-primary btn-sm" onClick={() => setActiveTab("account")}>Editar</button>
-                <button className="btn btn-outline-secondary btn-sm" onClick={() => setShowProfileDeleteConfirm(true)}>Eliminar demo</button>
               </div>
 
               <div style={{ marginTop: 10, fontSize: 13 }}>

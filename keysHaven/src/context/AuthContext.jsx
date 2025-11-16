@@ -23,7 +23,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(Boolean(token && !user));
   const [error, setError] = useState(null);
 
-
   async function persistTokenAndLoadProfile(newToken) {
     localStorage.setItem(STORAGE_TOKEN_KEY, newToken);
     setToken(newToken);
@@ -34,12 +33,10 @@ export function AuthProvider({ children }) {
       localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(profile));
       setLoading(false);
     } catch (err) {
-
       console.error("Failed to fetch profile after token set", err);
       logout();
     }
   }
-
 
   useEffect(() => {
     let mounted = true;
@@ -69,7 +66,6 @@ export function AuthProvider({ children }) {
     setError(null);
     try {
       const resp = await authApi.register(registerRequest);
-
       const accessToken = resp.access_token || resp.accessToken || resp.accessTokenToken;
       if (!accessToken) throw new Error("No access token returned by server");
       await persistTokenAndLoadProfile(accessToken);
@@ -100,11 +96,11 @@ export function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
     setError(null);
-
     navigate("/", { replace: true });
   }
 
-    async function refreshProfile() {
+
+  async function refreshProfile() {
     try {
       const profile = await usersApi.getMyProfile();
       setUser(profile);
@@ -116,10 +112,20 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const refreshUser = refreshProfile;
+
+  const setUserPublic = (profile) => {
+    setUser(profile);
+    try {
+      if (profile === null) localStorage.removeItem(STORAGE_USER_KEY);
+      else localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(profile));
+    } catch (err) {
+      console.warn("setUserPublic: could not write to localStorage", err);
+    }
+  };
 
   function hasRole(role) {
     if (!user) return false;
-
     return user.role === role;
   }
 
@@ -133,7 +139,9 @@ export function AuthProvider({ children }) {
     login,
     logout,
     hasRole,
-    refreshProfile
+    refreshProfile,
+    refreshUser,
+    setUser: setUserPublic,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

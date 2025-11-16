@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { createCategory, getCategories, updateCategory } from '../../services/adminService';
+import { createCategory, getCategoriesPage, updateCategory } from '../../services/adminService';
+import PaginationBar from '../catalog/PaginationBar';
 
 export default function CategoryManagement() {
   const [categories, setCategories] = useState([]);
@@ -9,15 +10,25 @@ export default function CategoryManagement() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({ description: '' });
 
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [totalPages, setTotalPages] = useState(1);
+
   useEffect(() => {
     loadCategories();
-  }, []);
+  }, [page]);
 
   const loadCategories = async () => {
     setLoading(true);
     try {
-      const categoriesData = await getCategories();
-      setCategories(categoriesData);
+      const resp = await getCategoriesPage(page, pageSize);
+      if (resp && resp.content && Array.isArray(resp.content)) {
+        setCategories(resp.content);
+        setTotalPages(resp.totalPages ?? 1);
+      } else {
+        setCategories(Array.isArray(resp) ? resp : []);
+        setTotalPages(1);
+      }
     } catch (err) {
       console.error('Error cargando categorías:', err);
       setError('Error al cargar categorías');
@@ -33,10 +44,8 @@ export default function CategoryManagement() {
 
     try {
       if (editingCategory) {
-        // Actualizar categoría existente
         await updateCategory(editingCategory.id, formData);
       } else {
-        // Crear nueva categoría
         await createCategory(formData);
       }
       
@@ -198,13 +207,17 @@ export default function CategoryManagement() {
           )}
         </div>
 
+        <div className="d-flex justify-content-center mt-3">
+          <PaginationBar page={page} setPage={setPage} totalPages={Math.max(1, totalPages)} />
+        </div>
+
         {/* Estadísticas */}
         <div className="row mt-4">
           <div className="col-md-4">
             <div className="card bg-primary-mid border-0">
               <div className="card-body text-center py-3">
                 <h4 className="text-primary-light mb-1">{categories.length}</h4>
-                <p className="text-muted mb-0 small">Total Categorías</p>
+                <p className="text-muted mb-0 small">Total Categorías (pagina)</p>
               </div>
             </div>
           </div>
@@ -214,7 +227,7 @@ export default function CategoryManagement() {
                 <h4 className="text-primary-light mb-1">
                   {categories.filter(c => c.featured).length}
                 </h4>
-                <p className="text-muted mb-0 small">Categorías Destacadas</p>
+                <p className="text-muted mb-0 small">Categorías Destacadas (pagina)</p>
               </div>
             </div>
           </div>
@@ -224,7 +237,7 @@ export default function CategoryManagement() {
                 <h4 className="text-primary-light mb-1">
                   {categories.reduce((sum, cat) => sum + (cat.productCount || 0), 0)}
                 </h4>
-                <p className="text-muted mb-0 small">Total Productos</p>
+                <p className="text-muted mb-0 small">Total Productos (pagina)</p>
               </div>
             </div>
           </div>

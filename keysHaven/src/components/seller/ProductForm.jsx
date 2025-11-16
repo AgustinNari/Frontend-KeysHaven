@@ -13,8 +13,8 @@ import ConfirmModal from '../profile/ConfirmModal';
 export default function ProductForm({ product, onSuccess }) {
   const [formData, setFormData] = useState({
     title: '', description: '', price:'', currency:'USD',
-    categoryIds: new Set(), platform:'PC', region:'Global',
-    minPurchaseQuantity:1, maxPurchaseQuantity:10, releaseDate:'',
+    categoryIds: new Set(), platform:'PC – Steam', region:'GLOBAL',
+    releaseDate:'',
     developer:'', publisher:'', metacriticScore:'', images: []
   });
   const [categories, setCategories] = useState([]);
@@ -37,10 +37,8 @@ export default function ProductForm({ product, onSuccess }) {
         price: product.price?.toString() || '',
         currency: product.currency || 'USD',
         categoryIds: new Set((product.categories||[]).map(c => String(c.id))),
-        platform: product.platform || 'PC',
-        region: product.region || 'Global',
-        minPurchaseQuantity: product.minPurchaseQuantity || 1,
-        maxPurchaseQuantity: product.maxPurchaseQuantity || 10,
+        platform: product.platform || 'PC – Steam',
+        region: product.region || 'GLOBAL',
         releaseDate: product.releaseDate || '',
         developer: product.developer || '',
         publisher: product.publisher || '',
@@ -189,7 +187,6 @@ export default function ProductForm({ product, onSuccess }) {
     setLoading(true);
     try {
       if (formData.categoryIds.size === 0) { setError('Selecciona al menos una categoría'); setLoading(false); return; }
-      if (parseInt(formData.minPurchaseQuantity) > parseInt(formData.maxPurchaseQuantity)) { setError('Cantidad mínima no puede ser mayor a la máxima'); setLoading(false); return; }
       if (formData.images.length === 0) { setError('Debes agregar al menos una imagen'); setLoading(false); return; }
 
       const payload = {
@@ -200,8 +197,6 @@ export default function ProductForm({ product, onSuccess }) {
         categoryIds: Array.from(formData.categoryIds).map(x => parseInt(x)),
         platform: formData.platform,
         region: formData.region,
-        minPurchaseQuantity: parseInt(formData.minPurchaseQuantity),
-        maxPurchaseQuantity: parseInt(formData.maxPurchaseQuantity),
         releaseDate: formData.releaseDate || null,
         developer: formData.developer || null,
         publisher: formData.publisher || null,
@@ -209,37 +204,21 @@ export default function ProductForm({ product, onSuccess }) {
       };
 
       if (product && product.id) {
-
         await updateProduct(product.id, payload);
-
         const tempImages = formData.images.filter(i => String(i.id).startsWith('t'));
-
         tempImages.sort((a,b) => (b.isPrimary === true ? 1 : 0) - (a.isPrimary === true ? 1 : 0));
         for (const ti of tempImages) {
-          try {
-            const added = await addProductImage(product.id, { name: ti.name, dataUrl: ti.dataUrl, contentType: ti.contentType, isPrimary: !!ti.isPrimary });
-            setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === ti.id ? { id: added.id, name: added.name, dataUrl: added.dataUrl, isPrimary: added.isPrimary, contentType: added.contentType } : i) }));
-          } catch (imgErr) {
-            console.error('Error subiendo imagen al actualizar producto:', imgErr);
-            throw imgErr;
-          }
+          const added = await addProductImage(product.id, { name: ti.name, dataUrl: ti.dataUrl, contentType: ti.contentType, isPrimary: !!ti.isPrimary });
+          setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === ti.id ? { id: added.id, name: added.name, dataUrl: added.dataUrl, isPrimary: added.isPrimary, contentType: added.contentType } : i) }));
         }
       } else {
         const created = await createProduct(payload);
         const createdProductId = created.id;
         if (!createdProductId) throw new Error('No se recibió id del producto creado');
-
         const imagesSorted = [...formData.images].sort((a,b) => (b.isPrimary === true ? 1 : 0) - (a.isPrimary === true ? 1 : 0));
-        const uploaded = [];
         for (const img of imagesSorted) {
-          try {
-            const added = await addProductImage(createdProductId, { name: img.name, dataUrl: img.dataUrl, contentType: img.contentType, isPrimary: !!img.isPrimary });
-            uploaded.push(added);
-            setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === img.id ? { id: added.id, name: added.name, dataUrl: added.dataUrl, isPrimary: added.isPrimary, contentType: added.contentType } : i) }));
-          } catch (imgErr) {
-            console.error('Error subiendo imagen durante creación de producto:', imgErr);
-            throw imgErr;
-          }
+          const added = await addProductImage(createdProductId, { name: img.name, dataUrl: img.dataUrl, contentType: img.contentType, isPrimary: !!img.isPrimary });
+          setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === img.id ? { id: added.id, name: added.name, dataUrl: added.dataUrl, isPrimary: added.isPrimary, contentType: added.contentType } : i) }));
         }
       }
 
@@ -272,24 +251,16 @@ export default function ProductForm({ product, onSuccess }) {
             <div className="col-md-6 mb-3">
               <label className="form-label text-primary-light">Plataforma *</label>
               <select className="form-select bg-dark border-secondary text-white" value={formData.platform} onChange={(e)=>setFormData({...formData, platform:e.target.value})} disabled={loading}>
-                <option value="PC">PC</option><option value="PlayStation">PlayStation</option><option value="Xbox">Xbox</option>
-                <option value="Nintendo Switch">Nintendo Switch</option><option value="Mobile">Mobile</option><option value="Multiplataforma">Multiplataforma</option>
+                <option value="PC – Steam">PC – Steam</option><option value="PC – Epic Games Store">PC – Epic Games Store</option><option value="PC – GOG">PC – GOG</option><option value="PC – Origin / EA App">PC – Origin / EA App</option><option value="PC – Ubisoft Connect">PC – Ubisoft Connect</option><option value="PC – Battle.net">PC – Battle.net</option><option value="PC – Microsoft Store">PC – Microsoft Store</option>
+                <option value="PlayStation 4">PlayStation 4</option><option value="PlayStation 5">PlayStation 5</option><option value="Xbox One">Xbox One</option><option value="Xbox Series X|S">Xbox Series X|S</option>
+                <option value="Nintendo Switch">Nintendo Switch</option><option value="Nintendo Switch 2">Nintendo Switch 2</option>
               </select>
             </div>
             <div className="col-md-6 mb-3">
               <label className="form-label text-primary-light">Región *</label>
               <select className="form-select bg-dark border-secondary text-white" value={formData.region} onChange={(e)=>setFormData({...formData, region:e.target.value})} disabled={loading}>
-                <option value="Global">Global</option><option value="North America">Norte América</option><option value="Europe">Europa</option><option value="Latin America">Latinoamérica</option><option value="Asia">Asia</option><option value="Oceania">Oceanía</option>
+                <option value="GLOBAL">GLOBAL</option><option value="NA">NA</option><option value="EU">EU</option><option value="LATAM">LATAM</option><option value="ASIA">ASIA</option><option value="OCEANIA">OCEANIA</option><option value="AFRICA">AFRICA</option><option value="ROTW">ROTW</option>
               </select>
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label text-primary-light">Cantidad mínima</label>
-              <input type="number" min="1" className="form-control bg-dark border-secondary text-white" value={formData.minPurchaseQuantity} onChange={(e)=>setFormData({...formData, minPurchaseQuantity:e.target.value})} disabled={loading} />
-            </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label text-primary-light">Cantidad máxima</label>
-              <input type="number" min="1" className="form-control bg-dark border-secondary text-white" value={formData.maxPurchaseQuantity} onChange={(e)=>setFormData({...formData, maxPurchaseQuantity:e.target.value})} disabled={loading} />
             </div>
 
             <div className="col-md-6 mb-3">

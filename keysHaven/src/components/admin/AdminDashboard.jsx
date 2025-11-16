@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAdminStats, getPlatformMetrics, getRecentActivity } from '../../services/adminService';
+import PaginationBar from '../catalog/PaginationBar';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -23,9 +24,18 @@ export default function AdminDashboard() {
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
 
+
+  const [activityPage, setActivityPage] = useState(1);
+  const activityPageSize = 6;
+  const totalActivityPages = Math.max(1, Math.ceil(recentActivity.length / activityPageSize));
+
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (activityPage > totalActivityPages) setActivityPage(totalActivityPages);
+  }, [recentActivity, totalActivityPages, activityPage]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -38,7 +48,7 @@ export default function AdminDashboard() {
       
       setStats(statsData);
       setPlatformMetrics(metricsData);
-      setRecentActivity(activityData);
+      setRecentActivity(activityData || []);
     } catch (error) {
       console.error('Error loading admin dashboard:', error);
     } finally {
@@ -57,6 +67,9 @@ export default function AdminDashboard() {
     );
   }
 
+  const activityStart = (activityPage - 1) * activityPageSize;
+  const activityPageItems = recentActivity.slice(activityStart, activityStart + activityPageSize);
+
   return (
     <div className="row">
       {/* Tarjetas Principales */}
@@ -71,7 +84,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-      
       <div className="col-md-3 mb-4">
         <div className="card bg-primary-dark border-0 h-100">
           <div className="card-body text-center">
@@ -83,7 +95,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-      
       <div className="col-md-3 mb-4">
         <div className="card bg-primary-dark border-0 h-100">
           <div className="card-body text-center">
@@ -95,7 +106,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-      
       <div className="col-md-3 mb-4">
         <div className="card bg-primary-dark border-0 h-100">
           <div className="card-body text-center">
@@ -135,14 +145,13 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Actividad Reciente */}
       <div className="col-md-8 mb-4">
         <div className="card bg-primary-dark border-0">
           <div className="card-header bg-primary-mid">
             <h6 className="text-primary-light mb-0">Actividad Reciente</h6>
           </div>
           <div className="card-body">
-            {recentActivity.map(activity => (
+            {activityPageItems.map(activity => (
               <div key={activity.id} className="d-flex align-items-start mb-3 pb-2 border-bottom border-secondary">
                 <div className={`rounded-circle d-flex align-items-center justify-content-center me-3 ${
                   activity.type === 'user' ? 'bg-success' :
@@ -166,6 +175,10 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ))}
+
+            <div className="d-flex justify-content-center mt-3">
+              <PaginationBar page={activityPage} setPage={setActivityPage} totalPages={Math.max(1, totalActivityPages)} />
+            </div>
           </div>
         </div>
       </div>

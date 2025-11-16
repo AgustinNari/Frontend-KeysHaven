@@ -30,6 +30,22 @@ function dataUrlToBlob(dataUrl) {
 }
 
 
+export const getSellerProductsPaginated = async (sellerId, page = 0, size = 10) => {
+  try {
+    const qs = buildQueryString({ page, size, sellerId });
+    const res = await apiClient.apiFetch(`/api/v1/products/filtered/all${qs}`, { method: "GET" });
+    if (!res) return { items: [], total: 0 };
+
+    let items = Array.isArray(res) ? res : (res.content ?? res.items ?? []);
+    const total = Array.isArray(res) ? items.length : (res.totalElements ?? res.total ?? items.length);
+
+    return { items: normalizeProductsStock(items), total };
+  } catch (err) {
+    console.error("getSellerProductsPaginated error:", err);
+    return { items: [], total: 0 };
+  }
+};
+
 
 export const getSellerProducts = async (sellerId) => {
   try {
@@ -231,12 +247,18 @@ export const setPrimaryImage = async (imageId) => {
 
 
 
-export const getProductKeys = async (productId) => {
+export const getProductKeys = async (productId, page = 0, size = 20) => {
   try {
-    return await apiClient.apiFetch(`/digital_keys/product/${productId}`, { method: "GET" });
+    const qs = buildQueryString({ page, size });
+    const resp = await apiClient.apiFetch(`/digital_keys/product/${productId}${qs}`, { method: "GET" });
+    if (!resp) return { items: [], total: 0 };
+    if (Array.isArray(resp)) return { items: resp, total: resp.length };
+    const items = resp.content ?? resp.items ?? resp.data ?? [];
+    const total = resp.totalElements ?? resp.total ?? (Array.isArray(items) ? items.length : 0);
+    return { items, total };
   } catch (err) {
     console.error("getProductKeys error:", err);
-    return [];
+    return { items: [], total: 0 };
   }
 };
 
@@ -251,15 +273,18 @@ export const addBulkDigitalKeys = async (payload) => {
 
 
 
-export const getSellerDiscounts = async () => {
+export const getSellerDiscounts = async (page = 0, size = 10) => {
   try {
-    const qs = buildQueryString({ page: 0, size: 2147483647 });
+    const qs = buildQueryString({ page, size });
     const res = await apiClient.apiFetch(`/discounts/seller/me${qs}`, { method: "GET" });
-    if (!res) return [];
-    return res.content ?? res;
+    if (!res) return { items: [], total: 0 };
+    if (Array.isArray(res)) return { items: res, total: res.length };
+    const items = res.content ?? res.items ?? [];
+    const total = res.totalElements ?? res.total ?? items.length;
+    return { items, total };
   } catch (err) {
     console.error("getSellerDiscounts error:", err);
-    return [];
+    return { items: [], total: 0 };
   }
 };
 
@@ -286,10 +311,10 @@ export const updateDiscount = async (discountId, discountData) => {
 
 
 
-export const getSellerOrders = async ({ sellerId, limit = 10, status } = {}) => {
+export const getSellerOrders = async ({ sellerId, page = 0, size = 10, status } = {}) => {
   if (!sellerId) return { items: [], total: 0 };
   try {
-    const qs = buildQueryString({ page: 0, size: limit, status });
+    const qs = buildQueryString({ page, size, status });
     const resp = await apiClient.apiFetch(`/orders/seller/${sellerId}${qs}`, { method: "GET" });
     if (!resp) return { items: [], total: 0 };
     if (Array.isArray(resp)) return { items: resp, total: resp.length };
@@ -334,7 +359,7 @@ export const getSellerStats = async (sellerId) => {
       phone: sellerDetail.phone,
       country: sellerDetail.country,
 
-      avgRating: sellerDetail.avgRating ?? 0,
+      avgRating: (sellerDetail.avgRating ?? 0) / 2,
       ratingCount: sellerDetail.ratingCount ?? 0,
       soldKeys: sellerDetail.soldKeys ?? 0,
       amountSold: sellerDetail.amountSold ?? 0,

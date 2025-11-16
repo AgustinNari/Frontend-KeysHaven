@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getUsers, updateUser, deleteUser } from '../../services/adminService';
+import { getUsersPage, updateUser, deleteUser } from '../../services/adminService';
 import ConfirmModal from '../profile/ConfirmModal';
+import PaginationBar from '../catalog/PaginationBar';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -18,13 +19,23 @@ export default function UserManagement() {
     onConfirm: null
   });
 
-  useEffect(() => { loadUsers(); }, []);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => { loadUsers(); }, [page]);
 
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const data = await getUsers();
-      setUsers(data || []);
+      const resp = await getUsersPage(page, pageSize);
+      if (resp && resp.content && Array.isArray(resp.content)) {
+        setUsers(resp.content);
+        setTotalPages(resp.totalPages ?? 1);
+      } else {
+        setUsers(Array.isArray(resp) ? resp : []);
+        setTotalPages(1);
+      }
     } catch (err) {
       console.error(err);
       setError('Error cargando usuarios');
@@ -51,7 +62,6 @@ export default function UserManagement() {
   const handleDeactivateConfirmed = async (userId) => {
     setLoading(true);
     try {
-
       await updateUser(userId, { active: false });
       await loadUsers();
     } catch (err) {
@@ -77,8 +87,8 @@ export default function UserManagement() {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = (user.displayName || `${user.firstName || ''} ${user.lastName || ''}`).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const nameOrEmail = (user.displayName || `${user.firstName || ''} ${user.lastName || ''}`).toLowerCase() + (user.email || '').toLowerCase();
+    const matchesSearch = nameOrEmail.includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? user.active : !user.active);
     return matchesSearch && matchesRole && matchesStatus;
@@ -115,7 +125,9 @@ export default function UserManagement() {
             </select>
           </div>
           <div className="col-md-2 d-flex align-items-end">
-            <button className="btn btn-outline-secondary w-100" onClick={() => { setSearchTerm(''); setRoleFilter('all'); setStatusFilter('all'); }}>Limpiar</button>
+            <button className="btn btn-outline-secondary w-100" onClick={() => { setSearchTerm(''); setRoleFilter('all'); setStatusFilter('all'); }}>
+              Limpiar
+            </button>
           </div>
         </div>
 
@@ -165,6 +177,10 @@ export default function UserManagement() {
           </table>
 
           {!loading && filteredUsers.length === 0 && <div className="text-center text-muted py-4">No se encontraron usuarios</div>}
+        </div>
+
+        <div className="d-flex justify-content-center mt-3">
+          <PaginationBar page={page} setPage={setPage} totalPages={Math.max(1, totalPages)} />
         </div>
 
         {viewingUser && (

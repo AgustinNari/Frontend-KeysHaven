@@ -1,8 +1,8 @@
 import React from "react";
 import FilterGroup from "./FilterGroup";
 
-const PLATFORMS = ["PC","Steam","Epic Games","PlayStation","Xbox","Nintendo Switch"];
-const REGIONS = ["GLOBAL","NA","EU","ASIA","LATAM"];
+const PLATFORMS = ["PC – Steam","PC – Epic Games Store","PC – GOG","PC – Origin / EA App","PC – Ubisoft Connect","PC – Battle.net","PC – Microsoft Store","PlayStation 4","PlayStation 5","Xbox One","Xbox Series X|S","Nintendo Switch","Nintendo Switch 2"];
+const REGIONS = ["GLOBAL","NA","EU","ASIA","LATAM","OCEANIA","AFRICA","ROTW"];
 const DEVELOPERS = ["Rockstar North","SmallDev","Ubisoft","EA","CD Projekt","Bethesda"];
 const PUBLISHERS = ["Rockstar Games","IndiePub","Ubisoft","EA","CD Projekt","Bethesda"];
 

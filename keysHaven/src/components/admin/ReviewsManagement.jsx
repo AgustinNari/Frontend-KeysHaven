@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getAllReviews, toggleReviewVisibility, getAllProducts, getUsers } from '../../services/adminService';
+import { getReviewsPage, toggleReviewVisibility, getProductsPage, getUsersPage } from '../../services/adminService';
 import ConfirmModal from '../profile/ConfirmModal';
+import PaginationBar from '../catalog/PaginationBar';
 
 export default function ReviewsManagement() {
   const [reviews, setReviews] = useState([]);
@@ -9,16 +10,30 @@ export default function ReviewsManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-
   const [confirm, setConfirm] = useState({ show:false, title:'', message:'', onConfirm:null });
 
-  useEffect(()=>{ load(); }, []);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(()=>{ load(); }, [page]);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [rvws = [], prods = [], us = []] = await Promise.all([ getAllReviews(), getAllProducts(), getUsers() ]);
-      setReviews(rvws || []);
+      const [rvwsResp, prodsResp, usersResp] = await Promise.all([
+        getReviewsPage(page, pageSize),
+        getProductsPage(1, 100),
+        getUsersPage(1, 200)
+      ]);
+
+      const rvws = (rvwsResp && rvwsResp.content && Array.isArray(rvwsResp.content)) ? rvwsResp.content : (Array.isArray(rvwsResp) ? rvwsResp : []);
+      setReviews(rvws);
+      setTotalPages(rvwsResp?.totalPages ?? 1);
+
+      const prods = (prodsResp && prodsResp.content) ? prodsResp.content : (Array.isArray(prodsResp) ? prodsResp : []);
+      const us = (usersResp && usersResp.content) ? usersResp.content : (Array.isArray(usersResp) ? usersResp : []);
+
       setProductsMap(Object.fromEntries((prods || []).map(p => [p.id, p])));
       setUsersMap(Object.fromEntries((us || []).map(u => [u.id, u])));
     } catch (err) {
@@ -30,7 +45,6 @@ export default function ReviewsManagement() {
   };
 
   const closeConfirm = () => setConfirm({ show:false, title:'', message:'', onConfirm:null });
-
 
   const handleToggleRequest = (reviewId, visible) => {
     if (visible) {
@@ -118,6 +132,10 @@ export default function ReviewsManagement() {
             </tbody>
           </table>
           {!loading && reviews.length === 0 && <div className="text-center text-muted py-4">No hay reseñas</div>}
+        </div>
+
+        <div className="d-flex justify-content-center mt-3">
+          <PaginationBar page={page} setPage={setPage} totalPages={Math.max(1, totalPages)} />
         </div>
 
         <ConfirmModal

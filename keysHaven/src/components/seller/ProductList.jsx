@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { getSellerProducts, getProductDetail, updateProduct } from '../../services/sellerService';
+import React, { useEffect, useState } from 'react';
+import { getSellerProductsPaginated, getProductDetail, updateProduct } from '../../services/sellerService';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmModal from '../profile/ConfirmModal';
+import PaginationBar from '../catalog/PaginationBar';
 import { deriveAvailableStock } from '../../utils/stock';
 
 export default function ProductList({ onEditProduct }) {
@@ -14,15 +15,22 @@ export default function ProductList({ onEditProduct }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [confirm, setConfirm] = useState({ show:false, title:'', message:'', onConfirm:null });
 
-  useEffect(() => { loadProducts(); }, [sellerId]);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => { loadProducts(); }, [sellerId, page, statusFilter]);
 
   const loadProducts = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       if (!sellerId) { setProducts([]); setLoading(false); return; }
-      const data = await getSellerProducts(sellerId);
-      setProducts(Array.isArray(data) ? data : []);
+      const resp = await getSellerProductsPaginated(sellerId, Math.max(0, page - 1), pageSize);
+      let items = resp.items || [];
+      if (statusFilter === 'active') items = items.filter(p => p.active);
+      if (statusFilter === 'inactive') items = items.filter(p => !p.active);
+      setProducts(items);
+      setTotal(resp.total || (items.length));
     } catch (err) {
       console.error(err);
       setError('Error cargando productos');
@@ -79,24 +87,20 @@ export default function ProductList({ onEditProduct }) {
     }
   };
 
-  const filtered = products.filter(p => {
-    if (statusFilter === 'all') return true;
-    if (statusFilter === 'active') return p.active;
-    return !p.active;
-  });
-
   const getStockStatus = (stock) => stock > 10 ? { class:'bg-success', text:'En stock' } : stock > 0 ? { class:'bg-warning', text:'Stock bajo' } : { class:'bg-danger', text:'Sin stock' };
 
   if (loading) {
     return <div className="text-center text-muted py-5"><div className="spinner-border" role="status"></div><div className="mt-2">Cargando productos...</div></div>;
   }
 
+  const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize));
+
   return (
     <div className="card bg-primary-dark border-0">
       <div className="card-header bg-primary-mid d-flex justify-content-between align-items-center">
         <h5 className="text-primary-light mb-0">Mis Productos</h5>
         <div className="d-flex gap-2">
-          <select className="form-select form-select-sm bg-dark border-secondary text-white" style={{width:'150px'}} value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)}>
+          <select className="form-select form-select-sm bg-dark border-secondary text-white" style={{width:'150px'}} value={statusFilter} onChange={(e)=>{ setStatusFilter(e.target.value); setPage(1); }}>
             <option value="all">Todos</option>
             <option value="active">Activos</option>
             <option value="inactive">Inactivos</option>
@@ -107,18 +111,22 @@ export default function ProductList({ onEditProduct }) {
 
       <div className="card-body">
         {error && <div className="alert alert-danger">{error}</div>}
+
         <div className="table-responsive">
           <table className="table table-dark table-borderless mb-0">
             <thead>
               <tr>
-                <th>Producto</th><th>Precio</th><th>Stock</th><th>Categorías</th><th>Estado</th><th>Destacado</th><th>Acciones</th>
+                <th>Producto</th><th>Precio</th><th>Stock</th><th>Categorías</th><th>Rating</th><th>Ventas</th><th>Estado</th><th>Destacado</th><th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(product => {
+              {products.map(product => {
                 const thumb = (product.primaryImageDataUrl) ? product.primaryImageDataUrl : (product.imageUrls && product.imageUrls.length>0 ? product.imageUrls[0] : null);
                 const stockValue = deriveAvailableStock(product);
-  const          stockStatus = getStockStatus(stockValue);
+                const stockStatus = getStockStatus(stockValue);
+                const ratingValue = (typeof product.avgRating !== 'undefined') ? product.avgRating/2 : (product.rating ?? 0)/2;
+                const amountSold = product.amountSold ?? product.sold ?? 0;
+
                 return (
                   <tr key={product.id}>
                     <td>
@@ -130,7 +138,7 @@ export default function ProductList({ onEditProduct }) {
                         </div>
                       </div>
                     </td>
-                    <td><div className="text-primary-light fw-bold">{product.currency} {product.price}</div></td>
+                    <td><div className="text-primary-light fw-bold">{product.currency || 'USD'} {product.price}</div></td>
                     <td><span className={`badge ${stockStatus.class}`}>{stockValue} - {stockStatus.text}</span></td>
                     <td>
                       <div className="d-flex flex-wrap gap-1">
@@ -138,6 +146,8 @@ export default function ProductList({ onEditProduct }) {
                         {product.categories && product.categories.length > 2 && <span className="badge bg-secondary small">+{product.categories.length-2}</span>}
                       </div>
                     </td>
+                    <td className="text-primary-light">{Number(ratingValue || 0).toFixed(1)}</td>
+                    <td className="text-primary-light">{amountSold}</td>
                     <td><span className={`badge ${product.active ? 'bg-success' : 'bg-danger'}`}>{product.active ? 'Activo' : 'Inactivo'}</span></td>
                     <td><span className={`badge ${product.featured ? 'bg-warning' : 'bg-secondary'}`}>{product.featured ? 'Sí' : 'No'}</span></td>
                     <td>
@@ -153,9 +163,11 @@ export default function ProductList({ onEditProduct }) {
           </table>
         </div>
 
-        {filtered.length === 0 && <div className="text-center text-muted py-5">{products.length===0 ? (
-          <div><i className="fas fa-box fa-3x mb-3"></i><h5>No tienes productos</h5><p>Agrega tu primer producto</p><button className="btn btn-primary" onClick={()=>onEditProduct(null)}><i className="fas fa-plus me-2"></i>Crear</button></div>
-        ) : (<div><i className="fas fa-filter fa-3x mb-3"></i><h5>No hay productos con los filtros</h5><button className="btn btn-outline-primary" onClick={()=>setStatusFilter('all')}>Mostrar todos</button></div>)}</div>}
+        {products.length === 0 && <div className="text-center text-muted py-5"></div>}
+
+        <div className="d-flex justify-content-center mt-3">
+          <PaginationBar page={page} setPage={setPage} totalPages={totalPages} />
+        </div>
       </div>
 
       <ConfirmModal show={confirm.show} title={confirm.title} message={confirm.message} onConfirm={()=>{ confirm.onConfirm && confirm.onConfirm(); }} onCancel={closeConfirm} confirmText="Desactivar" cancelText="Cancelar" />

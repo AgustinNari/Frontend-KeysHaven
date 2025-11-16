@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { createDiscount, getDiscounts, updateDiscount, getCategories, getUsers } from '../../services/adminService';
+import { createDiscount, getDiscountsPage, updateDiscount, getCategoriesPage, getUsersPage } from '../../services/adminService';
 import ConfirmModal from '../profile/ConfirmModal';
 import { useNavigate } from 'react-router-dom';
+import PaginationBar from '../catalog/PaginationBar';
 
 export default function CouponManagement() {
   const [discounts, setDiscounts] = useState([]);
@@ -11,8 +12,7 @@ export default function CouponManagement() {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-    const navigate = useNavigate();
-  
+  const navigate = useNavigate();
 
   const emptyForm = {
     code: '',
@@ -32,19 +32,29 @@ export default function CouponManagement() {
 
   const [confirm, setConfirm] = useState({ show:false, title:'', message:'', onConfirm:null });
 
-  useEffect(() => { loadData(); }, []);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => { loadData(); }, [page]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [discountsData = [], categoriesData = [], usersData = []] = await Promise.all([
-        getDiscounts(),
-        getCategories(),
-        getUsers()
+      const [discountsResp, categoriesResp, usersResp] = await Promise.all([
+        getDiscountsPage(page, pageSize),
+        getCategoriesPage(1, 200),
+        getUsersPage(1, 500)
       ]);
-      setDiscounts(discountsData || []);
-      setCategories(categoriesData || []);
-      setUsers((usersData || []));
+      const discList = (discountsResp && discountsResp.content) ? discountsResp.content : (Array.isArray(discountsResp) ? discountsResp : []);
+      setDiscounts(discList || []);
+      setTotalPages(discountsResp?.totalPages ?? 1);
+
+      const cats = (categoriesResp && categoriesResp.content) ? categoriesResp.content : (Array.isArray(categoriesResp) ? categoriesResp : []);
+      setCategories(cats || []);
+
+      const us = (usersResp && usersResp.content) ? usersResp.content : (Array.isArray(usersResp) ? usersResp : []);
+      setUsers(us || []);
     } catch (err) {
       console.error(err);
       setError('Error cargando datos');
@@ -85,24 +95,67 @@ export default function CouponManagement() {
     setFormData(d => ({ ...d, code: c }));
   };
 
+  const validateForm = () => {
+    if (!formData.startsAt || !formData.endsAt) {
+      setError('Debe completar Fecha de Inicio y Fecha de Fin.');
+      return false;
+    }
+    const starts = new Date(formData.startsAt);
+    const ends = new Date(formData.endsAt);
+    if (!(starts instanceof Date) || isNaN(starts)) {
+      setError('Fecha de inicio inválida.');
+      return false;
+    }
+    if (!(ends instanceof Date) || isNaN(ends)) {
+      setError('Fecha de fin inválida.');
+      return false;
+    }
+    if (ends <= starts) {
+      setError('La fecha de fin debe ser posterior a la fecha de inicio.');
+      return false;
+    }
+    if (formData.minPrice !== '' && formData.maxPrice !== '') {
+      const minP = parseFloat(formData.minPrice);
+      const maxP = parseFloat(formData.maxPrice);
+      if (isNaN(minP) || isNaN(maxP)) {
+        setError('Min/Max price inválidos.');
+        return false;
+      }
+      if (minP > maxP) {
+        setError('El precio mínimo no puede ser mayor al máximo.');
+        return false;
+      }
+    }
+    if (formData.value === '' || isNaN(Number(formData.value))) {
+      setError('El valor del descuento es obligatorio y debe ser numérico.');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
+      if (!validateForm()) {
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         code: formData.code ? String(formData.code).toUpperCase() : undefined,
         type: formData.type,
-        value: formData.type === 'PERCENT' ? parseInt(formData.value) : parseFloat(formData.value),
+        value: formData.type === 'PERCENT' ? parseInt(formData.value, 10) : parseFloat(formData.value),
         scope: 'CATEGORY',
         targetCategoryId: formData.targetCategoryId ? parseInt(formData.targetCategoryId) : null,
-        targetBuyerId: formData.type === 'FIXED' ? (formData.targetBuyerId ? parseInt(formData.targetBuyerId) : null) : null,
+        targetBuyerId: formData.targetBuyerId ? parseInt(formData.targetBuyerId) : null,
         minQuantity: formData.minQuantity ? parseInt(formData.minQuantity) : null,
         maxQuantity: formData.maxQuantity ? parseInt(formData.maxQuantity) : null,
         startsAt: formData.startsAt ? new Date(formData.startsAt).toISOString() : null,
         endsAt: formData.endsAt ? new Date(formData.endsAt).toISOString() : null,
-        minPrice: formData.minPrice ? parseFloat(formData.minPrice) : null,
-        maxPrice: formData.maxPrice ? parseFloat(formData.maxPrice) : null,
+        minPrice: formData.minPrice !== '' ? parseFloat(formData.minPrice) : null,
+        maxPrice: formData.maxPrice !== '' ? parseFloat(formData.maxPrice) : null
       };
 
       if (editingId) {
@@ -190,6 +243,7 @@ export default function CouponManagement() {
       setLoading(false);
     }
   };
+
   const categoryDiscounts = discounts.filter(d => d.scope === 'CATEGORY');
 
   return (
@@ -252,28 +306,41 @@ export default function CouponManagement() {
                       </div>
 
                       <div className="col-md-6 mb-3">
-                        <label className="form-label text-primary-light">Asignar a comprador *</label>
-                        <select className="form-select bg-dark border-secondary text-white" value={formData.targetBuyerId} onChange={(e)=>setFormData({...formData, targetBuyerId: e.target.value})} required>
-                          <option value="">Selecciona un comprador</option>
+                        <label className="form-label text-primary-light">Asignar a comprador (opcional)</label>
+                        <select className="form-select bg-dark border-secondary text-white" value={formData.targetBuyerId} onChange={(e)=>setFormData({...formData, targetBuyerId: e.target.value})}>
+                          <option value="">Sin asignar</option>
                           {users.map(u => <option key={u.id} value={u.id}>{u.displayName || u.email}</option>)}
                         </select>
+                        <small className="text-muted">Si no asignás un comprador, se asignará uno automaticamente.</small>
                       </div>
                     </>
                   )}
 
                   <div className="col-md-6 mb-3">
-                    <label className="form-label text-primary-light">Fecha Inicio</label>
-                    <input type="datetime-local" className="form-control bg-dark border-secondary text-white" value={formData.startsAt} onChange={(e)=>setFormData({...formData, startsAt:e.target.value})} />
+                    <label className="form-label text-primary-light">Fecha Inicio *</label>
+                    <input type="datetime-local" className="form-control bg-dark border-secondary text-white" value={formData.startsAt} onChange={(e)=>setFormData({...formData, startsAt:e.target.value})} required />
                   </div>
 
                   <div className="col-md-6 mb-3">
-                    <label className="form-label text-primary-light">Fecha Fin</label>
-                    <input type="datetime-local" className="form-control bg-dark border-secondary text-white" value={formData.endsAt} onChange={(e)=>setFormData({...formData, endsAt:e.target.value})} />
+                    <label className="form-label text-primary-light">Fecha Fin *</label>
+                    <input type="datetime-local" className="form-control bg-dark border-secondary text-white" value={formData.endsAt} onChange={(e)=>setFormData({...formData, endsAt:e.target.value})} required />
+                  </div>
+
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label text-primary-light">Precio Mínimo (opcional)</label>
+                    <input type="number" step="0.01" className="form-control bg-dark border-secondary text-white" value={formData.minPrice} onChange={(e)=>setFormData({...formData, minPrice:e.target.value})} />
+                  </div>
+
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label text-primary-light">Precio Máximo (opcional)</label>
+                    <input type="number" step="0.01" className="form-control bg-dark border-secondary text-white" value={formData.maxPrice} onChange={(e)=>setFormData({...formData, maxPrice:e.target.value})} />
                   </div>
                 </div>
 
                 <div className="d-flex gap-2">
-                  <button type="submit" className="btn btn-primary" disabled={loading}>{editingId ? 'Guardar cambios' : 'Crear'}</button>
+                  <button type="submit" className="btn btn-primary" disabled={loading}>
+                    {editingId ? 'Guardar cambios' : 'Crear'}
+                  </button>
                   <button type="button" className="btn btn-secondary" onClick={()=>{ setShowForm(false); setEditingId(null); setFormData(emptyForm); }} disabled={loading}>Cancelar</button>
                 </div>
               </form>
@@ -304,7 +371,7 @@ export default function CouponManagement() {
                   <td>{d.type}</td>
                   <td>{d.type === 'PERCENT' ? `${d.value}%` : `$${d.value}`}</td>
                   <td>{categories.find(c => c.id === d.targetCategoryId)?.description || '—'}</td>
-                  <td>{d.type === 'FIXED' ? (users.find(u => u.id === d.targetBuyerId)?.displayName || d.targetBuyerId) : 'Global'}</td>
+                  <td>{d.type === 'FIXED' ? (users.find(u => u.id === d.targetBuyerId)?.displayName || d.targetBuyerId || '—') : 'Global'}</td>
                   <td>{d.endsAt ? new Date(d.endsAt).toLocaleString() : 'Sin límite'}</td>
                   <td><span className={`badge ${d.active ? 'bg-success' : 'bg-danger'}`}>{d.active ? 'Activo' : 'Inactivo'}</span></td>
                   <td>
@@ -320,6 +387,10 @@ export default function CouponManagement() {
             </tbody>
           </table>
           {!loading && categoryDiscounts.length === 0 && <div className="text-center text-muted py-4">No hay descuentos/cupons por categoría.</div>}
+        </div>
+
+        <div className="d-flex justify-content-center mt-3">
+          <PaginationBar page={page} setPage={setPage} totalPages={Math.max(1, totalPages)} />
         </div>
 
         <ConfirmModal

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getAllProducts, updateProduct } from '../../services/adminService';
+import { getAllProducts, updateProduct, getProductsPage } from '../../services/adminService';
 import ConfirmModal from '../profile/ConfirmModal';
+import PaginationBar from '../catalog/PaginationBar';
 
 export default function ProductManagement() {
   const [products, setProducts] = useState([]);
@@ -32,15 +33,25 @@ export default function ProductManagement() {
     'Arte conceptual'
   ];
 
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [totalPages, setTotalPages] = useState(1);
+
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [page]);
 
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const prods = await getAllProducts();
-      setProducts(prods || []);
+      const resp = await getProductsPage(page, pageSize);
+      if (resp && resp.content && Array.isArray(resp.content)) {
+        setProducts(resp.content);
+        setTotalPages(resp.totalPages ?? 1);
+      } else {
+        setProducts(Array.isArray(resp) ? resp : []);
+        setTotalPages(1);
+      }
     } catch (err) {
       console.error('Error cargando productos:', err);
       if (err && err.status === 401) {
@@ -142,7 +153,6 @@ export default function ProductManagement() {
   const deriveAvailableStock = (product) => {
     if (!product) return 0;
 
-
     const candidates = [
       product.availableStock,
       product.available_stock,
@@ -165,7 +175,6 @@ export default function ProductManagement() {
       }
     }
 
-
     try {
       if (product.inventory && typeof product.inventory === 'object') {
         const inv = product.inventory;
@@ -175,14 +184,10 @@ export default function ProductManagement() {
           if (typeof ic === 'string' && ic.trim() !== '' && !Number.isNaN(Number(ic))) return Number(ic);
         }
       }
-    } catch (e) {
-
-    }
-
+    } catch (e) {}
 
     return 0;
   };
-
 
   const isValidImageUrl = (url) => {
     try {
@@ -209,7 +214,6 @@ export default function ProductManagement() {
     setImageError('');
   };
 
-
   const handleCategoryToggle = (category) => {
     setSelectedCategories(prev =>
       prev.includes(category)
@@ -217,7 +221,6 @@ export default function ProductManagement() {
         : [...prev, category]
     );
   };
-
 
   const addImage = async () => {
     if (!newImage.name.trim()) {
@@ -843,6 +846,10 @@ export default function ProductManagement() {
               <p>No se encontraron productos que coincidan con los filtros</p>
             </div>
           )}
+        </div>
+
+        <div className="d-flex justify-content-center mt-3">
+          <PaginationBar page={page} setPage={setPage} totalPages={Math.max(1, totalPages)} />
         </div>
 
         {/* Estadísticas */}

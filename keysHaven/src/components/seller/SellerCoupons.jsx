@@ -3,6 +3,7 @@ import { createDiscount, getSellerDiscounts, updateDiscount, getSellerProducts }
 import ConfirmModal from '../profile/ConfirmModal';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import PaginationBar from '../catalog/PaginationBar';
 
 export default function SellerCoupons() {
   const { user } = useAuth();
@@ -10,9 +11,17 @@ export default function SellerCoupons() {
   const navigate = useNavigate();
 
   const [coupons, setCoupons] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({
+
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  const emptyForm = {
     code: '',
     type: 'PERCENT',
     value: '',
@@ -24,14 +33,11 @@ export default function SellerCoupons() {
     maxQuantity: '',
     minPrice: '',
     maxPrice: ''
-  });
-
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  };
+  const [formData, setFormData] = useState(emptyForm);
   const [confirm, setConfirm] = useState({ show:false, title:'', message:'', onConfirm:null });
 
-  useEffect(() => { loadData(); }, [sellerId]);
+  useEffect(() => { loadData(); }, [sellerId, page]);
 
   const loadData = async () => {
     setLoading(true);
@@ -39,12 +45,12 @@ export default function SellerCoupons() {
       if (!sellerId) return;
       const [productsData, couponsData] = await Promise.all([
         getSellerProducts(sellerId),
-        getSellerDiscounts()
+        getSellerDiscounts(Math.max(0, page - 1), pageSize)
       ]);
       const prods = Array.isArray(productsData) ? productsData : (productsData.content || []);
-      const cds = Array.isArray(couponsData) ? couponsData : (couponsData.content || []);
       setProducts(prods || []);
-      setCoupons(cds || []);
+      setCoupons(couponsData.items || []);
+      setTotal(couponsData.total || (Array.isArray(couponsData.items) ? couponsData.items.length : 0));
     } catch (err) {
       console.error(err);
       if (err && err.status === 401) {
@@ -58,19 +64,7 @@ export default function SellerCoupons() {
   };
 
   const handleOpenCreate = () => {
-    setFormData({
-      code: '',
-      type: 'PERCENT',
-      value: '',
-      scope: 'PRODUCT',
-      targetProductId: '',
-      startsAt: '',
-      endsAt: '',
-      minQuantity: '',
-      maxQuantity: '',
-      minPrice: '',
-      maxPrice: ''
-    });
+    setFormData(emptyForm);
     setEditingId(null);
     setShowForm(true);
   };
@@ -98,8 +92,44 @@ export default function SellerCoupons() {
     setFormData(d => ({ ...d, code: c }));
   };
 
+  const validateForm = () => {
+    setError('');
+    if (!formData.startsAt || !formData.endsAt) {
+      setError('Fecha de inicio y fecha de fin son obligatorias');
+      return false;
+    }
+    const s = new Date(formData.startsAt);
+    const e = new Date(formData.endsAt);
+    if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) {
+      setError('Fechas inválidas');
+      return false;
+    }
+    if (e <= s) {
+      setError('La fecha de fin debe ser posterior a la fecha de inicio');
+      return false;
+    }
+    if (formData.value === '' || formData.value === null || isNaN(Number(formData.value))) {
+      setError('Valor del descuento es obligatorio y debe ser numérico');
+      return false;
+    }
+    if (formData.minPrice !== '' && formData.maxPrice !== '') {
+      const minP = Number(formData.minPrice);
+      const maxP = Number(formData.maxPrice);
+      if (isNaN(minP) || isNaN(maxP) || minP > maxP) {
+        setError('Si se proporcionan precios mínimo y máximo, debe cumplirse minPrice ≤ maxPrice');
+        return false;
+      }
+    }
+    if (formData.scope === 'PRODUCT' && !formData.targetProductId) {
+      setError('Debe seleccionar un producto objetivo para el alcance PRODUCT');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setLoading(true);
     setError('');
     try {
@@ -110,11 +140,11 @@ export default function SellerCoupons() {
         scope: formData.scope,
         targetProductId: formData.scope === 'PRODUCT' ? (formData.targetProductId ? parseInt(formData.targetProductId) : null) : null,
         targetSellerId: formData.scope === 'SELLER' ? sellerId : null,
-        targetBuyerId: null,
+        targetBuyerId: formData.targetBuyerId ? parseInt(formData.targetBuyerId) : null,
         minQuantity: formData.minQuantity ? parseInt(formData.minQuantity) : null,
         maxQuantity: formData.maxQuantity ? parseInt(formData.maxQuantity) : null,
-        startsAt: formData.startsAt ? new Date(formData.startsAt).toISOString() : null,
-        endsAt: formData.endsAt ? new Date(formData.endsAt).toISOString() : null,
+        startsAt: new Date(formData.startsAt).toISOString(),
+        endsAt: new Date(formData.endsAt).toISOString(),
         minPrice: formData.minPrice ? parseFloat(formData.minPrice) : null,
         maxPrice: formData.maxPrice ? parseFloat(formData.maxPrice) : null
       };
@@ -181,6 +211,8 @@ export default function SellerCoupons() {
     }
   };
 
+  const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize));
+
   return (
     <div className="card bg-primary-dark border-0">
       <div className="card-header bg-primary-mid d-flex justify-content-between align-items-center">
@@ -238,18 +270,28 @@ export default function SellerCoupons() {
                         <input className="form-control bg-dark border-secondary text-white text-uppercase" value={formData.code} onChange={(e)=>setFormData({...formData, code: e.target.value})} />
                         <button type="button" className="btn btn-outline-secondary" onClick={handleGenerateCode}>Generar</button>
                       </div>
-                      <small className="text-muted">Si no pones código se generará uno automáticamente en el backend.</small>
+                      <small className="text-muted">Si no pones código se generará uno automáticamente.</small>
                     </div>
                   )}
 
                   <div className="col-md-6 mb-3">
-                    <label className="form-label text-primary-light">Fecha Inicio</label>
-                    <input type="datetime-local" className="form-control bg-dark border-secondary text-white" value={formData.startsAt} onChange={(e)=>setFormData({...formData, startsAt:e.target.value})} />
+                    <label className="form-label text-primary-light">Fecha Inicio *</label>
+                    <input type="datetime-local" className="form-control bg-dark border-secondary text-white" value={formData.startsAt} onChange={(e)=>setFormData({...formData, startsAt:e.target.value})} required />
                   </div>
 
                   <div className="col-md-6 mb-3">
-                    <label className="form-label text-primary-light">Fecha Fin</label>
-                    <input type="datetime-local" className="form-control bg-dark border-secondary text-white" value={formData.endsAt} onChange={(e)=>setFormData({...formData, endsAt:e.target.value})} />
+                    <label className="form-label text-primary-light">Fecha Fin *</label>
+                    <input type="datetime-local" className="form-control bg-dark border-secondary text-white" value={formData.endsAt} onChange={(e)=>setFormData({...formData, endsAt:e.target.value})} required />
+                  </div>
+
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label text-primary-light">Precio Mínimo (opcional)</label>
+                    <input type="number" step="0.01" className="form-control bg-dark border-secondary text-white" value={formData.minPrice} onChange={(e)=>setFormData({...formData, minPrice: e.target.value})} />
+                  </div>
+
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label text-primary-light">Precio Máximo (opcional)</label>
+                    <input type="number" step="0.01" className="form-control bg-dark border-secondary text-white" value={formData.maxPrice} onChange={(e)=>setFormData({...formData, maxPrice: e.target.value})} />
                   </div>
                 </div>
 
@@ -292,6 +334,10 @@ export default function SellerCoupons() {
             </tbody>
           </table>
           {!loading && (coupons || []).length === 0 && <div className="text-center text-muted py-4">No hay descuentos/cupons creados.</div>}
+        </div>
+
+        <div className="d-flex justify-content-center mt-3">
+          <PaginationBar page={page} setPage={setPage} totalPages={totalPages} />
         </div>
 
         <ConfirmModal show={confirm.show} title={confirm.title} message={confirm.message} onConfirm={() => { confirm.onConfirm && confirm.onConfirm(); }} onCancel={() => setConfirm({ show:false, title:'', message:'', onConfirm:null })} confirmText="Desactivar" cancelText="Cancelar" />

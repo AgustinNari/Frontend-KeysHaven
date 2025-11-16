@@ -1,13 +1,11 @@
 import apiClient from "../api/apiClient";
 
-
 const extractContentIfPage = (maybePage) => {
   if (!maybePage) return maybePage;
   if (Array.isArray(maybePage)) return maybePage;
   if (typeof maybePage === "object" && Array.isArray(maybePage.content)) return maybePage.content;
   return maybePage;
 };
-
 
 const tryEndpoints = async (paths, opts = {}) => {
   if (typeof paths === "string") paths = [paths];
@@ -20,16 +18,13 @@ const tryEndpoints = async (paths, opts = {}) => {
       return r;
     } catch (err) {
       lastErr = err;
-
       if (err && (err.status === 401 || err.status === 403)) {
         throw err;
       }
-
     }
   }
   throw lastErr;
 };
-
 
 const candidatesDefault = (path) => {
   if (path.startsWith('/api/v1')) return [path, path.replace('/api/v1', '')];
@@ -39,7 +34,6 @@ const candidatesPreferApiV1 = (path) => {
   if (path.startsWith('/api/v1')) return [path, path.replace('/api/v1', '')];
   return [`/api/v1${path}`, path];
 };
-
 
 export const getUsers = async () => {
   const resp = await tryEndpoints(candidatesDefault(`/users?page=0&size=2147483647`), { method: "GET" });
@@ -57,7 +51,6 @@ export const deleteUser = async (userId) => {
   return updateUser(userId, { active: false });
 };
 
-
 export const getAllProducts = async () => {
   const qs = `?page=0&size=2147483647`;
   const resp = await tryEndpoints(candidatesPreferApiV1(`/products/filtered/all${qs}`), { method: "GET" });
@@ -65,11 +58,9 @@ export const getAllProducts = async () => {
 };
 
 export const updateProduct = async (productId, productData) => {
-
   if (typeof productData.featured === "boolean") {
     return tryEndpoints(candidatesDefault(`/products/${productId}/featured?featured=${productData.featured}`), { method: "PATCH" });
   }
-
   if (typeof productData.active === "boolean") {
     return tryEndpoints(candidatesDefault(`/products/${productId}/active?active=${productData.active}`), { method: "PATCH" });
   }
@@ -77,10 +68,8 @@ export const updateProduct = async (productId, productData) => {
 };
 
 export const deleteProduct = async (productId) => {
-
   return tryEndpoints(candidatesDefault(`/products/${productId}/active?active=false`), { method: "PATCH" });
 };
-
 
 export const getCategories = async () => {
   const resp = await tryEndpoints(candidatesDefault(`/categories?page=0&size=2147483647`), { method: "GET" });
@@ -118,7 +107,6 @@ export const updateDiscount = async (discountId, discountData) => {
 export const deleteDiscount = async (discountId) => {
   return updateDiscount(discountId, { active: false });
 };
-
 
 export const getAllReviews = async () => {
   const resp = await tryEndpoints(candidatesDefault(`/reviews?page=0&size=2147483647`), { method: "GET" });
@@ -243,4 +231,30 @@ export const getRecentActivity = async () => {
     console.error("getRecentActivity error:", err);
     return [];
   }
+};
+
+
+export const getUsersPage = async (page = 1, size = 10) => {
+  const resp = await tryEndpoints(candidatesDefault(`/users?page=${Math.max(0, page-1)}&size=${size}`), { method: "GET" });
+  return resp;
+};
+
+export const getProductsPage = async (page = 1, size = 10) => {
+  const resp = await tryEndpoints(candidatesPreferApiV1(`/products/filtered/all?page=${Math.max(0, page-1)}&size=${size}`), { method: "GET" });
+  return resp;
+};
+
+export const getCategoriesPage = async (page = 1, size = 10) => {
+  const resp = await tryEndpoints(candidatesDefault(`/categories?page=${Math.max(0, page-1)}&size=${size}`), { method: "GET" });
+  return resp;
+};
+
+export const getDiscountsPage = async (page = 1, size = 10) => {
+  const resp = await tryEndpoints(candidatesDefault(`/discounts/admin/categories?page=${Math.max(0, page-1)}&size=${size}`), { method: "GET" });
+  return resp;
+};
+
+export const getReviewsPage = async (page = 1, size = 10) => {
+  const resp = await tryEndpoints(candidatesDefault(`/reviews?page=${Math.max(0, page-1)}&size=${size}`), { method: "GET" });
+  return resp;
 };
