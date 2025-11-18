@@ -11,7 +11,7 @@ export default function ImageCarousel({ images = [], activeIndex = 0, setActiveI
 
   return (
     <div>
-      <div className="image-hero card shadow-sm" style={{ backgroundImage: `url(${active.dataUrl || active.file})` }}>
+      <div className="image-hero card shadow-sm" style={{backgroundImage: `url(${active.dataUrl || active.file})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center'}}>
         <button className="carousel-arrow left" onClick={prev} aria-label="Anterior">‹</button>
         <button className="carousel-arrow right" onClick={next} aria-label="Siguiente">›</button>
 

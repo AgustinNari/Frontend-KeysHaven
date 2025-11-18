@@ -29,10 +29,29 @@ export default function Catalog() {
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
   const [categoriesOptions, setCategoriesOptions] = useState([]);
+  const [sellersOptions, setSellersOptions] = useState([]);
 
   const queryCategoryId = queryParams.get("categoryId");
 
   const { add } = useCart();
+
+  // Función para extraer vendedores únicos de los productos
+  const extractUniqueSellers = (products) => {
+    const sellerMap = new Map();
+    
+    products.forEach(product => {
+      if (product.sellerId && product.sellerDisplayName) {
+        if (!sellerMap.has(product.sellerId)) {
+          sellerMap.set(product.sellerId, {
+            id: product.sellerId,
+            displayName: product.sellerDisplayName
+          });
+        }
+      }
+    });
+    
+    return Array.from(sellerMap.values());
+  };
 
   useEffect(() => {
     if (queryCategoryId) {
@@ -45,12 +64,14 @@ export default function Catalog() {
     }
   }, [queryCategoryId]);
 
-
   useEffect(() => {
     if (querySellerId) {
-      setAppliedFilters(prev => ({ ...prev, sellerId: Number(querySellerId) }));
-      setWorkingFilters(prev => ({ ...prev, sellerId: Number(querySellerId) }));
-      setPage(1);
+      const sellerIdNum = Number(querySellerId);
+      if (!Number.isNaN(sellerIdNum)) {
+        setAppliedFilters(prev => ({ ...prev, sellerIds: [sellerIdNum] }));
+        setWorkingFilters(prev => ({ ...prev, sellerIds: [sellerIdNum] }));
+        setPage(1);
+      }
     }
   }, [querySellerId]);
 
@@ -58,6 +79,7 @@ export default function Catalog() {
     if (queryTitle) setSearchText(queryTitle);
   }, [queryTitle]);
 
+  // Cargar categorías
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -73,31 +95,79 @@ export default function Catalog() {
     return () => { cancelled = true; };
   }, []);
 
+  // Cargar productos y extraer vendedores
   useEffect(() => {
     let cancelled = false;
     const fetchItems = async () => {
       setLoading(true);
       try {
         const backendPage = Math.max(0, page - 1);
-        const resp = await productsService.search(appliedFilters, backendPage, pageSize, sortBy, true);
+        
+        const backendFilters = { ...appliedFilters };
+        
+        if (backendFilters.sellerIds && !Array.isArray(backendFilters.sellerIds)) {
+          backendFilters.sellerIds = [backendFilters.sellerIds];
+        }
+        
+        const resp = await productsService.search(backendFilters, backendPage, pageSize, sortBy, true);
         if (cancelled) return;
+        
         const content = resp.content || [];
         setItems(content);
         setTotalItems(resp.totalElements ?? content.length);
         setTotalPages(Math.max(1, resp.totalPages ?? Math.ceil((resp.totalElements ?? content.length) / pageSize)));
+        
+        // Extraer vendedores únicos de los productos cargados
+        const uniqueSellers = extractUniqueSellers(content);
+        setSellersOptions(uniqueSellers);
+        
       } catch (err) {
         console.error("Error fetching products:", err);
         setItems([]);
         setTotalItems(0);
         setTotalPages(1);
+        setSellersOptions([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
     fetchItems();
-    return () => { cancelled = true; };
   }, [appliedFilters, page, pageSize, sortBy]);
+
+  // Cargar vendedores iniciales (sin filtros aplicados)
+  useEffect(() => {
+    let cancelled = false;
+    const loadInitialSellers = async () => {
+      try {
+        // Hacer una búsqueda inicial sin filtros para obtener algunos vendedores
+        const resp = await productsService.search({}, 0, 50, "amountSold_desc", true);
+        if (cancelled) return;
+        
+        const content = resp.content || [];
+        const uniqueSellers = extractUniqueSellers(content);
+        setSellersOptions(prev => {
+          // Combinar con los existentes para no perder vendedores ya cargados
+          const combined = [...prev];
+          uniqueSellers.forEach(newSeller => {
+            if (!combined.find(s => s.id === newSeller.id)) {
+              combined.push(newSeller);
+            }
+          });
+          return combined;
+        });
+      } catch (err) {
+        console.error("Error loading initial sellers:", err);
+      }
+    };
+
+    // Solo cargar vendedores iniciales si no hay ninguno
+    if (sellersOptions.length === 0) {
+      loadInitialSellers();
+    }
+    
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -119,8 +189,9 @@ export default function Catalog() {
 
   const handleClearAll = () => {
     if (querySellerId) {
-      setWorkingFilters({ sellerId: Number(querySellerId) });
-      setAppliedFilters({ sellerId: Number(querySellerId) });
+      const sellerIdNum = Number(querySellerId);
+      setWorkingFilters({ sellerIds: [sellerIdNum] });
+      setAppliedFilters({ sellerIds: [sellerIdNum] });
       setSearchText("");
     } else if (queryCategoryId) {
       const idNum = Number(queryCategoryId);
@@ -141,6 +212,7 @@ export default function Catalog() {
         <aside className="sidebar">
           <SidebarFilters
             categories={categoriesOptions}
+            sellers={sellersOptions}
             workingFilters={workingFilters}
             setWorkingFilters={setWorkingFilters}
             onApply={handleApply}

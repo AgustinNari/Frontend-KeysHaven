@@ -411,6 +411,20 @@ export const getSellerStats = async (sellerId) => {
 };
 
 
+export const getAllSellers = async () => {
+  try {
+    const res = await apiClient.apiFetch('/sellers', { method: "GET" });
+    if (!res) return [];
+    
+    // Manejar diferentes formatos de respuesta
+    if (Array.isArray(res)) return res;
+    return res.content || res.items || [];
+  } catch (err) {
+    console.error("getAllSellers error:", err);
+    return [];
+  }
+};
+
 
 export const getCategories = async () => {
   try {
@@ -424,4 +438,5 @@ export const getCategories = async () => {
     console.error("getCategories error:", err);
     return [];
   }
+
 };

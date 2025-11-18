@@ -6,7 +6,14 @@ const REGIONS = ["GLOBAL","NA","EU","ASIA","LATAM","OCEANIA","AFRICA","ROTW"];
 const DEVELOPERS = ["Rockstar North","SmallDev","Ubisoft","EA","CD Projekt","Bethesda"];
 const PUBLISHERS = ["Rockstar Games","IndiePub","Ubisoft","EA","CD Projekt","Bethesda"];
 
-export default function SidebarFilters({ categories = [], workingFilters, setWorkingFilters, onApply, onClearAll }) {
+export default function SidebarFilters({ 
+  categories = [], 
+  sellers = [],  // Nueva prop para vendedores
+  workingFilters, 
+  setWorkingFilters, 
+  onApply, 
+  onClearAll 
+}) {
   workingFilters = workingFilters || {};
 
   const setField = (key, value) => {
@@ -31,6 +38,18 @@ export default function SidebarFilters({ categories = [], workingFilters, setWor
         <h5 className="m-0">Filtros</h5>
         <button style={{ color: "#8a4ff0" }} onClick={onClearAll}>Limpiar todo</button>
       </div>
+
+      {/* NUEVO FILTRO POR VENDEDORES */}
+      <FilterGroup
+        title="Vendedores"
+        options={(sellers || []).map(s => ({ 
+          value: s.id, 
+          label: s.displayName || s.name || s.username || `Vendedor ${s.id}` 
+        }))}
+        selected={workingFilters.sellerIds || []}
+        showLimit={5}
+        onToggle={(vals) => setField("sellerIds", vals)}
+      />
 
       <div className="mb-3">
         <label className="form-label">Precio</label>
