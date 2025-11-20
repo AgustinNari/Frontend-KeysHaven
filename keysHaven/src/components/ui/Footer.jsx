@@ -23,8 +23,8 @@ export default function Footer() {
           <div className="col-md-2">
             <h6 className="fw-bold">Company</h6>
             <ul className="list-unstyled small">
-              <li><Link className="text-light text-decoration-none" to="/termsandconditions">Terms of Service</Link></li>
-              <li><a href="#" className="text-light text-decoration-none">Privacy Policy</a></li>
+              <li><Link className="text-light text-decoration-none" to="/termsandconditions">Terminos de servicio</Link></li>
+              <li><Link className="text-light text-decoration-none" to="/faq">Preguntas Frecuentes</Link></li>
             </ul>
           </div>
         </div>

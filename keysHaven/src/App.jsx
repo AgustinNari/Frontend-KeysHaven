@@ -15,6 +15,7 @@ import Profile from './views/Profile';
 import SellerDetail from './views/SellerDetail';
 import PaymentMethod from './views/PaymentMethod';
 import TermsAndConditions from './views/TermsAndConditions';
+import FAQ from './views/FAQ';
 
 import Checkout from './views/Checkout';
 import OrderConfirmation from './views/OrderConfirmation';
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="/seller-detail/:sellerId" element={<SellerDetail />} />
           <Route path="/paymentmethod" element={<PaymentMethod />} />
           <Route path="/termsandconditions" element={<TermsAndConditions />} />
+          <Route path="/faq" element={<FAQ />} />
 
           <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="/adminpanel/*" element={<AdminPanel />} />
