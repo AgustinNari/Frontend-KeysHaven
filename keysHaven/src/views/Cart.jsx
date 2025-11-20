@@ -291,7 +291,7 @@ export default function Cart() {
         <Link to="/catalog" className="btn btn-light">
           Seguir comprando
         </Link>
-        <Link to="/checkout" className="btn btn-primary ms-auto">
+        <Link to="/paymentmethod" className="btn btn-primary ms-auto">
           Continuar compra
         </Link>
       </div>

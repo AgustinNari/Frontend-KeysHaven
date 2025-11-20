@@ -13,6 +13,7 @@ import Register from './views/Register';
 import NotFound from './views/NotFound';
 import Profile from './views/Profile';
 import SellerDetail from './views/SellerDetail';
+import PaymentMethod from './views/PaymentMethod';
 
 import Checkout from './views/Checkout';
 import OrderConfirmation from './views/OrderConfirmation';
@@ -52,7 +53,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/seller-detail/:sellerId" element={<SellerDetail />} />
-          
+          <Route path="/paymentmethod" element={<PaymentMethod />} />
 
           <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="/adminpanel/*" element={<AdminPanel />} />
