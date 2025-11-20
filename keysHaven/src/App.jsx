@@ -14,6 +14,7 @@ import NotFound from './views/NotFound';
 import Profile from './views/Profile';
 import SellerDetail from './views/SellerDetail';
 import PaymentMethod from './views/PaymentMethod';
+import TermsAndConditions from './views/TermsAndConditions';
 
 import Checkout from './views/Checkout';
 import OrderConfirmation from './views/OrderConfirmation';
@@ -32,8 +33,6 @@ import SalesAnalytics from './components/seller/SalesAnalytics';
 import SellerCoupons from './components/seller/SellerCoupons';
 import KeyManagement from './components/seller/KeyManagement';
 import ReviewsManagement from './components/admin/ReviewsManagement';
-
-
 
 export default function App() {
   return (
@@ -54,6 +53,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/seller-detail/:sellerId" element={<SellerDetail />} />
           <Route path="/paymentmethod" element={<PaymentMethod />} />
+          <Route path="/termsandconditions" element={<TermsAndConditions />} />
 
           <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="/adminpanel/*" element={<AdminPanel />} />
@@ -72,7 +72,6 @@ export default function App() {
           <Route path="/seller/analytics" element={<SalesAnalytics />} />
           <Route path="/seller/coupons" element={<SellerCoupons />} />
           <Route path="/seller/keys" element={<KeyManagement />} />
-          
 
           <Route path="/404" element={<NotFound />} />
           <Route path="/400" element={<NotFound />} />

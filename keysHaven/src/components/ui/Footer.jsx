@@ -1,4 +1,5 @@
-import React from 'react';
+import React from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 export default function Footer() {
   return (
@@ -22,7 +23,7 @@ export default function Footer() {
           <div className="col-md-2">
             <h6 className="fw-bold">Company</h6>
             <ul className="list-unstyled small">
-              <li><a href="#" className="text-light text-decoration-none">Terms of Service</a></li>
+              <li><Link className="text-light text-decoration-none" to="/termsandconditions">Terms of Service</Link></li>
               <li><a href="#" className="text-light text-decoration-none">Privacy Policy</a></li>
             </ul>
           </div>

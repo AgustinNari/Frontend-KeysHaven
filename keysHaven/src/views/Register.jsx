@@ -1,20 +1,19 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-
 
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation(); // Nuevo hook para acceder al estado de navegación
 
   const [step, setStep] = useState(1);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [region, setRegion] = useState("");
-
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -26,17 +25,30 @@ export default function Register() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // Efecto para verificar si venimos de aceptar los términos
+  useEffect(() => {
+    if (location.state?.termsAccepted) {
+      setTermsAccepted(true);
+      // Limpiar el estado de navegación para evitar que persista
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   function validateStep1() {
     if (!displayName || !email || !password) return false;
-
     if (password.length < 8) return false;
+    if (!termsAccepted) return false;
     return true;
   }
 
   function onContinue() {
     setError(null);
     if (!validateStep1()) {
-      setError("Completa nombre, email y contraseña (min 8 caracteres).");
+      if (!termsAccepted) {
+        setError("Debes aceptar los Términos y Condiciones para continuar.");
+      } else {
+        setError("Completa nombre, email y contraseña (min 8 caracteres).");
+      }
       return;
     }
     setStep(2);
@@ -46,6 +58,12 @@ export default function Register() {
     setError(null);
     setStep(1);
   }
+
+  const handleTermsRedirect = () => {
+    navigate("/termsandconditions", { 
+      state: { from: 'register' } 
+    });
+  };
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -134,20 +152,52 @@ export default function Register() {
                       <option>Asia</option>
                     </select>
                   </div>
+
+                  {/* Sección de Términos y Condiciones */}
+                  <div className="mt-4 p-3 border rounded bg-dark">
+                    <div className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="termsCheck"
+                        checked={termsAccepted}
+                        onChange={() => {}} // Solo lectura
+                        readOnly
+                      />
+                      <label className="form-check-label text-light" htmlFor="termsCheck">
+                        He leído y acepto los Términos y Condiciones
+                      </label>
+                    </div>
+                    
+                    <div className="mt-3 d-flex gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm"
+                        onClick={handleTermsRedirect}
+                      >
+                        <i className="fas fa-external-link-alt me-2"></i>
+                        Leer Términos y Condiciones
+                      </button>
+                    </div>
+
+                    {termsAccepted && (
+                      <div className="alert alert-success mt-3 mb-0 py-2 small" role="alert">
+                        <i className="fas fa-check-circle me-2"></i>
+                        Términos y condiciones aceptados correctamente
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {error && <div className="alert alert-danger">{error}</div>}
 
-                <button className="btn btn-primary btn-lg w-100 py-2 fw-bold mb-4" onClick={onContinue}>
+                <button 
+                  className="btn btn-primary btn-lg w-100 py-2 fw-bold mb-4" 
+                  onClick={onContinue}
+                  disabled={!termsAccepted}
+                >
                   Continuar
                 </button>
-
-                <p className="text-muted small text-center">
-                  Al continuar aceptas nuestros{' '}
-                  <Link to="/terms" className="text-primary text-decoration-none">Términos y Condiciones</Link>{' '}
-                  y nuestras{' '}
-                  <Link to="/privacy" className="text-primary text-decoration-none">Políticas de Privacidad</Link>.
-                </p>
               </div>
             )}
 
@@ -208,7 +258,7 @@ export default function Register() {
         </div>
 
         <div className="text-center mb-4 d-flex flex-column mt-3">
-              <p className="text-muted">¿Ya tienes una cuenta?</p>
+          <p className="text-muted">¿Ya tienes una cuenta?</p>
           <div>
             <Link to="/login" className="text-primary text-decoration-none fw-bold">Iniciar Sesión</Link>
           </div>
