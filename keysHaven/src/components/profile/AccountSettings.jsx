@@ -47,6 +47,15 @@ export default function AccountSettings({ user, onSave }) {
         )}
       </div>
 
+      <div className="mt-3">
+        <label className="form-label">Display name</label>
+        {!editing ? (
+          <div className="readonly-field">{form.displayName}</div>
+        ) : (
+          <input className="form-control" name="displayName" value={form.displayName} onChange={handleChange} />
+        )}
+      </div>
+
       <div className="row mt-2">
         <div className="col">
           <label className="form-label">Nombre</label>
@@ -66,16 +75,15 @@ export default function AccountSettings({ user, onSave }) {
         </div>
       </div>
 
-      <div className="mt-3">
-        <label className="form-label">Display name</label>
-        {!editing ? (
-          <div className="readonly-field">{form.displayName}</div>
-        ) : (
-          <input className="form-control" name="displayName" value={form.displayName} onChange={handleChange} />
-        )}
-      </div>
-
       <div className="row mt-2">
+        <div className="col">
+          <label className="form-label">Teléfono</label>
+          {!editing ? (
+            <div className="readonly-field">{form.phone}</div>
+          ) : (
+            <input className="form-control" name="phone" value={form.phone} onChange={handleChange} />
+          )}
+        </div>
         <div className="col">
           <label className="form-label">País</label>
           {!editing ? (
