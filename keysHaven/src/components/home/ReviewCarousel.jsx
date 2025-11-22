@@ -2,21 +2,45 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getLatestReviews } from "../../services/reviews";
+import productsService from "../../services/productsService";
 import Loading from "../../assets/doppyKnight/doppyTimeCheck.png";
 import Rating from "../catalog/Rating";
 
 export default function ReviewCarousel() {
   const [reviews, setReviews] = useState([]);
+  const [reviewsWithCategories, setReviewsWithCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    const fetchLatestReviews = async () => {
+    const fetchLatestReviewsWithCategories = async () => {
       try {
         setLoading(true);
         const latestReviews = await getLatestReviews(5);
         setReviews(latestReviews || []);
+
+        // Obtener categorías para cada producto desde el frontend
+        const reviewsWithCatData = await Promise.all(
+          (latestReviews || []).map(async (review) => {
+            try {
+              const productDetail = await productsService.getById(review.productId);
+              const categories = productDetail?.categories?.map(cat => cat.description) || [];
+              return {
+                ...review,
+                productCategories: categories
+              };
+            } catch (err) {
+              console.error(`Error loading categories for product ${review.productId}:`, err);
+              return {
+                ...review,
+                productCategories: []
+              };
+            }
+          })
+        );
+
+        setReviewsWithCategories(reviewsWithCatData);
       } catch (err) {
         console.error("Failed to load latest reviews", err);
         setError(err.message);
@@ -25,28 +49,28 @@ export default function ReviewCarousel() {
       }
     };
 
-    fetchLatestReviews();
+    fetchLatestReviewsWithCategories();
   }, []);
 
   // Auto-rotación del carousel
   useEffect(() => {
-    if (reviews.length <= 1) return;
+    if (reviewsWithCategories.length <= 1) return;
     
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => 
-        prevIndex === reviews.length - 1 ? 0 : prevIndex + 1
+        prevIndex === reviewsWithCategories.length - 1 ? 0 : prevIndex + 1
       );
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [reviews.length]);
+  }, [reviewsWithCategories.length]);
 
   const nextReview = () => {
-    setCurrentIndex(currentIndex === reviews.length - 1 ? 0 : currentIndex + 1);
+    setCurrentIndex(currentIndex === reviewsWithCategories.length - 1 ? 0 : currentIndex + 1);
   };
 
   const prevReview = () => {
-    setCurrentIndex(currentIndex === 0 ? reviews.length - 1 : currentIndex - 1);
+    setCurrentIndex(currentIndex === 0 ? reviewsWithCategories.length - 1 : currentIndex - 1);
   };
 
   const goToReview = (index) => {
@@ -87,7 +111,7 @@ export default function ReviewCarousel() {
     );
   }
 
-  if (!reviews || reviews.length === 0) {
+  if (!reviewsWithCategories || reviewsWithCategories.length === 0) {
     return (
       <section className="py-5 bg-primary-dark">
         <div className="container">
@@ -102,7 +126,7 @@ export default function ReviewCarousel() {
     );
   }
 
-  const currentReview = reviews[currentIndex];
+  const currentReview = reviewsWithCategories[currentIndex];
 
   return (
     <section className="py-5 bg-primary-dark">
@@ -112,7 +136,7 @@ export default function ReviewCarousel() {
         </h2>
 
         <div className="row justify-content-center">
-          <div className="col-12 col-lg-10">
+          <div className="col-10">
             <div className="card shadow-lg border-0 rounded-3 bg-primary-mid">
               <div className="card-body p-4">
                 {/* Controles del carousel */}
@@ -120,13 +144,13 @@ export default function ReviewCarousel() {
                   <button 
                     className="btn btn-outline-primary btn-sm"
                     onClick={prevReview}
-                    disabled={reviews.length <= 1}
+                    disabled={reviewsWithCategories.length <= 1}
                   >
                     <i className="fas fa-chevron-left"></i>
                   </button>
                   
                   <div className="d-flex gap-2">
-                    {reviews.map((_, index) => (
+                    {reviewsWithCategories.map((_, index) => (
                       <button
                         key={index}
                         className={`btn btn-sm ${
@@ -141,16 +165,16 @@ export default function ReviewCarousel() {
                   <button 
                     className="btn btn-outline-primary btn-sm"
                     onClick={nextReview}
-                    disabled={reviews.length <= 1}
+                    disabled={reviewsWithCategories.length <= 1}
                   >
                     <i className="fas fa-chevron-right"></i>
                   </button>
                 </div>
 
                 {/* Contenido de la review actual */}
-                <div className="row align-items-center">
+                <div className="row align-items-stretch"> {/* Cambiado a align-items-stretch */}
                   {/* Imagen del producto con enlace */}
-                  <div className="col-12 col-md-4 text-center mb-3 mb-md-0">
+                  <div className="col-md-4 text-center mb-3 mb-md-0">
                     <Link 
                       to={`/product/${currentReview.productId}`}
                       className="text-decoration-none"
@@ -164,7 +188,7 @@ export default function ReviewCarousel() {
                             maxHeight: '200px', 
                             width: 'auto',
                             objectFit: 'cover',
-                            transition: 'transform 1s ease'
+                            transition: 'transform 0.3s ease'
                           }}
                           onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
                           onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
@@ -175,7 +199,7 @@ export default function ReviewCarousel() {
                                height: '200px', 
                                width: '150px', 
                                margin: '0 auto',
-                               transition: 'transform 1s ease'
+                               transition: 'transform 0.3s ease'
                              }}
                              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
                              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}>
@@ -185,12 +209,10 @@ export default function ReviewCarousel() {
                     </Link>
                   </div>
 
-                  {/* Información de la review */}
-                  <div className="col-12 col-md-8">
-                    <div className="text-center text-md-start">
-                      {/* Rating y título */}
-                      <div className="mb-3">
-                        <div className="d-flex justify-content-center justify-content-md-start align-items-center mb-2">
+                  {/* Información de la review - NUEVO LAYOUT */}
+                  <div className="col-8">
+                    <div className="d-flex flex-column h-100">
+                        <div className="d-flex justify-content-start align-items-center mb-2">
                           <Rating 
                             value={currentReview.rating} 
                             size={20} 
@@ -201,6 +223,13 @@ export default function ReviewCarousel() {
                             {currentReview.rating}/10
                           </span>
                         </div>
+                      
+                      {/* Contenedor principal: comentario + categorías */}
+                      {/* Rating y título */}
+                    <div className="d-flex flex-row mb-3">
+                      <div className="col-6">
+                      
+
                         <Link 
                           to={`/product/${currentReview.productId}`}
                           className="text-decoration-none"
@@ -216,20 +245,49 @@ export default function ReviewCarousel() {
                             {currentReview.title}
                           </h5>
                         </Link>
+                        {/* Comentario - lado izquierdo */}
+                        <div className="">
+                          <div className="h-100 d-flex align-items-center">
+                            <p className="text-light m-0" style={{ 
+                              fontStyle: 'italic',
+                              lineHeight: '1.5'
+                            }}>
+                              "{currentReview.comment}"
+                            </p>
+                          </div>
+                        </div>
                       </div>
-
-                      {/* Comentario */}
-                      <p className="text-light mb-3" style={{ 
-                        fontStyle: 'italic',
-                        lineHeight: '1.5',
-                        minHeight: '60px'
-                      }}>
-                        "{currentReview.comment}"
-                      </p>
+                      {/* Categorías - lado derecho */}
+                      <div className="col-6 ms-3">
+                        <div className="">
+                          {currentReview.productCategories && currentReview.productCategories.length > 0 && (
+                            <div className="h-100 d-flex flex-column">
+                              <strong className="text-primary-light d-block mb-2">Categorías</strong>
+                              <div className="d-flex gap-1 align-items-start">
+                                {currentReview.productCategories.map((category, index) => (
+                                  <span 
+                                    key={index}
+                                    className="badge bg-primary bg-opacity-25 text-white border border-primary border-opacity-25"
+                                    style={{ 
+                                      fontSize: '0.75rem',
+                                      fontWeight: '500',
+                                      width: 'fit-content'
+                                    }}
+                                  >
+                                    {category}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                      
 
                       {/* Información del producto y usuario */}
                       <div className="row text-sm mb-3">
-                        <div className="col-12 col-sm-6 mb-2 mb-sm-0">
+                        <div className="col-6">
                           <strong className="text-primary-light">Juego:</strong>
                           <br />
                           <Link 
@@ -239,8 +297,8 @@ export default function ReviewCarousel() {
                             {currentReview.productTitle}
                           </Link>
                         </div>
-                        <div className="col-12 col-sm-6">
-                          <strong className="text-primary-light">Usuario:</strong>
+                        <div className="col-6">
+                          <strong className="text-primary-light ">Usuario:</strong>
                           <br />
                           <span className="text-light">{currentReview.buyerDisplayName}</span>
                         </div>
@@ -258,7 +316,7 @@ export default function ReviewCarousel() {
                       </div>
 
                       {/* BOTÓN PARA VER DETALLES DEL PRODUCTO */}
-                      <div className="d-flex flex-column flex-sm-row gap-2 justify-content-center justify-content-md-start">
+                      <div className="d-flex flex-column flex-sm-row gap-2 justify-content-start mt-auto">
                         <Link 
                           to={`/product/${currentReview.productId}`}
                           className="btn btn-primary"
@@ -267,7 +325,6 @@ export default function ReviewCarousel() {
                           <i className="fas fa-info-circle me-2"></i>
                           Ver Detalles del Juego
                         </Link>
-                        
                       </div>
                     </div>
                   </div>
