@@ -5,7 +5,8 @@ import { getFeaturedCategories } from '../services/categories';
 import { getTopSellers } from "../services/sellers";
 import productsService from "../services/productsService";
 import HomeBanner from '../assets/homeImage.png';
-import Loading from "../assets/doppyKnight/doppyTimeCheck.png"
+import Loading from "../assets/doppyKnight/doppyTimeCheck.png";
+import ReviewCarousel from "../components/home/ReviewCarousel"; // NUEVO IMPORT
 
 export default function Home() {
   const [theme, setTheme] = useState("bg-primary-dark");
@@ -353,6 +354,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <ReviewCarousel />
     </div>
   );
 }

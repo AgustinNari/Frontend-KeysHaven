@@ -1,3 +1,4 @@
+// services/reviews.js
 import apiClient from "../api/apiClient";
 
 export async function getReviewsByProduct(productId, page = 0, size = 10) {
@@ -20,4 +21,16 @@ export function getReviewByOrderItem(orderItemId) {
   return apiClient.apiFetch(`/reviews/order-item/${orderItemId}`, { method: "GET" });
 }
 
-export default { getReviewsByProduct, createReview, updateReview, deleteReview, getReviewByOrderItem };
+// NUEVO: Servicio para obtener las últimas reviews
+export async function getLatestReviews(count = 5) {
+  return apiClient.apiFetch(`/reviews/latest?count=${count}`);
+}
+
+export default { 
+  getReviewsByProduct, 
+  createReview, 
+  updateReview, 
+  deleteReview, 
+  getReviewByOrderItem,
+  getLatestReviews // Añadir al export
+};
