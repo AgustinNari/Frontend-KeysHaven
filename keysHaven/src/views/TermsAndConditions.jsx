@@ -1,16 +1,23 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function TermsAndConditions() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const [accepted, setAccepted] = useState(false);
 
   const handleAccept = () => {
+    if (isAuthenticated) {
+      navigate(-1);
+      return;
+    }
+
     if (accepted) {
       if (location.state?.from === 'register') {
-        navigate("/register", { 
-          state: { termsAccepted: true } 
+        navigate("/register", {
+          state: { termsAccepted: true }
         });
       } else {
         navigate("/");
@@ -114,35 +121,43 @@ export default function TermsAndConditions() {
               </div>
             </div>
 
-            <div className="form-check mt-4">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="acceptTerms"
-                checked={accepted}
-                onChange={(e) => setAccepted(e.target.checked)}
-              />
-              <label className="form-check-label text-light" htmlFor="acceptTerms">
-                He leído y acepto los términos y condiciones
-              </label>
-            </div>
+            {isAuthenticated ? (
+              <div className="d-grid gap-2 mt-4">
+                <button className="btn btn-outline-secondary" onClick={() => navigate(-1)}>Volver</button>
+              </div>
+            ) : (
+              <>
+                <div className="form-check mt-4">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="acceptTerms"
+                    checked={accepted}
+                    onChange={(e) => setAccepted(e.target.checked)}
+                  />
+                  <label className="form-check-label text-light" htmlFor="acceptTerms">
+                    He leído y acepto los términos y condiciones
+                  </label>
+                </div>
 
-            <div className="d-grid gap-2 mt-4">
-              <button
-                className="btn btn-primary py-2 fw-bold"
-                disabled={!accepted}
-                onClick={handleAccept}
-              >
-                Aceptar y Continuar
-              </button>
+                <div className="d-grid gap-2 mt-4">
+                  <button
+                    className="btn btn-primary py-2 fw-bold"
+                    disabled={!accepted}
+                    onClick={handleAccept}
+                  >
+                    Aceptar y Continuar
+                  </button>
 
-              <button
-                className="btn btn-outline-secondary"
-                onClick={() => navigate(-1)} 
-              >
-                Cancelar
-              </button>
-            </div>
+                  <button
+                    className="btn btn-outline-secondary"
+                    onClick={() => navigate(-1)}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+const DRAFT_KEY = "register_form_draft_v1";
+
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation(); // Nuevo hook para acceder al estado de navegación
+  const location = useLocation();
 
   const [step, setStep] = useState(1);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -13,26 +15,70 @@ export default function Register() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [region, setRegion] = useState("");
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [country, setCountry] = useState("");
   const [sellerDescription, setSellerDescription] = useState("");
-  const [role, setRole] = useState("BUYER"); 
+  const [role, setRole] = useState("BUYER");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Efecto para verificar si venimos de aceptar los términos
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d) {
+          if (!displayName && d.displayName) setDisplayName(d.displayName);
+          if (!email && d.email) setEmail(d.email);
+          if (!password && d.password) setPassword(d.password);
+          if (!firstName && d.firstName) setFirstName(d.firstName);
+          if (!lastName && d.lastName) setLastName(d.lastName);
+          if (!phone && d.phone) setPhone(d.phone);
+          if (!country && d.country) setCountry(d.country);
+          if (!sellerDescription && d.sellerDescription) setSellerDescription(d.sellerDescription);
+          if (!role && d.role) setRole(d.role);
+          if (d.termsAccepted) setTermsAccepted(Boolean(d.termsAccepted));
+          if (d.step) setStep(d.step);
+        }
+      }
+    } catch (err) {
+      console.warn("No se pudo restaurar draft:", err);
+    }
+  }, []);
+
   useEffect(() => {
     if (location.state?.termsAccepted) {
       setTermsAccepted(true);
-      // Limpiar el estado de navegación para evitar que persista
-      window.history.replaceState({}, document.title);
+      try {
+        window.history.replaceState({}, document.title);
+      } catch {}
     }
   }, [location.state]);
+
+  useEffect(() => {
+    try {
+      const draft = {
+        step,
+        termsAccepted,
+        displayName,
+        email,
+        password,
+        firstName,
+        lastName,
+        phone,
+        country,
+        sellerDescription,
+        role
+      };
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch (err) {
+      console.warn("No se pudo guardar draft:", err);
+    }
+  }, [step, termsAccepted, displayName, email, password, firstName, lastName, phone, country, sellerDescription, role]);
 
   function validateStep1() {
     if (!displayName || !email || !password) return false;
@@ -60,8 +106,27 @@ export default function Register() {
   }
 
   const handleTermsRedirect = () => {
-    navigate("/termsandconditions", { 
-      state: { from: 'register' } 
+    try {
+      const draft = {
+        step,
+        termsAccepted,
+        displayName,
+        email,
+        password,
+        firstName,
+        lastName,
+        phone,
+        country,
+        sellerDescription,
+        role
+      };
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch (err) {
+      console.warn("Error al persistir draft antes de ir a términos:", err);
+    }
+
+    navigate("/termsandconditions", {
+      state: { from: "register" }
     });
   };
 
@@ -76,15 +141,16 @@ export default function Register() {
       lastName: lastName,
       email: email,
       password: password,
-      role: role, 
+      role: role,
       phone: phone || null,
       sellerDescription: sellerDescription || null,
-      country: country || region || null,
+      country: country || null,
     };
 
     try {
       const out = await register(payload);
       if (out.success) {
+        try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
         navigate("/", { replace: true });
       } else {
         setError(out.error?.message || "Error al registrarse");
@@ -142,17 +208,6 @@ export default function Register() {
                     <label htmlFor="passwordInput" className="text-muted">Contraseña (mín 8 caracteres)</label>
                   </div>
 
-                  <div className="mx-2 mt-3">
-                    <label className="form-label small text-muted">Seleccionar Región (opcional)</label>
-                    <select className="form-select" value={region} onChange={(e) => setRegion(e.target.value)}>
-                      <option value="">Seleccionar...</option>
-                      <option>Sudamérica</option>
-                      <option>Norteamérica</option>
-                      <option>Europa</option>
-                      <option>Asia</option>
-                    </select>
-                  </div>
-
                   {/* Sección de Términos y Condiciones */}
                   <div className="mt-4 p-3 border rounded bg-dark">
                     <div className="form-check">
@@ -161,14 +216,14 @@ export default function Register() {
                         type="checkbox"
                         id="termsCheck"
                         checked={termsAccepted}
-                        onChange={() => {}} // Solo lectura
+                        onChange={() => {}}
                         readOnly
                       />
                       <label className="form-check-label text-light" htmlFor="termsCheck">
                         He leído y acepto los Términos y Condiciones
                       </label>
                     </div>
-                    
+
                     <div className="mt-3 d-flex gap-2">
                       <button
                         type="button"
@@ -191,8 +246,8 @@ export default function Register() {
 
                 {error && <div className="alert alert-danger">{error}</div>}
 
-                <button 
-                  className="btn btn-primary btn-lg w-100 py-2 fw-bold mb-4" 
+                <button
+                  className="btn btn-primary btn-lg w-100 py-2 fw-bold mb-4"
                   onClick={onContinue}
                   disabled={!termsAccepted}
                 >

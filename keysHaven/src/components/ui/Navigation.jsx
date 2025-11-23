@@ -13,6 +13,8 @@ export default function Navigation() {
   const briefName = user?.displayName ?? user?.email ?? "";
   const avatar = user?.avatarDataUrl ?? DoppyThumbsUp;
 
+  const showCartInNavbar = !user || user?.role !== "ADMIN";
+
   return (
     <nav className="navbar navbar-expand-lg sticky-top navbar-dark bg-primary-dark border-bottom border-light">
       <div className="container-fluid">
@@ -45,24 +47,21 @@ export default function Navigation() {
                 <li className="nav-item"><NavLink to="/register" className="nav-link">Registro</NavLink></li>
               </>
             )}
-
-            {isAuthenticated && (
-              <>
-              </>
-            )}
           </ul>
 
           <div className="d-flex gap-2 align-items-center">
-            <NavLink to="/cart" className="nav-link" aria-label="Carrito">
-              <button className="btn btn-outline-primary rounded-circle p-2 position-relative" title="Carrito"style={{width:"50px",height:"50px"}}>
-                <span className="material-symbols-outlined">shopping_cart</span>
-                {cartCount > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
-            </NavLink>
+            {showCartInNavbar && (
+              <NavLink to="/cart" className="nav-link" aria-label="Carrito">
+                <button className="btn btn-outline-primary rounded-circle p-2 position-relative" title="Carrito" style={{ width: "50px", height: "50px" }}>
+                  <span className="material-symbols-outlined">shopping_cart</span>
+                  {cartCount > 0 && (
+                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                      {cartCount}
+                    </span>
+                  )}
+                </button>
+              </NavLink>
+            )}
 
             {isAuthenticated && user?.role === "SELLER" && (
               <NavLink to="/sellerdashboard" className="nav-link" aria-label="Seller dashboard" title="Seller dashboard">
@@ -83,22 +82,22 @@ export default function Navigation() {
               <>
                 <NavLink to="/profile" className="nav-link" title="Perfil">
                   <button
-                  className="btn btn-outline-secondary rounded-circle p-2"
-                  style={{
-                    background: `url(${avatar})`,
-                    backgroundRepeat: "no-repeat",
-                    backgroundSize: "100%",
-                    backgroundPosition: "center",
-                    width: "50px",  // Fixed width
-                    height: "50px", // Fixed height
-                    padding: "0",    // Remove default padding
-                    position: "relative",  // Needed to position the pseudo-element
-                    overflow: "hidden", // Hide anything outside the button's borders
-                    transition: "background-color 0.3s ease", // Smooth transition for background change
-                  }}
-                >
-                  <span className="button-overlay"></span>  {/* This span will be used for the gloss effect */}
-                </button>
+                    className="btn btn-outline-secondary rounded-circle p-2"
+                    style={{
+                      background: `url(${avatar})`,
+                      backgroundRepeat: "no-repeat",
+                      backgroundSize: "100%",
+                      backgroundPosition: "center",
+                      width: "50px",
+                      height: "50px",
+                      padding: "0",
+                      position: "relative",
+                      overflow: "hidden",
+                      transition: "background-color 0.3s ease",
+                    }}
+                  >
+                    <span className="button-overlay"></span>
+                  </button>
                 </NavLink>
 
                 <div style={{ color: "#7f13ec", fontWeight: 600 }}>
@@ -122,15 +121,15 @@ export default function Navigation() {
                     backgroundRepeat: "no-repeat",
                     backgroundSize: "100%",
                     backgroundPosition: "center",
-                    width: "50px",  // Fixed width
-                    height: "50px", // Fixed height
-                    padding: "0",    // Remove default padding
-                    position: "relative",  // Needed to position the pseudo-element
-                    overflow: "hidden", // Hide anything outside the button's borders
-                    transition: "background-color 0.3s ease", // Smooth transition for background change
+                    width: "50px",
+                    height: "50px",
+                    padding: "0",
+                    position: "relative",
+                    overflow: "hidden",
+                    transition: "background-color 0.3s ease",
                   }}
                 >
-                  <span className="button-overlay"></span>  {/* This span will be used for the gloss effect */}
+                  <span className="button-overlay"></span>
                 </button>
               </NavLink>
             )}
@@ -140,6 +139,7 @@ export default function Navigation() {
     </nav>
   );
 }
+
 /*<img
                     src={avatar}
                     alt="Avatar"

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
+import { useAuth } from "../context/AuthContext";
 import "../components/estilos/Fondos.css";
 import "../components/estilos/product.css";
 import ActivationSteps from "../components/product/ActivationSteps.jsx";
@@ -18,6 +19,8 @@ import reviewsService from "../services/reviews";
 export default function ProductDetail() {
   const { id } = useParams();
   const { add } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [product, setProduct] = useState(null);
   const [productImages, setProductImages] = useState([]);
@@ -31,6 +34,8 @@ export default function ProductDetail() {
 
   const [reviewsPageNumber, setReviewsPageNumber] = useState(1);
   const reviewsPageSize = 5;
+
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -173,8 +178,37 @@ export default function ProductDetail() {
     };
   };
 
+  const isAdmin = user?.role === "ADMIN";
+  const isSellerOwner = user?.role === "SELLER" && String(user?.id) === String(product?.sellerId);
+  const blockedPurchase = isAdmin || isSellerOwner;
+
+  const showToast = (text, type = "warn", duration = 2600) => {
+    setToast({ text, type });
+    setTimeout(() => setToast(null), duration);
+  };
+
+  const handleAddToCart = () => {
+    if (blockedPurchase) {
+      if (isAdmin) showToast("El administrador no puede comprar productos");
+      else showToast("No se pueden comprar productos propios");
+      return;
+    }
+    add(buildAddPayload(), 1);
+    showToast("Añadido al carrito", "info");
+  };
+
+  const handleBuyNow = () => {
+    if (blockedPurchase) {
+      if (isAdmin) showToast("El administrador no puede comprar productos");
+      else showToast("No se pueden comprar productos propios");
+      return;
+    }
+    add(buildAddPayload(), 1);
+    navigate("/cart");
+  };
+
   return (
-    <div className="product-page">
+    <div className="product-page" style={{ position: "relative" }}>
       <nav aria-label="breadcrumb" className="mb-3">
         <ol className="breadcrumb">
           <li className="breadcrumb-item"><Link to="/">Home</Link></li>
@@ -270,7 +304,7 @@ export default function ProductDetail() {
             </div>
           </div>
 
-        <ActivationSteps />
+          <ActivationSteps />
 
         </div>
 
@@ -306,9 +340,23 @@ export default function ProductDetail() {
             )}
 
             <div className="mt-3 d-grid gap-2">
-              <button className="btn btn-primary btn-lg" onClick={() => add(buildAddPayload(), 1)}>Comprar ahora</button>
+              <button
+                className={`btn btn-lg ${blockedPurchase ? "btn-secondary" : "btn-primary"}`}
+                onClick={handleBuyNow}
+                aria-disabled={blockedPurchase}
+                title={blockedPurchase ? (isAdmin ? "Administrador: no puede comprar" : "No puedes comprar tus propios productos") : "Comprar ahora"}
+              >
+                Comprar ahora
+              </button>
 
-              <button className="btn btn-outline-primary" onClick={() => add(buildAddPayload(), 1)}>Agregar al carrito</button>
+              <button
+                className={`btn ${blockedPurchase ? "btn-outline-secondary" : "btn-outline-primary"}`}
+                onClick={handleAddToCart}
+                aria-disabled={blockedPurchase}
+                title={blockedPurchase ? (isAdmin ? "Administrador: no puede comprar" : "No puedes comprar tus propios productos") : "Agregar al carrito"}
+              >
+                Agregar al carrito
+              </button>
             </div>
 
             <div className="mt-3">
@@ -333,6 +381,20 @@ export default function ProductDetail() {
           </div>
         </aside>
       </div>
+
+      {toast && (
+        <div style={{
+          position: "fixed",
+          top: 16,
+          right: 16,
+          zIndex: 5000,
+          minWidth: 220
+        }}>
+          <div className={`alert ${toast.type === "warn" ? "alert-warning" : "alert-info"} py-2 mb-0`} role="alert">
+            <small style={{ fontWeight: 600 }}>{toast.text}</small>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

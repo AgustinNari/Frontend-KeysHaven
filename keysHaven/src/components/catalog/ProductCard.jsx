@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Rating from "./Rating";
 import { useCart } from "../../store/cart.jsx";
+import { useAuth } from "../../context/AuthContext";
 
 export default function ProductCard({ product }) {
   const { add } = useCart();
+  const { user } = useAuth();
+  const [toast, setToast] = useState(null);
 
   const hasDiscount = (product.bestDiscountFrac != null && Number(product.bestDiscountFrac) > 0) || (product.bestDiscountPercentage != null && Number(product.bestDiscountPercentage) > 0);
   const discountFrac = product.bestDiscountFrac ?? (product.bestDiscountPercentage != null ? Number(product.bestDiscountPercentage) / 100 : null);
@@ -13,7 +16,22 @@ export default function ProductCard({ product }) {
   const baseOriginalPrice = Number(product.price ?? 0);
   const displayPrice = (hasDiscount && product.discountedPrice != null) ? Number(product.discountedPrice) : baseOriginalPrice;
 
-  const handleAdd = () => {
+  const isAdmin = user?.role === "ADMIN";
+  const isSellerOwner = user?.role === "SELLER" && String(user?.id) === String(product?.sellerId);
+  const blockedPurchase = isAdmin || isSellerOwner;
+
+  function showToast(text, type = "warn", duration = 2400) {
+    setToast({ text, type });
+    setTimeout(() => setToast(null), duration);
+  }
+
+  const addToCartSafe = () => {
+    if (blockedPurchase) {
+      if (isAdmin) showToast("El administrador no puede comprar productos");
+      else showToast("No se pueden comprar productos propios");
+      return;
+    }
+
     add({
       id: product.id,
       title: product.title,
@@ -32,7 +50,7 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <div className="product-card card">
+    <div className="product-card card" style={{ position: "relative" }}>
       {product.primaryImageUrl ? (
         <div
           className="media"
@@ -89,9 +107,15 @@ export default function ProductCard({ product }) {
               )}
             </div>
             <div className="action-buttons" role="group" aria-label="acciones producto">
-              <button className="btn btn-sm btn-primary" onClick={handleAdd}>
+              <button
+                className={`btn btn-sm ${blockedPurchase ? "btn-secondary" : "btn-primary"}`}
+                onClick={addToCartSafe}
+                aria-disabled={blockedPurchase}
+                title={blockedPurchase ? (isAdmin ? "Administrador: no puede comprar" : "No puedes comprar tus propios productos") : "Agregar al carrito"}
+              >
                 Al Carrito
               </button>
+
               <Link
                 to={`/product/${product.id}`}
                 className="btn btn-sm btn-outline-secondary"
@@ -102,6 +126,20 @@ export default function ProductCard({ product }) {
           </div>
         </div>
       </div>
+
+      {toast && (
+        <div style={{
+          position: "absolute",
+          top: 8,
+          right: 8,
+          zIndex: 2000,
+          minWidth: 220
+        }}>
+          <div className={`alert ${toast.type === "warn" ? "alert-warning" : "alert-info"} py-2 mb-0`} role="alert" style={{ margin: 0 }}>
+            <small style={{ fontWeight: 600 }}>{toast.text}</small>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
