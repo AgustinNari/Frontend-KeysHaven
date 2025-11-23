@@ -118,11 +118,12 @@ export function CartProvider({ children }) {
         const existing = (items.find(x => String(x.id) === String(np.id)) || {}).qty || 0;
         if (existing + qty > info.stock) {
           console.warn("No hay suficiente stock para agregar esa cantidad");
-          return { ok: false, reason: "Stock insuficiente" };
+          const available = Math.max(0, info.stock - existing);
+          return { ok: false, reason: `Stock insuficiente. Disponible: ${available}` };
         }
       }
     } catch (e) {}
-
+    
     setItems((prev) => {
       const idx = prev.findIndex((x) => String(x.id) === String(np.id));
       if (idx >= 0) {

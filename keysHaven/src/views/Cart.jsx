@@ -205,7 +205,13 @@ export default function Cart() {
                       <span className="btn btn-light disabled">{it.qty}</span>
                       <button
                         className="btn btn-outline-secondary"
-                        onClick={() => inc(it.id)}
+                        onClick={async () => {
+                          const res = await inc(it.id);
+                          if (!res || !res.ok) {
+                            setMsg({ type: "warning", text: res?.reason ?? "No se pudo aumentar la cantidad" });
+                            setTimeout(() => setMsg(null), 2600);
+                          }
+                        }}
                       >
                         +
                       </button>

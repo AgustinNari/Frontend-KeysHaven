@@ -25,14 +25,14 @@ export default function ProductCard({ product }) {
     setTimeout(() => setToast(null), duration);
   }
 
-  const addToCartSafe = () => {
+  const addToCartSafe = async () => {
     if (blockedPurchase) {
       if (isAdmin) showToast("El administrador no puede comprar productos");
       else showToast("No se pueden comprar productos propios");
       return;
     }
 
-    add({
+    const res = await add({
       id: product.id,
       title: product.title,
       price: baseOriginalPrice,
@@ -44,9 +44,17 @@ export default function ProductCard({ product }) {
         id: product.id,
         price: baseOriginalPrice,
         bestDiscount: product.bestDiscount ?? (product.bestDiscountPercentage != null ? { type: "PERCENT", value: product.bestDiscountPercentage } : null),
-        primaryImageDataUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? null
+        primaryImageDataUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? null,
+        availableStock: product.availableStock ?? product.stock ?? null
       }
-    });
+    }, 1);
+
+    if (!res || !res.ok) {
+      const reason = res?.reason ?? "No se pudo agregar al carrito";
+      showToast(reason, "warn");
+    } else {
+      showToast("Añadido al carrito", "info");
+    }
   };
 
   return (

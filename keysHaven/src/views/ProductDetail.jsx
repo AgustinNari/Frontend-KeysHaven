@@ -173,7 +173,8 @@ export default function ProductDetail() {
         id: product.id,
         price: basePrice,
         bestDiscount: product.bestDiscount ?? product.bestDiscount,
-        primaryImageDataUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? null
+        primaryImageDataUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? null,
+        availableStock: product.availableStock ?? product.stock ?? null
       }
     };
   };
@@ -187,23 +188,31 @@ export default function ProductDetail() {
     setTimeout(() => setToast(null), duration);
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (blockedPurchase) {
       if (isAdmin) showToast("El administrador no puede comprar productos");
       else showToast("No se pueden comprar productos propios");
       return;
     }
-    add(buildAddPayload(), 1);
+    const res = await add(buildAddPayload(), 1);
+    if (!res || !res.ok) {
+      showToast(res?.reason ?? "No se pudo agregar al carrito", "warn");
+      return;
+    }
     showToast("Añadido al carrito", "info");
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (blockedPurchase) {
       if (isAdmin) showToast("El administrador no puede comprar productos");
       else showToast("No se pueden comprar productos propios");
       return;
     }
-    add(buildAddPayload(), 1);
+    const res = await add(buildAddPayload(), 1);
+    if (!res || !res.ok) {
+      showToast(res?.reason ?? "No se pudo agregar al carrito", "warn");
+      return;
+    }
     navigate("/cart");
   };
 
