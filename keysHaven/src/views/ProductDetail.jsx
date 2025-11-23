@@ -37,6 +37,37 @@ export default function ProductDetail() {
 
   const [toast, setToast] = useState(null);
 
+  function parseLocalDate(value) {
+    if (!value) return null;
+
+    if (value instanceof Date && !isNaN(value)) return value;
+
+    if (typeof value === "number") return new Date(value);
+
+    if (typeof value === "string") {
+      const exact = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (exact) {
+        const y = Number(exact[1]), m = Number(exact[2]), d = Number(exact[3]);
+        return new Date(y, m - 1, d);
+      }
+
+      const parsed = new Date(value);
+      if (!isNaN(parsed)) return parsed;
+    }
+
+    return null;
+  }
+
+  function formatLocalDateString(value) {
+    const dt = parseLocalDate(value);
+    if (!dt) return "N/A";
+    try {
+      return dt.toLocaleDateString();
+    } catch {
+      return "N/A";
+    }
+  }
+
   useEffect(() => {
     const fetchDetail = async () => {
       setLoading(true);
@@ -77,8 +108,13 @@ export default function ProductDetail() {
         }
 
         if (detail.sellerId) {
-          const sp = await productsService.productsBySeller(detail.sellerId, detail.id, 6);
-          setSellerProducts(sp);
+          try {
+            let sp = await productsService.productsBySeller(detail.sellerId, detail.id, 7);
+            sp = Array.isArray(sp) ? sp.slice(0, 6) : [];
+            setSellerProducts(sp);
+          } catch (e) {
+            setSellerProducts([]);
+          }
         } else {
           setSellerProducts([]);
         }
@@ -240,7 +276,12 @@ export default function ProductDetail() {
               <div className="stat muted">Reseñas: <strong style={{ color: "var(--text)" }}>{product.ratingCount ?? 0}</strong></div>
               <div className="stat muted">Ventas: <strong style={{ color: "var(--text)" }}>{product.sold ?? 0}</strong></div>
               <div className="stat muted">Stock: <strong style={{ color: "var(--text)" }}>{product.stock ?? 0}</strong></div>
-              <div className="stat muted">Lanzamiento: <strong style={{ color: "var(--text)" }}>{product.releaseDate ? new Date(product.releaseDate).toLocaleDateString() : "N/A"}</strong></div>
+
+              <div className="stat muted">
+                Lanzamiento: <strong style={{ color: "var(--text)" }}>
+                  {product.releaseDate ? formatLocalDateString(product.releaseDate) : "N/A"}
+                </strong>
+              </div>
               <div className="stat muted">Metacritic: <strong style={{ color: "var(--text)" }}>{product.metacriticScore ?? "N/A"}</strong></div>
             </div>
           </div>
@@ -313,7 +354,7 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          <ActivationSteps />
+          <ActivationSteps platform={product.platform} region={product.region} />
 
         </div>
 

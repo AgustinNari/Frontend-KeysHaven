@@ -1,7 +1,6 @@
 import apiClient from "../api/apiClient";
 import { normalizeProductsStock } from "../utils/stock";
 
-
 function buildQueryString(params = {}) {
   const usp = new URLSearchParams();
   for (const k of Object.keys(params || {})) {
@@ -30,6 +29,48 @@ function dataUrlToBlob(dataUrl) {
 }
 
 
+function ensurePrimaryImage(product) {
+  if (!product || typeof product !== "object") return product;
+
+  const copy = { ...product };
+
+  let primary = null;
+
+  if (copy.primaryImageDataUrl) {
+    copy.primaryImageUrl = copy.primaryImageDataUrl;
+    return copy;
+  }
+
+  if (copy.primaryImageUrl) {
+    return copy;
+  }
+
+  if (Array.isArray(copy.imageUrls) && copy.imageUrls.length > 0) {
+    copy.primaryImageUrl = copy.imageUrls[0];
+    return copy;
+  }
+
+  const imgs = copy.images || [];
+  if (Array.isArray(imgs) && imgs.length > 0) {
+    const found = imgs.find(i => i.isPrimary) || imgs[0];
+    const candidate = found?.dataUrl ?? found?.file ?? found?.url ?? null;
+    if (candidate) {
+      copy.primaryImageUrl = candidate;
+      if (typeof candidate === "string" && candidate.startsWith("data:")) {
+        copy.primaryImageDataUrl = candidate;
+      }
+      return copy;
+    }
+  }
+
+  if (copy.primaryImageContentType && copy.primaryImageDataUrl) {
+    copy.primaryImageUrl = copy.primaryImageDataUrl;
+    return copy;
+  }
+
+  return copy;
+}
+
 export const getSellerProductsPaginated = async (sellerId, page = 0, size = 10) => {
   try {
     const qs = buildQueryString({ page, size, sellerId });
@@ -39,7 +80,12 @@ export const getSellerProductsPaginated = async (sellerId, page = 0, size = 10) 
     let items = Array.isArray(res) ? res : (res.content ?? res.items ?? []);
     const total = Array.isArray(res) ? items.length : (res.totalElements ?? res.total ?? items.length);
 
-    return { items: normalizeProductsStock(items), total };
+    let normalized = normalizeProductsStock(items);
+    if (Array.isArray(normalized)) {
+      normalized = normalized.map(ensurePrimaryImage);
+    }
+
+    return { items: normalized, total };
   } catch (err) {
     console.error("getSellerProductsPaginated error:", err);
     return { items: [], total: 0 };
@@ -57,7 +103,12 @@ export const getSellerProducts = async (sellerId) => {
     if (Array.isArray(res)) items = res;
     else items = res.content ?? res.items ?? [];
 
-    return normalizeProductsStock(items);
+    let normalized = normalizeProductsStock(items);
+    if (Array.isArray(normalized)) {
+      normalized = normalized.map(ensurePrimaryImage);
+    }
+
+    return normalized;
   } catch (err) {
     console.error("getSellerProducts error:", err);
     return [];
@@ -76,8 +127,12 @@ export const getSellerActiveProducts = async (sellerId) => {
     if (Array.isArray(res)) items = res;
     else items = res.content ?? res.items ?? [];
 
-    items = normalizeProductsStock(items);
-    if ((!items || items.length === 0) && sId) {
+    let normalized = normalizeProductsStock(items);
+    if (Array.isArray(normalized)) {
+      normalized = normalized.map(ensurePrimaryImage);
+    }
+
+    if ((!normalized || normalized.length === 0) && sId) {
       try {
         const fallback = await getSellerProducts(sId);
         const onlyActive = (Array.isArray(fallback) ? fallback : []).filter(p => p.active !== false);
@@ -88,7 +143,7 @@ export const getSellerActiveProducts = async (sellerId) => {
       }
     }
 
-    return items;
+    return normalized;
   } catch (err) {
     console.error("getSellerActiveProducts error:", err);
     return [];
@@ -106,8 +161,12 @@ export const getSellerActiveProductsForDetail = async (sellerId) => {
     if (Array.isArray(res)) items = res;
     else items = res.content ?? res.items ?? [];
 
-    items = normalizeProductsStock(items);
-    if ((!items || items.length === 0) && sId) {
+    let normalized = normalizeProductsStock(items);
+    if (Array.isArray(normalized)) {
+      normalized = normalized.map(ensurePrimaryImage);
+    }
+
+    if ((!normalized || normalized.length === 0) && sId) {
       try {
         const fallback = await getSellerProducts(sId);
         const onlyActive = (Array.isArray(fallback) ? fallback : []).filter(p => p.active !== false);
@@ -118,14 +177,12 @@ export const getSellerActiveProductsForDetail = async (sellerId) => {
       }
     }
 
-    return items;
+    return normalized;
   } catch (err) {
     console.error("getSellerActiveProducts error:", err);
     return [];
   }
 };
-
-
 
 export const getProductDetail = async (productId) => {
   try {
@@ -438,5 +495,4 @@ export const getCategories = async () => {
     console.error("getCategories error:", err);
     return [];
   }
-
 };

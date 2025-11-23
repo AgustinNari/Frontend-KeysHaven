@@ -1,4 +1,3 @@
-// views/SellerDetail.jsx
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -20,7 +19,7 @@ export default function SellerDetail() {
   const [seller, setSeller] = useState(null);
   const [allProducts, setAllProducts] = useState([]);
   const [page, setPage] = useState(1);
-  const pageSize = 8;
+  const pageSize = 10;
   const [loading, setLoading] = useState(true);
   
   const { apiError, setFrom, clear, hasError } = useApiError();
@@ -217,7 +216,6 @@ export default function SellerDetail() {
                 <div className="seller-stats" style={{ marginTop: 10, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                   <div className="seller-stat" style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Rating value={avgRating} count={ratingCount} size={16} />
-                    <small className="muted">({ratingCount})</small>
                   </div>
 
                   <div className="seller-stat muted">
@@ -260,10 +258,6 @@ export default function SellerDetail() {
               <div>Rating: <strong style={{ color: "var(--text)" }}>{Number(avgRating).toFixed(1)}</strong></div>
               <div>Reseñas: <strong style={{ color: "var(--text)" }}>{ratingCount}</strong></div>
               <div>Keys vendidas: <strong style={{ color: "var(--text)" }}>{soldKeys.toLocaleString()}</strong></div>
-              <div>Ventas totales: <strong style={{ color: "var(--text)" }}>{seller.totalSales || 0}</strong></div>
-              {/* <div>Ingresos totales: <strong style={{ color: "var(--text)" }}>${(seller.totalRevenue || 0).toFixed(2)}</strong></div>*/}
-              <div>Productos activos: <strong style={{ color: "var(--text)" }}>{seller.activeProducts || 0}</strong></div>
-              <div>Total productos: <strong style={{ color: "var(--text)" }}>{seller.totalProducts || 0}</strong></div>
             </div>
           </div>
 

@@ -1,16 +1,17 @@
-import React, { useState } from "react";
+import React from "react";
 import PaginationBar from "../catalog/PaginationBar";
 import Rating from "../catalog/Rating";
 
-export default function ReviewList({ reviews = [], pageSize = 4 }) {
-  const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil((reviews.length || 0) / pageSize));
-  const start = (page - 1) * pageSize;
-  const pageContent = reviews.slice(start, start + pageSize);
+export default function ReviewList({ reviews = [], page = 1, setPage = () => {}, totalPages = 1, pageSize = 4 }) {
+  const pageContent = Array.isArray(reviews) ? reviews : [];
 
   return (
     <div>
       <div>
+        {pageContent.length === 0 && (
+          <div className="muted">Todavía no hay reseñas para este producto.</div>
+        )}
+        
         {pageContent.map(r => (
           <div key={r.id} className="review-item">
             <div style={{ width: 56 }}>
