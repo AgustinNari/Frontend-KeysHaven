@@ -33,6 +33,9 @@ export default function Profile() {
 
   const [message, setMessage] = useState(null);
 
+  const role = (profile && profile.role) ? profile.role : (ctxUser && ctxUser.role ? ctxUser.role : null);
+  const isAdmin = role === "ADMIN";
+
   useEffect(() => {
     async function loadProfile() {
       setLoadingProfile(true);
@@ -52,9 +55,16 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
-    loadOrders(0, 10);
     loadMyReviews(0, 100);
-  }, []);
+    if (!isAdmin) {
+      loadOrders(0, 10);
+    } else {
+      setOrdersPage(null);
+    }
+    if (isAdmin && (activeTab === "orders" || activeTab === "coupons")) {
+      setActiveTab("account");
+    }
+  }, [profile, ctxUser, isAdmin]);
 
   async function loadOrders(page = 0, size = 10) {
     setOrdersLoading(true);
@@ -324,14 +334,20 @@ export default function Profile() {
               <div style={{ marginTop: 10, fontSize: 13 }}>
                 <div className="small">Miembro desde: <span style={{ color: "#e6dbff" }}>{formatDate(profile.createdAt)}</span></div>
                 <div className="small">Último login: <span style={{ color: "#e6dbff" }}>{new Date(profile.lastLogin).toLocaleString()}</span></div>
-                <div className="small">Saldo: <span style={{ color: "#e6dbff" }}>${profile.buyerBalance ?? 0}</span></div>
+                {!isAdmin && (
+                  <div className="small">Saldo: <span style={{ color: "#e6dbff" }}>${profile.buyerBalance ?? 0}</span></div>
+                )}
               </div>
             </div>
 
             <nav className="profile-menu">
               <button className={activeTab === "account" ? "active" : ""} onClick={() => setActiveTab("account")}>Configuración de cuenta</button>
-              <button className={activeTab === "orders" ? "active" : ""} onClick={() => setActiveTab("orders")}>Mis órdenes</button>
-              <button className={activeTab === "coupons" ? "active" : ""} onClick={() => setActiveTab("coupons")}>Mis cupones</button>
+              {!isAdmin && (
+                <button className={activeTab === "orders" ? "active" : ""} onClick={() => setActiveTab("orders")}>Mis órdenes</button>
+              )}
+              {!isAdmin && (
+                <button className={activeTab === "coupons" ? "active" : ""} onClick={() => setActiveTab("coupons")}>Mis cupones</button>
+              )}
               <button onClick={() => setShowChangePwdModal(true)} style={{ marginTop: 6 }}>Cambiar contraseña</button>
             </nav>
 
@@ -364,7 +380,7 @@ export default function Profile() {
               </>
             )}
 
-            {activeTab === "orders" && (
+            {activeTab === "orders" && !isAdmin && (
               <>
                 {ordersLoading && <div className="text-muted">Cargando órdenes...</div>}
                 {!ordersLoading && ordersPage && (
@@ -380,7 +396,7 @@ export default function Profile() {
               </>
             )}
 
-            {activeTab === "coupons" && (
+            {activeTab === "coupons" && !isAdmin && (
               <div>
                 <ProfileCoupons profile={profile} />
               </div>
