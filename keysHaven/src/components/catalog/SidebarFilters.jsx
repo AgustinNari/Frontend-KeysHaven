@@ -3,16 +3,16 @@ import FilterGroup from "./FilterGroup";
 
 const PLATFORMS = ["PC – Steam","PC – Epic Games Store","PC – GOG","PC – Origin / EA App","PC – Ubisoft Connect","PC – Battle.net","PC – Microsoft Store","PlayStation 4","PlayStation 5","Xbox One","Xbox Series X|S","Nintendo Switch","Nintendo Switch 2"];
 const REGIONS = ["GLOBAL","NA","EU","ASIA","LATAM","OCEANIA","AFRICA","ROTW"];
-const DEVELOPERS = ["Rockstar North","SmallDev","Ubisoft","EA","CD Projekt","Bethesda"];
-const PUBLISHERS = ["Rockstar Games","IndiePub","Ubisoft","EA","CD Projekt","Bethesda"];
 
 export default function SidebarFilters({ 
   categories = [], 
-  sellers = [],  // Nueva prop para vendedores
+  sellers = [],
   workingFilters, 
   setWorkingFilters, 
   onApply, 
-  onClearAll 
+  onClearAll,
+  developerOptions = [],
+  publisherOptions = []
 }) {
   workingFilters = workingFilters || {};
 
@@ -39,7 +39,6 @@ export default function SidebarFilters({
         <button style={{ color: "#8a4ff0" }} onClick={onClearAll}>Limpiar todo</button>
       </div>
 
-      {/* NUEVO FILTRO POR VENDEDORES */}
       <FilterGroup
         title="Vendedores"
         options={(sellers || []).map(s => ({ 
@@ -88,7 +87,7 @@ export default function SidebarFilters({
       <FilterGroup
         title="Desarrollador"
         singleSelect
-        options={DEVELOPERS}
+        options={developerOptions.length ? developerOptions : []}
         selected={workingFilters.developer ? [workingFilters.developer] : []}
         onToggle={(vals) => setField("developer", vals[0] ?? null)}
         onClear={() => clearField("developer")}
@@ -97,7 +96,7 @@ export default function SidebarFilters({
       <FilterGroup
         title="Publisher"
         singleSelect
-        options={PUBLISHERS}
+        options={publisherOptions.length ? publisherOptions : []}
         selected={workingFilters.publisher ? [workingFilters.publisher] : []}
         onToggle={(vals) => setField("publisher", vals[0] ?? null)}
         onClear={() => clearField("publisher")}

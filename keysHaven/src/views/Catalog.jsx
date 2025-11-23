@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import SidebarFilters from "../components/catalog/SidebarFilters";
 import SearchBar from "../components/catalog/SearchBar";
@@ -31,20 +31,22 @@ export default function Catalog() {
   const [categoriesOptions, setCategoriesOptions] = useState([]);
   const [sellersOptions, setSellersOptions] = useState([]);
 
+  const [developerOptions, setDeveloperOptions] = useState([]);
+  const [publisherOptions, setPublisherOptions] = useState([]);
+
   const queryCategoryId = queryParams.get("categoryId");
 
   const { add } = useCart();
 
-  // Función para extraer vendedores únicos de los productos
   const extractUniqueSellers = (products) => {
     const sellerMap = new Map();
     
     products.forEach(product => {
-      if (product.sellerId && product.sellerDisplayName) {
+      if (product.sellerId && (product.sellerDisplayName || product.sellerName || product.seller)) {
         if (!sellerMap.has(product.sellerId)) {
           sellerMap.set(product.sellerId, {
             id: product.sellerId,
-            displayName: product.sellerDisplayName
+            displayName: product.sellerDisplayName || product.sellerName || product.seller
           });
         }
       }
@@ -79,23 +81,33 @@ export default function Catalog() {
     if (queryTitle) setSearchText(queryTitle);
   }, [queryTitle]);
 
-  // Cargar categorías
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const cats = await categoriesService.getAllCategories();
+        const [cats, extras] = await Promise.all([
+          categoriesService.getAllCategories().catch(err => { console.error("cats", err); return []; }),
+          productsService.getFilterExtras().catch(err => { console.error("extras", err); return null; })
+        ]);
+
         if (cancelled) return;
+
         const opts = (cats || []).map(c => ({ id: c.id, description: c.description }));
         setCategoriesOptions(opts);
+
+        if (extras) {
+          const devs = Array.isArray(extras.developers) ? extras.developers : (extras?.developers ?? []);
+          const pubs = Array.isArray(extras.publishers) ? extras.publishers : (extras?.publishers ?? []);
+          setDeveloperOptions(devs.map(d => ({ value: d, label: d })));
+          setPublisherOptions(pubs.map(p => ({ value: p, label: p })));
+        }
       } catch (err) {
-        console.error("Error loading categories", err);
+        console.error("Error loading categories or filter extras", err);
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
-  // Cargar productos y extraer vendedores
   useEffect(() => {
     let cancelled = false;
     const fetchItems = async () => {
@@ -104,11 +116,14 @@ export default function Catalog() {
         const backendPage = Math.max(0, page - 1);
         
         const backendFilters = { ...appliedFilters };
-        
+
         if (backendFilters.sellerIds && !Array.isArray(backendFilters.sellerIds)) {
           backendFilters.sellerIds = [backendFilters.sellerIds];
         }
-        
+        if (backendFilters.categories && !Array.isArray(backendFilters.categories)) {
+          backendFilters.categories = [backendFilters.categories];
+        }
+
         const resp = await productsService.search(backendFilters, backendPage, pageSize, sortBy, true);
         if (cancelled) return;
         
@@ -117,16 +132,20 @@ export default function Catalog() {
         setTotalItems(resp.totalElements ?? content.length);
         setTotalPages(Math.max(1, resp.totalPages ?? Math.ceil((resp.totalElements ?? content.length) / pageSize)));
         
-        // Extraer vendedores únicos de los productos cargados
         const uniqueSellers = extractUniqueSellers(content);
-        setSellersOptions(uniqueSellers);
+        setSellersOptions(prev => {
+          const combined = [...prev];
+          uniqueSellers.forEach(ns => {
+            if (!combined.find(s => s.id === ns.id)) combined.push(ns);
+          });
+          return combined;
+        });
         
       } catch (err) {
         console.error("Error fetching products:", err);
         setItems([]);
         setTotalItems(0);
         setTotalPages(1);
-        setSellersOptions([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -135,19 +154,16 @@ export default function Catalog() {
     fetchItems();
   }, [appliedFilters, page, pageSize, sortBy]);
 
-  // Cargar vendedores iniciales (sin filtros aplicados)
   useEffect(() => {
     let cancelled = false;
     const loadInitialSellers = async () => {
       try {
-        // Hacer una búsqueda inicial sin filtros para obtener algunos vendedores
         const resp = await productsService.search({}, 0, 50, "amountSold_desc", true);
         if (cancelled) return;
         
         const content = resp.content || [];
         const uniqueSellers = extractUniqueSellers(content);
         setSellersOptions(prev => {
-          // Combinar con los existentes para no perder vendedores ya cargados
           const combined = [...prev];
           uniqueSellers.forEach(newSeller => {
             if (!combined.find(s => s.id === newSeller.id)) {
@@ -161,7 +177,6 @@ export default function Catalog() {
       }
     };
 
-    // Solo cargar vendedores iniciales si no hay ninguno
     if (sellersOptions.length === 0) {
       loadInitialSellers();
     }
@@ -217,6 +232,8 @@ export default function Catalog() {
             setWorkingFilters={setWorkingFilters}
             onApply={handleApply}
             onClearAll={handleClearAll}
+            developerOptions={developerOptions}
+            publisherOptions={publisherOptions}
           />
         </aside>
 

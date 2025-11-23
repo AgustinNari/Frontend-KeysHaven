@@ -299,7 +299,7 @@ export default function ProductDetail() {
 
             {productHasPercent && (
               <div className="mt-2 mb-1">
-                <small className="text-muted">
+                <small style={{ color: "var(--accent-strong)" }}>
                   Este producto ya tiene un <strong>descuento por producto</strong>. No se podrán aplicar cupones adicionales sobre este ítem.
                 </small>
               </div>

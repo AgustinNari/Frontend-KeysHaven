@@ -27,7 +27,15 @@ function buildQueryParams({ filters = {}, page = 0, size = 12, sort = "createdAt
   const f = filters || {};
 
   if (f.title) qs.set("title", f.title);
+
   if (f.sellerId) qs.set("sellerId", String(f.sellerId));
+
+  if (f.sellerIds && Array.isArray(f.sellerIds) && f.sellerIds.length > 0) {
+    f.sellerIds.forEach(sid => {
+      if (sid != null && sid !== "") qs.append("sellerIds", String(sid));
+    });
+  }
+
   if (f.minPrice != null) qs.set("minPrice", String(f.minPrice));
   if (f.maxPrice != null) qs.set("maxPrice", String(f.maxPrice));
   if (f.platform) qs.set("platform", f.platform);
@@ -46,12 +54,19 @@ function buildQueryParams({ filters = {}, page = 0, size = 12, sort = "createdAt
   if (f.minAvgRating != null) qs.set("minAvgRating", String(f.minAvgRating));
 
   if (f.minSold != null) qs.set("minAmountSold", String(f.minSold));
-  if (f.minDiscountPct != null) qs.set("minDiscountPercent", String(f.minDiscountPct));
+
+  if (f.minDiscountPct != null) {
+    const raw = Number(f.minDiscountPct);
+    if (!Number.isNaN(raw)) {
+      const normalized = raw > 1 ? (raw / 100) : raw;
+      qs.set("minDiscountPercent", String(normalized));
+    }
+  }
+
   if (f.minStock != null) qs.set("minStock", String(f.minStock));
   if (f.minRatingCount != null) qs.set("minRatingCount", String(f.minRatingCount));
   return qs.toString();
 }
-
 
 function normalizeDiscountValueToFraction(raw) {
   if (raw == null) return null;
@@ -84,7 +99,6 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
 
     let bestDiscountFrac = normalizeDiscountValueToFraction(rawBestPct);
 
-
     let discountedPrice = null;
     const basePrice = Number(p.price ?? 0);
     if (bestDiscountFrac != null && !Number.isNaN(basePrice)) {
@@ -102,7 +116,6 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
     };
   });
 
-
   return {
     content,
     totalElements: resp.totalElements ?? resp.total ?? (content.length),
@@ -111,8 +124,6 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
     size: resp.size ?? size
   };
 }
-
-
 
 async function getTopSoldProducts(size = 4) {
   return search({}, 0, size, "amountSold_desc", true);
@@ -185,6 +196,11 @@ async function productsBySeller(sellerId, excludeProductId = null, size = 6) {
   return items.filter(it => it.id !== Number(excludeProductId)).slice(0, size);
 }
 
+async function getFilterExtras() {
+  const resp = await apiClient.apiFetch(`/products/filter/extras`);
+  return resp ?? { developers: [], publishers: [] };
+}
+
 export default {
   search,
   getTopSoldProducts,
@@ -192,5 +208,6 @@ export default {
   relatedByCategories,
   productsBySeller,
   mapSortKey,
-  SORT_MAP
+  SORT_MAP,
+  getFilterExtras
 };
