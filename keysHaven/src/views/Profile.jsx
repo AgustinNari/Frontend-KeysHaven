@@ -7,6 +7,8 @@ import OrdersTab from "../components/profile/OrdersTab";
 import ConfirmModal from "../components/profile/ConfirmModal";
 import ChangePasswordModal from "../components/profile/ChangePasswordModal";
 
+import ProfileCoupons from "../components/profile/ProfileCoupons";
+
 import { useAuth } from "../context/AuthContext";
 import * as usersApi from "../services/users";
 import * as ordersApi from "../services/orders";
@@ -50,11 +52,11 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
-    loadOrders(0, 20);
+    loadOrders(0, 10);
     loadMyReviews(0, 100);
   }, []);
 
-  async function loadOrders(page = 0, size = 20) {
+  async function loadOrders(page = 0, size = 10) {
     setOrdersLoading(true);
     try {
       const pageRes = await ordersApi.getMyOrders(page, size);
@@ -329,6 +331,7 @@ export default function Profile() {
             <nav className="profile-menu">
               <button className={activeTab === "account" ? "active" : ""} onClick={() => setActiveTab("account")}>Configuración de cuenta</button>
               <button className={activeTab === "orders" ? "active" : ""} onClick={() => setActiveTab("orders")}>Mis órdenes</button>
+              <button className={activeTab === "coupons" ? "active" : ""} onClick={() => setActiveTab("coupons")}>Mis cupones</button>
               <button onClick={() => setShowChangePwdModal(true)} style={{ marginTop: 6 }}>Cambiar contraseña</button>
             </nav>
 
@@ -366,7 +369,8 @@ export default function Profile() {
                 {ordersLoading && <div className="text-muted">Cargando órdenes...</div>}
                 {!ordersLoading && ordersPage && (
                   <OrdersTab
-                    orders={ordersPage.content ?? []}
+                    ordersPage={ordersPage}
+                    onPageChange={(newPage) => loadOrders(newPage - 1, 10)}
                     userReviews={userReviews}
                     onSaveReview={handleSaveReview}
                     onDeleteReview={handleDeleteReview}
@@ -374,6 +378,12 @@ export default function Profile() {
                 )}
                 {!ordersLoading && !ordersPage && <div className="text-muted">No se encontraron órdenes.</div>}
               </>
+            )}
+
+            {activeTab === "coupons" && (
+              <div>
+                <ProfileCoupons profile={profile} />
+              </div>
             )}
           </section>
         </div>

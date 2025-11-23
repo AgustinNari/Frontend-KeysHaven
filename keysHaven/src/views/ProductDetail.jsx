@@ -131,6 +131,8 @@ export default function ProductDetail() {
     );
   }
 
+  const productHasPercent = product.bestDiscount != null && (String(product.bestDiscount.type ?? "").toUpperCase() === "PERCENT") && Number(product.bestDiscount.value ?? 0) > 0;
+
   let discountPctDisplay = null;
   let discountedPrice = null;
   let fixedOffAmount = null;
@@ -152,6 +154,24 @@ export default function ProductDetail() {
 
   const basePrice = Number(product.price ?? 0);
   const priceToShow = discountedPrice != null ? discountedPrice : basePrice;
+
+  const buildAddPayload = () => {
+    return {
+      id: product.id,
+      title: product.title,
+      price: basePrice,
+      currency: product.currency ?? "USD",
+      imageUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? (product.images && product.images.length ? (product.images[0].dataUrl ?? product.images[0].file) : null),
+      platform: product.platform,
+      region: product.region,
+      _raw: {
+        id: product.id,
+        price: basePrice,
+        bestDiscount: product.bestDiscount ?? product.bestDiscount,
+        primaryImageDataUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? null
+      }
+    };
+  };
 
   return (
     <div className="product-page">
@@ -277,24 +297,18 @@ export default function ProductDetail() {
               )}
             </div>
 
-            <div className="mt-3 d-grid gap-2">
-              <button className="btn btn-primary btn-lg" onClick={() => add({
-                id: product.id,
-                title: product.title,
-                price: priceToShow,
-                imageUrl: product.primaryImageDataUrl ?? (product.primaryImageUrl ?? null),
-                platform: product.platform,
-                region: product.region
-              })}>Comprar ahora</button>
+            {productHasPercent && (
+              <div className="mt-2 mb-1">
+                <small className="text-muted">
+                  Este producto ya tiene un <strong>descuento por producto</strong>. No se podrán aplicar cupones adicionales sobre este ítem.
+                </small>
+              </div>
+            )}
 
-              <button className="btn btn-outline-primary" onClick={() => add({
-                id: product.id,
-                title: product.title,
-                price: priceToShow,
-                imageUrl: product.primaryImageDataUrl ?? (product.primaryImageUrl ?? null),
-                platform: product.platform,
-                region: product.region
-              })}>Agregar al carrito</button>
+            <div className="mt-3 d-grid gap-2">
+              <button className="btn btn-primary btn-lg" onClick={() => add(buildAddPayload(), 1)}>Comprar ahora</button>
+
+              <button className="btn btn-outline-primary" onClick={() => add(buildAddPayload(), 1)}>Agregar al carrito</button>
             </div>
 
             <div className="mt-3">

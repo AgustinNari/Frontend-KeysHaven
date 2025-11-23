@@ -10,6 +10,8 @@ export default function Cart() {
     remove,
     clear,
     subtotal,
+    productDiscountTotal,
+    couponDiscountTotal,
     discountTotal,
     total,
     currency,
@@ -19,6 +21,7 @@ export default function Cart() {
     removeCoupon,
     priceBreakdown,
     availableCoupons,
+    hasProductPercentDiscount,
   } = useCart();
 
   const [selection, setSelection] = useState({});
@@ -40,6 +43,12 @@ export default function Cart() {
     const code = selection[productId];
     if (!code) {
       setMsg({ type: "warning", text: "Elegí un cupón para aplicar." });
+      return;
+    }
+
+    const it = items.find(i => Number(i.id) === Number(productId));
+    if (it && hasProductPercentDiscount(it)) {
+      setMsg({ type: "warning", text: "No se puede aplicar cupón a productos que ya tienen descuento por producto." });
       return;
     }
     const res = await applyCouponByCode(code, productId);
@@ -74,6 +83,12 @@ export default function Cart() {
         </div>
       )}
 
+      <div className="mb-2">
+        <small style={{ color: "#8a4ff0" }}>
+          <strong>Nota:</strong> Sólo se permite <strong>1 cupón por compra</strong>. Si aplicás un cupón a un ítem, no podrás aplicar otro cupón a otro ítem en la misma orden.
+        </small>
+      </div>
+
       <div className="table-responsive">
         <table className="table align-middle">
           <thead>
@@ -83,7 +98,7 @@ export default function Cart() {
               <th className="text-center" style={{ width: 140 }}>
                 Cantidad
               </th>
-              <th className="text-end" style={{ width: 120 }}>
+              <th className="text-end" style={{ width: 140 }}>
                 Precio
               </th>
               <th className="text-end" style={{ width: 140 }}>
@@ -107,6 +122,7 @@ export default function Cart() {
               const canApplySomewhereElse = !appliedCoupon || isCouponRow;
 
               const options = applicableCouponsById[it.id] || [];
+              const itemHasProductDiscount = hasProductPercentDiscount(it);
 
               return (
                 <tr key={it.id}>
@@ -135,25 +151,37 @@ export default function Cart() {
                   </td>
 
                   <td>
-                    <div className="fw-semibold">{it.title}</div>
-                    <div className="text-muted small">
-                      {it.platform ?? ""} {it.region ? `· ${it.region}` : ""}
-                      {seller ? (
-                        <>
-                          {" "}
-                          · <span className="text-body-secondary">Vendedor:</span>{" "}
-                          <span className="fw-semibold">{seller}</span>
-                        </>
-                      ) : null}
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div>
+                        <div className="fw-semibold">{it.title}</div>
+                        <div className="text-muted small">
+                          {it.platform ?? ""} {it.region ? `· ${it.region}` : ""}
+                          {seller ? (
+                            <>
+                              {" "}
+                              · <span className="text-body-secondary">Vendedor:</span>{" "}
+                              <span className="fw-semibold">{seller}</span>
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {itemHasProductDiscount && (
+                        <div>
+                          <span className="badge bg-warning text-dark" title="Este producto ya tiene descuento por producto; no acepta cupones.">
+                            Descuento aplicado — no acepta cupón
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="small text-muted mt-1">
                       Subtotal ítem: {b.currency} {b.lineSubtotal.toFixed(2)}
-                      {b.bulkDiscount > 0 && (
+                      {b.productDiscount > 0 && (
                         <>
                           {" "}
-                          · Desc. Cantidad ({b.bulkPercent}%): −{b.currency}{" "}
-                          {b.bulkDiscount.toFixed(2)}
+                          · Desc. Producto ({b.productPercent}%): −{b.currency}{" "}
+                          {b.productDiscount.toFixed(2)}
                         </>
                       )}
                       {b.couponDiscount > 0 && (
@@ -185,11 +213,35 @@ export default function Cart() {
                   </td>
 
                   <td className="text-end">
-                    {it.currency} {Number(it.price).toFixed(2)}
+                    {b.productPercent > 0 ? (
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: "0.85rem", color: "#6c757d", textDecoration: "line-through" }}>
+                          {b.currency} {Number(b.unitOriginal).toFixed(2)}
+                        </div>
+                        <div className="fw-semibold">
+                          {b.currency} {Number(b.unitFinal).toFixed(2)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="fw-semibold text-end">
+                        {it.currency} {Number(it.price).toFixed(2)}
+                      </div>
+                    )}
                   </td>
 
                   <td className="text-end fw-semibold">
-                    {b.currency} {b.lineTotal.toFixed(2)}
+                    <div style={{ textAlign: "right" }}>
+                      {(b.productDiscount > 0 || b.couponDiscount > 0) ? (
+                        <>
+                          <div style={{ fontSize: "0.85rem", color: "#6c757d", textDecoration: "line-through" }}>
+                            {b.currency} {Number(b.lineSubtotal).toFixed(2)}
+                          </div>
+                          <div>{b.currency} {b.lineTotal.toFixed(2)}</div>
+                        </>
+                      ) : (
+                        <div>{b.currency} {b.lineTotal.toFixed(2)}</div>
+                      )}
+                    </div>
                   </td>
 
                   <td>
@@ -213,11 +265,22 @@ export default function Cart() {
                           onChange={(e) =>
                             setSelection((s) => ({ ...s, [it.id]: e.target.value }))
                           }
-                          disabled={!canApplySomewhereElse || options.length === 0}
+                          disabled={
+                            !canApplySomewhereElse ||
+                            options.length === 0 ||
+                            itemHasProductDiscount
+                          }
+                          title={
+                            itemHasProductDiscount
+                              ? "Este producto ya tiene descuento por producto; no se pueden aplicar cupones."
+                              : ""
+                          }
                         >
                           <option value="">
                             {options.length
-                              ? "Elegí un cupón…"
+                              ? itemHasProductDiscount
+                                ? "No se pueden aplicar cupones"
+                                : "Elegí un cupón…"
                               : "Sin cupones aplicables"}
                           </option>
                           {options.map((c) => (
@@ -234,7 +297,8 @@ export default function Cart() {
                           disabled={
                             !canApplySomewhereElse ||
                             !selection[it.id] ||
-                            options.length === 0
+                            options.length === 0 ||
+                            itemHasProductDiscount
                           }
                           onClick={() => handleApply(it.id)}
                         >
@@ -264,14 +328,25 @@ export default function Cart() {
               <td className="text-end">{currency} {subtotal.toFixed(2)}</td>
               <td colSpan={2}></td>
             </tr>
+
             <tr>
               <td colSpan={3}></td>
-              <td className="text-end text-danger">Descuentos</td>
+              <td className="text-end">Desc. por producto</td>
               <td className="text-end text-danger">
-                −{currency} {discountTotal.toFixed(2)}
+                −{currency} {productDiscountTotal.toFixed(2)}
               </td>
               <td colSpan={2}></td>
             </tr>
+
+            <tr>
+              <td colSpan={3}></td>
+              <td className="text-end">Cupón</td>
+              <td className="text-end text-danger">
+                −{currency} {couponDiscountTotal.toFixed(2)}
+              </td>
+              <td colSpan={2}></td>
+            </tr>
+
             <tr>
               <td colSpan={3}></td>
               <td className="text-end fw-bold">Total</td>

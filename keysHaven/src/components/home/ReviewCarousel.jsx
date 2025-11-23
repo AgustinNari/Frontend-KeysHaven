@@ -1,4 +1,3 @@
-// components/home/ReviewCarousel.jsx
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getLatestReviews } from "../../services/reviews";
@@ -20,7 +19,6 @@ export default function ReviewCarousel() {
         const latestReviews = await getLatestReviews(5);
         setReviews(latestReviews || []);
 
-        // Obtener categorías para cada producto desde el frontend
         const reviewsWithCatData = await Promise.all(
           (latestReviews || []).map(async (review) => {
             try {
@@ -52,7 +50,6 @@ export default function ReviewCarousel() {
     fetchLatestReviewsWithCategories();
   }, []);
 
-  // Auto-rotación del carousel
   useEffect(() => {
     if (reviewsWithCategories.length <= 1) return;
     
@@ -103,7 +100,7 @@ export default function ReviewCarousel() {
           <h2 className="fw-bold text-center mb-5 text-primary-light">
             Reseñas Recientes de Nuestros Clientes
           </h2>
-          <div className="col-12 text-center text-muted" style={{ height: "300px" }}>
+          <div className="col-12 text-center" style={{ height: "300px", color: "red" }}>
             <p>Error cargando las reseñas: {error}</p>
           </div>
         </div>

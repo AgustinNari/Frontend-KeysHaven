@@ -6,9 +6,9 @@ import { useCart } from "../../store/cart.jsx";
 export default function ProductCard({ product }) {
   const { add } = useCart();
 
-
-  const hasDiscount = product.bestDiscountFrac != null && Number(product.bestDiscountFrac) > 0;
-  const discountPct = hasDiscount ? Math.round(Number(product.bestDiscountFrac) * 100) : 0;
+  const hasDiscount = (product.bestDiscountFrac != null && Number(product.bestDiscountFrac) > 0) || (product.bestDiscountPercentage != null && Number(product.bestDiscountPercentage) > 0);
+  const discountFrac = product.bestDiscountFrac ?? (product.bestDiscountPercentage != null ? Number(product.bestDiscountPercentage) / 100 : null);
+  const discountPct = hasDiscount && discountFrac != null ? Math.round(discountFrac * 100) : 0;
 
   const baseOriginalPrice = Number(product.price ?? 0);
   const displayPrice = (hasDiscount && product.discountedPrice != null) ? Number(product.discountedPrice) : baseOriginalPrice;
@@ -17,11 +17,17 @@ export default function ProductCard({ product }) {
     add({
       id: product.id,
       title: product.title,
-      price: displayPrice,
+      price: baseOriginalPrice,
       currency: product.currency ?? "USD",
-      imageUrl: product.primaryImageUrl ?? null,
+      imageUrl: product.primaryImageUrl ?? product.primaryImageDataUrl ?? null,
       platform: product.platform ?? null,
       region: product.region ?? null,
+      _raw: {
+        id: product.id,
+        price: baseOriginalPrice,
+        bestDiscount: product.bestDiscount ?? (product.bestDiscountPercentage != null ? { type: "PERCENT", value: product.bestDiscountPercentage } : null),
+        primaryImageDataUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? null
+      }
     });
   };
 

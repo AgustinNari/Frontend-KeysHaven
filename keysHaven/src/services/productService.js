@@ -27,3 +27,9 @@ export const getProductById = (productId) =>
 
 export const getCategories = () =>
   apiClient.apiFetch('/categories', { method: "GET" });
+
+
+export default { getProducts,
+  getProductById,
+  getCategories
+};

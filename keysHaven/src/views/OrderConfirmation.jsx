@@ -3,9 +3,10 @@ import { useLocation, Link } from "react-router-dom";
 
 export default function OrderConfirmation() {
   const { state } = useLocation();
-  const order = state?.order;
+  const serverOrder = state?.order;
+  const clientItemsSnapshot = state?.clientItems ?? null;
 
-  if (!order) {
+  if (!serverOrder && !clientItemsSnapshot) {
     return (
       <div className="container py-4">
         <h2>Confirmación de compra</h2>
@@ -18,61 +19,73 @@ export default function OrderConfirmation() {
     );
   }
 
-  const normalize = (rawOrder) => {
-    const currency = rawOrder.currency ?? "$";
-    const createdAt = rawOrder.createdAt ?? rawOrder.created_at ?? new Date().toISOString();
+  const normalizedItems = useMemo(() => {
+    if (Array.isArray(clientItemsSnapshot) && clientItemsSnapshot.length > 0) {
+      return clientItemsSnapshot.map(it => ({
+        id: it.productId,
+        title: it.title,
+        qty: it.qty,
+        image: it.image,
+        line: {
+          subtotal: Number(it.line.subtotal ?? 0),
+          productDiscount: Number(it.line.productDiscount ?? 0),
+          couponDiscount: Number(it.line.couponDiscount ?? 0),
+          total: Number(it.line.total ?? 0),
+          unitOriginal: Number(it.line.unitOriginal ?? it.price ?? 0),
+          unitFinal: Number(it.line.unitFinal ?? 0),
+          productPercent: Number(it.line.productPercent ?? 0)
+        }
+      }));
+    }
 
-    const safeItems = (rawOrder.items || []).map(it => {
+    const srvItems = (serverOrder?.items ?? []).map(it => {
       const qty = Number(it.quantity ?? it.qty ?? 0);
       const unitPrice = Number(it.unitPrice ?? it.price ?? 0);
-      const lineSubtotal = Number(it.lineSubtotal ?? it.line?.subtotal ?? (unitPrice * qty));
-      const bulkDiscount = Number(it.line?.bulkDiscount ?? 0);
-      const couponDiscount = Number(it.line?.couponDiscount ?? it.line?.discountAmount ?? 0);
-      const total = Number(it.lineTotal ?? it.line?.total ?? it.line?.lineTotal ?? (lineSubtotal - bulkDiscount - couponDiscount));
-      const image = it.image ?? it.imageUrl ?? it.primaryImageUrl ?? null;
+      const lineSubtotal = Number(it.lineSubtotal ?? (unitPrice * qty));
+      const discountAmount = Number(it.discountAmount ?? 0);
+      const lineTotal = Number(it.lineTotal ?? (lineSubtotal - discountAmount));
       return {
         id: it.productId ?? it.id ?? null,
         title: it.productTitle ?? it.title ?? "Producto",
-        qty: isNaN(qty) ? 0 : qty,
-        price: isNaN(unitPrice) ? 0 : unitPrice,
-        image,
-        seller: it.seller ?? it.sellerDisplayName ?? null,
+        qty,
+        image: null,
         line: {
-          subtotal: isNaN(lineSubtotal) ? 0 : lineSubtotal,
-          bulkDiscount: isNaN(bulkDiscount) ? 0 : bulkDiscount,
-          couponDiscount: isNaN(couponDiscount) ? 0 : couponDiscount,
-          total: isNaN(total) ? 0 : total,
+          subtotal: lineSubtotal,
+          productDiscount: 0,
+          couponDiscount: discountAmount,
+          total: lineTotal,
+          unitOriginal: unitPrice,
+          unitFinal: unitPrice
         }
       };
     });
+    return srvItems;
+  }, [clientItemsSnapshot, serverOrder]);
 
-    const subtotal = Number(rawOrder.subtotal ?? rawOrder.subtotalAmount ?? rawOrder.total ?? 0);
-    const discountsTotal = Number(rawOrder.discountAmount ?? rawOrder.discounts?.total ?? rawOrder.discounts?.total ?? 0);
-    const total = Number(rawOrder.totalAmount ?? rawOrder.total ?? rawOrder.totalAmount ?? rawOrder.totalAmount ?? rawOrder.total ?? 0);
+  const currency =
+    (serverOrder && (serverOrder.currency ?? "$")) ||
+    (clientItemsSnapshot && clientItemsSnapshot[0]?.line?.currency) ||
+    "$";
 
-    const couponCode = rawOrder.discounts?.couponUsed ?? rawOrder.discounts?.coupon ?? null;
+  const totals = useMemo(() => {
+    const subtotal = Number(serverOrder?.subtotal ?? serverOrder?.subtotalAmount ?? normalizedItems.reduce((n,it)=>n+it.line.subtotal,0));
+    const total = Number(serverOrder?.totalAmount ?? serverOrder?.total ?? normalizedItems.reduce((n,it)=>n+it.line.total,0));
+    const discountsTotalServer = Number(serverOrder?.discountAmount ?? serverOrder?.discounts?.total ?? 0);
+
+    const productDiscountSum = normalizedItems.reduce((n,it) => n + Number(it.line.productDiscount || 0), 0);
+    const couponDiscountSum = normalizedItems.reduce((n,it) => n + Number(it.line.couponDiscount || 0), 0);
+    const discountsTotalClient = productDiscountSum + couponDiscountSum;
+
+    const discountsTotal = discountsTotalServer > 0 ? discountsTotalServer : discountsTotalClient;
 
     return {
-      id: rawOrder.id ?? null,
-      createdAt,
-      currency,
-      items: safeItems,
-      subtotal: isNaN(subtotal) ? 0 : subtotal,
-      discountsTotal: isNaN(discountsTotal) ? 0 : discountsTotal,
-      total: isNaN(total) ? safeItems.reduce((n, it) => n + Number(it.line.total || 0), 0) : total,
-      couponCode
+      subtotal,
+      total,
+      discountsTotal,
+      productDiscountSum,
+      couponDiscountSum
     };
-  };
-
-  const normalized = normalize(order);
-  const currency = normalized.currency ?? "$";
-
-  const { bulkSum, couponSum, discountsTotal } = useMemo(() => {
-    const bulk = normalized.items.reduce((n, it) => n + Number(it.line.bulkDiscount || 0), 0);
-    const coup = normalized.items.reduce((n, it) => n + Number(it.line.couponDiscount || 0), 0);
-    const totalDiscount = Number(normalized.discountsTotal ?? (bulk + coup));
-    return { bulkSum: bulk, couponSum: coup, discountsTotal: totalDiscount };
-  }, [normalized]);
+  }, [serverOrder, normalizedItems]);
 
   return (
     <div className="container py-4">
@@ -84,10 +97,10 @@ export default function OrderConfirmation() {
         />
         <h2 className="mt-3">¡Gracias por tu compra!</h2>
         <p style = {{ color: "#e6dbff" }}>
-          Orden <strong>{normalized.id ?? "(sin id)"}</strong>
+          Orden <strong>{serverOrder?.id ?? "(sin id)"}</strong>
         </p>
         <p style = {{ color: "#8a4ff0" }}>
-          Fecha: {new Date(normalized.createdAt).toLocaleString()}
+          Fecha: {new Date(serverOrder?.createdAt ?? Date.now()).toLocaleString()}
         </p>
         <div style = {{ color: "#8a4ff0" }}>
           * La entrega es digital. Recibirás tus claves al instante y las podrás ver en tu perfil de usuario.
@@ -99,11 +112,11 @@ export default function OrderConfirmation() {
           <div className="card mb-3">
             <div className="card-header">Productos comprados</div>
             <div className="card-body">
-              {normalized.items.map((it) => (
+              {normalizedItems.map((it) => (
                 <div key={it.id ?? `${it.title}-${Math.random()}`} className="d-flex align-items-center mb-3">
-                  {it.image || it.imageUrl ? (
+                  {it.image ? (
                     <img
-                      src={it.image || it.imageUrl}
+                      src={it.image}
                       alt={it.title}
                       style={{ width: 64, height: 64, objectFit: "cover" }}
                       className="me-3 rounded"
@@ -120,19 +133,16 @@ export default function OrderConfirmation() {
                   <div className="flex-grow-1">
                     <div className="fw-semibold">{it.title}</div>
                     <div style = {{ color: "#8a4ff0" }} className="text small">
-                      Cant: {it.qty} · {currency} {Number(it.price).toFixed(2)} c/u
-                      {it.seller ? (
-                        <> · Vendedor: <span className="fw-semibold">{it.seller}</span></>
-                      ) : null}
+                      Cant: {it.qty} · {currency} {Number(it.line.unitOriginal).toFixed(2)} c/u
                     </div>
 
-                    <div style = {{ color: "#8a4ff0" }} className="text small">
+                    <div style = {{ color: "#8a4ff0" }} className="text small mt-1">
                       Subtotal ítem: {currency} {Number(it.line.subtotal).toFixed(2)}
-                      {Number(it.line.bulkDiscount) > 0 && (
-                        <> · Desc. Cantidad: −{currency} {Number(it.line.bulkDiscount).toFixed(2)}</>
+                      {Number(it.line.productDiscount) > 0 && (
+                        <> · Desc. Producto: −{currency} {Number(it.line.productDiscount).toFixed(2)}</>
                       )}
                       {Number(it.line.couponDiscount) > 0 && (
-                        <> · Cupón {normalized.couponCode ? `(${normalized.couponCode})` : ""}: −{currency} {Number(it.line.couponDiscount).toFixed(2)}</>
+                        <> · Cupón: −{currency} {Number(it.line.couponDiscount).toFixed(2)}</>
                       )}
                     </div>
                   </div>
@@ -153,38 +163,33 @@ export default function OrderConfirmation() {
               <div className="d-flex justify-content-between">
                 <span>Subtotal</span>
                 <span>
-                  {currency} {Number(normalized.subtotal ?? normalized.items.reduce((n, it) => n + Number(it.line.subtotal || 0), 0)).toFixed(2)}
+                  {currency} {Number(totals.subtotal).toFixed(2)}
                 </span>
               </div>
 
-              <div className="d-flex justify-content-between small">
-                <span style = {{ color: "#8a4ff0" }}>Desc. por cantidad</span>
-                <span className="text-danger">
-                  −{currency} {bulkSum.toFixed(2)}
-                </span>
-              </div>
-
-              <div className="d-flex justify-content-between small">
-                <span style = {{ color: "#8a4ff0" }}>
-                  Cupón {normalized.couponCode ? `(${normalized.couponCode})` : ""}
-                </span>
-                <span className="text-danger">
-                  −{currency} {couponSum.toFixed(2)}
-                </span>
-              </div>
-
-              <div className="d-flex justify-content-between mt-1">
-                <span className="fw-semibold">Descuentos</span>
-                <span className="fw-semibold text-danger">
-                  −{currency} {discountsTotal.toFixed(2)}
-                </span>
-              </div>
+              {(totals.productDiscountSum > 0 || totals.couponDiscountSum > 0) ? (
+                <>
+                  <div className="d-flex justify-content-between small">
+                    <span style = {{ color: "#8a4ff0" }}>Desc. por producto</span>
+                    <span className="text-danger">−{currency} {Number(totals.productDiscountSum).toFixed(2)}</span>
+                  </div>
+                  <div className="d-flex justify-content-between small">
+                    <span style = {{ color: "#8a4ff0" }}>Cupón</span>
+                    <span className="text-danger">−{currency} {Number(totals.couponDiscountSum).toFixed(2)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="d-flex justify-content-between small">
+                  <span style = {{ color: "#8a4ff0" }}>Descuentos</span>
+                  <span className="text-danger">−{currency} {Number(totals.discountsTotal).toFixed(2)}</span>
+                </div>
+              )}
 
               <hr />
               <div className="d-flex justify-content-between fw-bold">
                 <span>Total</span>
                 <span>
-                  {currency} {Number(normalized.total ?? normalized.items.reduce((n, it) => n + Number(it.line.total || 0), 0)).toFixed(2)}
+                  {currency} {Number(totals.total).toFixed(2)}
                 </span>
               </div>
 

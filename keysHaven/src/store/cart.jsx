@@ -20,13 +20,13 @@ function normalizeProduct(p) {
   return {
     id: p.id ?? p.productId,
     title: p.title ?? p.name ?? "Producto",
-    price: Number(p.price ?? 0),
+    price: Number(p.price ?? p._raw?.price ?? 0),
     currency: p.currency ?? p.moneda ?? "USD",
-    imageUrl: p.primaryImageUrl ?? p.imageUrl ?? p.image ?? p.imageURL ?? null,
+    imageUrl: p.primaryImageDataUrl ?? p.primaryImageUrl ?? p.imageUrl ?? p.image ?? p.imageURL ?? null,
     platform: p.platform ?? p.plataforma ?? null,
     region: p.region ?? p.región ?? null,
     sellerDisplayName: p.sellerDisplayName ?? p.seller ?? null,
-    _raw: p,
+    _raw: p._raw ?? p,
   };
 }
 
@@ -93,7 +93,7 @@ export function CartProvider({ children }) {
       const p = await productsService.getById(pid);
       if (!p) return null;
       const resolvedStock = p.availableStock ?? p.stock ?? null;
-      return { sellerId: p.sellerId ?? null, stock: resolvedStock == null ? null : Number(resolvedStock) };
+      return { sellerId: p.sellerId ?? null, stock: resolvedStock == null ? null : Number(resolvedStock), detail: p };
     } catch (err) {
       console.warn("ensureProductDetail: error fetching product detail", err);
       return null;
@@ -182,35 +182,77 @@ export function CartProvider({ children }) {
     setCouponState({ coupon: null, productId: null });
   }, []);
 
-  const bestBulkPercentFor = (it) => {
-    const rules = it._raw?.bulkPricing ?? [];
-    if (!Array.isArray(rules) || !rules.length) return 0;
-    let best = 0;
-    for (const r of rules) {
-      const min = Number(r.minQty ?? 0);
-      const p = Number(r.percentOff ?? 0);
-      if (it.qty >= min) best = Math.max(best, p);
-    }
-    return best;
+  const hasProductPercentDiscount = (it) => {
+    try {
+      const bd = it._raw?.bestDiscount;
+      if (!bd) return false;
+      const t = (bd.type ?? "").toString().toUpperCase();
+      if (t !== "PERCENT") return false;
+      const v = Number(bd.value ?? 0);
+      return v > 0;
+    } catch { return false; }
   };
 
-  const isCouponApplicableTo = (coupon, productId) => {
-    if (!coupon || !productId) return false;
-    if (!coupon.active) return false;
-    if (
-      Array.isArray(coupon.productIds) &&
-      !coupon.productIds.includes(Number(productId))
-    )
-      return false;
-    return items.some((x) => Number(x.id) === Number(productId));
-  };
+  const priceBreakdown = useCallback(
+    (it) => {
+      const unitOriginal = Number(it._raw?.price ?? it.price ?? 0);
+      const qty = Number(it.qty) || 0;
+      const lineSubtotal = unitOriginal * qty;
+
+      let productPercent = 0;
+      if (it._raw?.bestDiscount && ((it._raw.bestDiscount.type ?? "").toString().toUpperCase() === "PERCENT")) {
+        productPercent = Number(it._raw.bestDiscount.value ?? 0) || 0;
+      }
+      const productDiscountPerUnit = (unitOriginal * productPercent) / 100;
+      const productDiscount = productDiscountPerUnit * qty;
+
+      let couponDiscount = 0;
+      let couponCode = null;
+      if (couponState.coupon && Number(couponState.productId) === Number(it.id)) {
+        couponCode = couponState.coupon.code;
+        if (!hasProductPercentDiscount(it)) {
+          couponDiscount = Number(couponState.coupon.discountAmount || 0);
+          const maxAllowed = Math.max(0, lineSubtotal - productDiscount);
+          couponDiscount = Math.min(Math.max(0, couponDiscount), maxAllowed);
+        } else {
+          couponDiscount = 0;
+        }
+      }
+
+      const lineTotal = Math.max(0, lineSubtotal - productDiscount - couponDiscount);
+
+      const unitFinal = Math.max(0, unitOriginal - productDiscountPerUnit);
+
+      return {
+        lineSubtotal,
+        unitOriginal,
+        unitFinal,
+        productPercent,
+        productDiscountPerUnit,
+        productDiscount,
+        couponCode,
+        couponDiscount,
+        lineTotal,
+        currency: it.currency ?? "USD",
+      };
+    },
+    [couponState]
+  );
 
   const applyCouponByCode = useCallback(async (code, productId) => {
     if (!code) return { ok: false, reason: "Código vacío" };
     if (!isAuthenticated) return { ok: false, reason: "Debes iniciar sesión para usar cupones" };
 
+    if (couponState.coupon && Number(couponState.productId) !== Number(productId)) {
+      return { ok: false, reason: "Solo se permite 1 cupón por compra (ya hay otro aplicado)" };
+    }
+
     const it = items.find(x => Number(x.id) === Number(productId));
     if (!it) return { ok: false, reason: "Item no encontrado en carrito" };
+
+    if (hasProductPercentDiscount(it)) {
+      return { ok: false, reason: "No se pueden aplicar cupones a productos que ya tienen descuento por producto." };
+    }
 
     try {
       const requestItem = { productId: Number(it.id), quantity: Number(it.qty) };
@@ -229,60 +271,32 @@ export function CartProvider({ children }) {
       console.error("applyCouponByCode error", err);
       return { ok: false, reason: err.message || "Error al validar cupón" };
     }
-  }, [items, isAuthenticated]);
+  }, [items, isAuthenticated, couponState]);
 
   const removeCoupon = useCallback(
     () => setCouponState({ coupon: null, productId: null }),
     []
   );
 
-  const priceBreakdown = useCallback(
-    (it) => {
-      const unit = Number(it.price) || 0;
-      const qty = Number(it.qty) || 0;
-      const lineSubtotal = unit * qty;
-
-      const bulkPercent = bestBulkPercentFor(it);
-      const bulkDiscount = (lineSubtotal * bulkPercent) / 100;
-
-      let couponDiscount = 0;
-      let couponCode = null;
-      if (couponState.coupon && Number(couponState.productId) === Number(it.id)) {
-        couponCode = couponState.coupon.code;
-        couponDiscount = Number(couponState.coupon.discountAmount || 0);
-        couponDiscount = Math.min(Math.max(0, couponDiscount), Math.max(0, lineSubtotal - bulkDiscount));
-      }
-
-      const lineTotal = Math.max(0, lineSubtotal - bulkDiscount - couponDiscount);
-
-      return {
-        lineSubtotal,
-        bulkPercent,
-        bulkDiscount,
-        couponCode,
-        couponDiscount,
-        lineTotal,
-        currency: it.currency ?? "USD",
-      };
-    },
-    [couponState]
-  );
-
   const summary = useMemo(() => {
     const count = items.reduce((n, it) => n + it.qty, 0);
     const subtotal = items.reduce(
-      (n, it) => n + it.qty * (Number(it.price) || 0),
+      (n, it) => n + it.qty * (Number(it._raw?.price ?? it.price) || 0),
       0
     );
-    let discountTotal = 0;
+
+    let productDiscountTotal = 0;
+    let couponDiscountTotal = 0;
     let total = 0;
     for (const it of items) {
       const b = priceBreakdown(it);
-      discountTotal += (b.bulkDiscount || 0) + (b.couponDiscount || 0);
+      productDiscountTotal += (b.productDiscount || 0);
+      couponDiscountTotal += (b.couponDiscount || 0);
       total += b.lineTotal;
     }
+    const discountTotal = productDiscountTotal + couponDiscountTotal;
     const currency = items[0]?.currency ?? "USD";
-    return { count, subtotal, discountTotal, total, currency };
+    return { count, subtotal, productDiscountTotal, couponDiscountTotal, discountTotal, total, currency };
   }, [items, priceBreakdown]);
 
   const value = useMemo(
@@ -300,6 +314,7 @@ export function CartProvider({ children }) {
       removeCoupon,
       priceBreakdown,
       availableCoupons,
+      hasProductPercentDiscount,
     }),
     [
       items,

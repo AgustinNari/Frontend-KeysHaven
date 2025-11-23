@@ -8,6 +8,8 @@ export default function Checkout() {
   const {
     items,
     subtotal,
+    productDiscountTotal,
+    couponDiscountTotal,
     discountTotal,
     total,
     currency,
@@ -15,46 +17,60 @@ export default function Checkout() {
     appliedCoupon,
     couponTargetProductId,
     clear,
+    hasProductPercentDiscount
   } = useCart();
 
   const [placing, setPlacing] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const hasItems = items && items.length > 0;
 
-  const { bulkSum, couponSum } = useMemo(() => {
-    let bulk = 0,
-      coup = 0;
-    for (const it of items) {
-      const b = priceBreakdown(it);
-      bulk += b.bulkDiscount;
-      coup += b.couponDiscount;
-    }
-    return { bulkSum: bulk, couponSum: coup };
-  }, [items, priceBreakdown]);
-
   const handleConfirm = async () => {
     if (!hasItems || placing) return;
     setPlacing(true);
     setErrorMsg(null);
     try {
+      const dtoItems = items.map((it) => {
+        const productHasPercent = hasProductPercentDiscount(it);
+        const couponCodeToSend =
+          appliedCoupon && Number(couponTargetProductId) === Number(it.id) && !productHasPercent
+            ? appliedCoupon.code
+            : null;
+
+        return {
+          productId: Number(it.id),
+          couponCode: couponCodeToSend,
+          quantity: Number(it.qty),
+        };
+      });
+
       const orderDto = {
-        items: items.map((it) => {
-          return {
-            productId: Number(it.id),
-            couponCode:
-              appliedCoupon && Number(couponTargetProductId) === Number(it.id)
-                ? appliedCoupon.code
-                : null,
-            quantity: Number(it.qty)
-          };
-        }),
-        notes: null
+        items: dtoItems,
+        notes: null,
       };
 
       const serverOrder = await ordersService.createOrder(orderDto);
 
+      const clientItems = items.map(it => {
+        const b = priceBreakdown(it);
+        return {
+          productId: it.id,
+          title: it.title,
+          qty: it.qty,
+          image: it.image || it.imageUrl || (it._raw?.primaryImageDataUrl ?? it._raw?.primaryImageUrl) || null,
+          line: {
+            subtotal: b.lineSubtotal,
+            productDiscount: b.productDiscount,
+            couponDiscount: b.couponDiscount,
+            total: b.lineTotal,
+            unitOriginal: b.unitOriginal,
+            unitFinal: b.unitFinal,
+            productPercent: b.productPercent
+          }
+        };
+      });
+
       clear();
-      navigate("/order-confirmation", { state: { order: serverOrder } });
+      navigate("/order-confirmation", { state: { order: serverOrder, clientItems } });
     } catch (err) {
       console.error("Error creando orden", err);
       if (err?.status === 401) {
@@ -130,7 +146,7 @@ export default function Checkout() {
                     <div className="flex-grow-1">
                       <div className="fw-semibold">{it.title}</div>
                       <div style = {{ color: "#8a4ff0" }} className="text small">
-                        Cant: {it.qty} · {currency} {Number(it.price).toFixed(2)} c/u
+                        Cant: {it.qty}
                         {seller ? (
                           <>
                             {" "}
@@ -139,27 +155,43 @@ export default function Checkout() {
                         ) : null}
                       </div>
 
-                      <div style = {{ color: "#8a4ff0" }} className="text small">
+                      <div style = {{ color: "#8a4ff0" }} className="text small mt-1">
                         Subtotal ítem: {currency} {b.lineSubtotal.toFixed(2)}
-                        {b.bulkDiscount > 0 && (
-                          <>
-                            {" "}
-                            · Desc. Cantidad: −{currency}{" "}
-                            {b.bulkDiscount.toFixed(2)}
-                          </>
+                        {b.productDiscount > 0 && (
+                          <> · Desc. Producto ({b.productPercent}%): −{currency} {b.productDiscount.toFixed(2)}</>
                         )}
                         {b.couponDiscount > 0 && (
-                          <>
-                            {" "}
-                            · Cupón {isCouponLine ? appliedCoupon?.code : ""}: −
-                            {currency} {b.couponDiscount.toFixed(2)}
-                          </>
+                          <> · Cupón {isCouponLine ? appliedCoupon?.code : ""}: −{currency} {b.couponDiscount.toFixed(2)}</>
                         )}
                       </div>
                     </div>
 
-                    <div className="ms-2 fw-semibold">
-                      {currency} {b.lineTotal.toFixed(2)}
+                    <div className="ms-3 text-end" style={{ minWidth: 140 }}>
+                      {b.productPercent > 0 ? (
+                        <>
+                          <div style={{ fontSize: "0.85rem", color: "#6c757d", textDecoration: "line-through" }}>
+                            {currency} {Number(b.unitOriginal).toFixed(2)} c/u
+                          </div>
+                          <div className="fw-semibold">
+                            {currency} {Number(b.unitFinal).toFixed(2)} c/u
+                          </div>
+                        </>
+                      ) : (
+                        <div className="fw-semibold">{currency} {Number(b.unitOriginal).toFixed(2)} c/u</div>
+                      )}
+
+                      <div style={{ marginTop: 6 }}>
+                        {(b.productDiscount > 0 || b.couponDiscount > 0) ? (
+                          <>
+                            <div style={{ fontSize: "0.85rem", color: "#6c757d", textDecoration: "line-through" }}>
+                              {currency} {Number(b.lineSubtotal).toFixed(2)}
+                            </div>
+                            <div className="fw-semibold">{currency} {b.lineTotal.toFixed(2)}</div>
+                          </>
+                        ) : (
+                          <div className="fw-semibold">{currency} {b.lineTotal.toFixed(2)}</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -180,9 +212,9 @@ export default function Checkout() {
               </div>
 
               <div className="d-flex justify-content-between small">
-                <span style = {{ color: "#8a4ff0" }}>Desc. por cantidad</span>
+                <span style = {{ color: "#8a4ff0" }}>Desc. por producto</span>
                 <span className="text-danger">
-                  −{currency} {bulkSum.toFixed(2)}
+                  −{currency} {productDiscountTotal.toFixed(2)}
                 </span>
               </div>
               <div className="d-flex justify-content-between small">
@@ -190,14 +222,14 @@ export default function Checkout() {
                   Cupón {appliedCoupon?.code ? `(${appliedCoupon.code})` : ""}
                 </span>
                 <span className="text-danger">
-                  −{currency} {couponSum.toFixed(2)}
+                  −{currency} {couponDiscountTotal.toFixed(2)}
                 </span>
               </div>
 
               <div className="d-flex justify-content-between mt-1">
                 <span className="fw-semibold">Descuentos</span>
                 <span className="fw-semibold text-danger">
-                  −{currency} {Number(discountTotal).toFixed(2)}
+                  −{currency} {discountTotal.toFixed(2)}
                 </span>
               </div>
 
