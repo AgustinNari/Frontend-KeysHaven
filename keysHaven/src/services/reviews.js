@@ -1,4 +1,3 @@
-// services/reviews.js
 import apiClient from "../api/apiClient";
 
 export async function getReviewsByProduct(productId, page = 0, size = 10) {
@@ -32,5 +31,5 @@ export default {
   updateReview, 
   deleteReview, 
   getReviewByOrderItem,
-  getLatestReviews // Añadir al export
+  getLatestReviews
 };

@@ -115,7 +115,7 @@ export default function ReviewCarousel() {
           <h2 className="fw-bold text-center mb-5 text-primary-light">
             Reseñas Recientes de Nuestros Clientes
           </h2>
-          <div className="col-12 text-center text-muted" style={{ height: "300px" }}>
+          <div className="col-12 text-center" style={{ color: "var(--muted)", height: "300px" }}>
             <p>No hay reseñas recientes</p>
           </div>
         </div>
@@ -303,7 +303,7 @@ export default function ReviewCarousel() {
 
                       {/* Fecha */}
                       <div className="mb-3">
-                        <small className="text-muted">
+                        <small style={{ color : "var(--muted)" }}>
                           {new Date(currentReview.createdAt).toLocaleDateString('es-ES', {
                             year: 'numeric',
                             month: 'long',
