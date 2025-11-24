@@ -1,3 +1,4 @@
+// components/home/FeaturedProductsCarousel.jsx
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import productsService from "../../services/productsService";
@@ -13,7 +14,7 @@ export default function FeaturedProductsCarousel() {
     const fetchFeaturedProducts = async () => {
       try {
         setLoading(true);
-        const response = await productsService.getFeaturedProducts(10); // Usar el nuevo servicio
+        const response = await productsService.getFeaturedProducts(10);
         setFeaturedProducts(response.content || response || []);
       } catch (err) {
         console.error("Failed to load featured products", err);
@@ -70,11 +71,6 @@ export default function FeaturedProductsCarousel() {
     return product.price ? Number(product.price) : 0;
   };
 
-  // Función para obtener stock disponible
-  const getAvailableStock = (product) => {
-    return product.availableStock || product.stock || 0;
-  };
-
   if (loading) {
     return (
       <section className="py-5 bg-primary-dark">
@@ -82,7 +78,10 @@ export default function FeaturedProductsCarousel() {
           <h2 className="fw-bold text-center mb-5 text-primary-light">
             Productos Destacados
           </h2>
-          <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "300px" }}>
+          <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
+            <div className="spinner-border text-light ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}>
+              <span className="visually-hidden">Loading...</span>
+            </div>
             <img
               src={Loading}
               alt="Loading..."
@@ -101,7 +100,7 @@ export default function FeaturedProductsCarousel() {
           <h2 className="fw-bold text-center mb-5 text-primary-light">
             Productos Destacados
           </h2>
-          <div className="col-12 text-center" style={{ height: "300px", color: "red" }}>
+          <div className="col-12 text-center" style={{ height: "40px", color: "red" }}>
             <p>Error cargando productos destacados: {error}</p>
           </div>
         </div>
@@ -116,7 +115,7 @@ export default function FeaturedProductsCarousel() {
           <h2 className="fw-bold text-center mb-5 text-primary-light">
             Productos Destacados
           </h2>
-          <div className="col-12 text-center" style={{ color: "var(--muted)", height: "300px" }}>
+          <div className="col-12 text-center" style={{ color: "var(--muted)", height: "40px" }}>
             <p>No hay productos destacados en este momento</p>
           </div>
         </div>
@@ -134,19 +133,63 @@ export default function FeaturedProductsCarousel() {
         </h2>
 
         <div className="row justify-content-center">
-          <div className="col-10">
-            <div className="card shadow-lg border-0 rounded-3 bg-primary-mid">
-              <div className="card-body p-4">
-                {/* Controles del carousel */}
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                  <button 
-                    className="btn btn-outline-primary btn-sm"
-                    onClick={prevProduct}
-                    disabled={featuredProducts.length <= 1}
-                  >
-                    <i className="fas fa-chevron-left"></i>
-                  </button>
-                  
+          <div className="col-12 col-lg-10">
+            <div className="card shadow-lg border-0 rounded-3 bg-primary-mid overflow-hidden">
+              {/* Imagen del producto que ocupa casi todo el carrusel */}
+              <div className="position-relative" style={{ height: "400px" }}>
+                <Link 
+                  to={`/product/${currentProduct.id}`}
+                  className="text-decoration-none d-block h-100"
+                >
+                  {getPrimaryImage(currentProduct) ? (
+                    <img
+                      src={getPrimaryImage(currentProduct)}
+                      alt={currentProduct.title}
+                      className="img-fluid w-100 h-100"
+                      style={{ 
+                        objectFit: "cover",
+                        transition: "transform 0.3s ease",
+                        cursor: "pointer"
+                      }}
+                      onMouseEnter={(e) => e.target.style.transform = "scale(1.02)"}
+                      onMouseLeave={(e) => e.target.style.transform = "scale(1)"}
+                    />
+                  ) : (
+                    <div 
+                      className="bg-secondary w-100 h-100 d-flex align-items-center justify-content-center"
+                      style={{ 
+                        transition: "transform 0.3s ease",
+                        cursor: "pointer"
+                      }}
+                      onMouseEnter={(e) => e.target.style.transform = "scale(1.02)"}
+                      onMouseLeave={(e) => e.target.style.transform = "scale(1)"}
+                    >
+                      <i className="fas fa-gamepad fa-5x text-light"></i>
+                    </div>
+                  )}
+                </Link>
+
+                {/* Controles del carousel superpuestos en la imagen */}
+                <button 
+                  className="btn btn-outline-primary position-absolute top-50 start-0 translate-middle-y ms-3"
+                  onClick={prevProduct}
+                  disabled={featuredProducts.length <= 1}
+                  style={{ zIndex: 10 }}
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+                
+                <button 
+                  className="btn btn-outline-primary position-absolute top-50 end-0 translate-middle-y me-3"
+                  onClick={nextProduct}
+                  disabled={featuredProducts.length <= 1}
+                  style={{ zIndex: 10 }}
+                >
+                  <i className="fas fa-chevron-right"></i>
+                </button>
+
+                {/* Indicadores superpuestos en la imagen */}
+                <div className="position-absolute bottom-0 start-50 translate-middle-x mb-3" style={{ zIndex: 10 }}>
                   <div className="d-flex gap-2">
                     {featuredProducts.map((_, index) => (
                       <button
@@ -159,172 +202,70 @@ export default function FeaturedProductsCarousel() {
                       />
                     ))}
                   </div>
-                  
-                  <button 
-                    className="btn btn-outline-primary btn-sm"
-                    onClick={nextProduct}
-                    disabled={featuredProducts.length <= 1}
-                  >
-                    <i className="fas fa-chevron-right"></i>
-                  </button>
                 </div>
+              </div>
 
-                {/* Contenido del producto actual */}
+              {/* Información del producto debajo de la imagen */}
+              <div className="card-body p-4">
                 <div className="row align-items-center">
-                  {/* Imagen del producto con enlace */}
-                  <div className="col-md-6 text-center mb-4 mb-md-0">
+                  <div className="col-md-8">
+                    {/* Título */}
                     <Link 
                       to={`/product/${currentProduct.id}`}
                       className="text-decoration-none"
                     >
-                      {getPrimaryImage(currentProduct) ? (
-                        <img
-                          src={getPrimaryImage(currentProduct)}
-                          alt={currentProduct.title}
-                          className="img-fluid rounded shadow"
-                          style={{ 
-                            maxHeight: '300px', 
-                            width: 'auto',
-                            objectFit: 'cover',
-                            transition: 'transform 0.3s ease',
-                            cursor: 'pointer'
-                          }}
-                          onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-                          onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                        />
-                      ) : (
-                        <div 
-                          className="bg-secondary rounded d-flex align-items-center justify-content-center"
-                          style={{ 
-                            height: '300px', 
-                            width: '200px', 
-                            margin: '0 auto',
-                            transition: 'transform 0.3s ease',
-                            cursor: 'pointer'
-                          }}
-                          onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-                          onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                        >
-                          <i className="fas fa-gamepad fa-3x text-light"></i>
-                        </div>
-                      )}
+                      <h4 
+                        className="text-light mb-2"
+                        style={{
+                          transition: "color 0.3s ease"
+                        }}
+                        onMouseEnter={(e) => e.target.style.color = "var(--accent)"}
+                        onMouseLeave={(e) => e.target.style.color = "var(--text)"}
+                      >
+                        {currentProduct.title}
+                      </h4>
                     </Link>
-                  </div>
-
-                  {/* Información del producto */}
-                  <div className="col-md-6">
-                    <div className="d-flex flex-column h-100">
-                      {/* Título y categorías */}
-                      <div className="mb-3">
-                        <Link 
-                          to={`/product/${currentProduct.id}`}
-                          className="text-decoration-none"
-                        >
-                          <h3 
-                            className="text-light mb-2"
-                            style={{
-                              transition: 'color 0.3s ease'
+                    
+                    {/* Categorías */}
+                    {currentProduct.categories && currentProduct.categories.length > 0 && (
+                      <div className="d-flex flex-wrap gap-2">
+                        {currentProduct.categories.map((category, index) => (
+                          <span 
+                            key={index}
+                            className="badge bg-primary bg-opacity-25 text-white border border-primary border-opacity-25"
+                            style={{ 
+                              fontSize: "0.75rem",
+                              fontWeight: "500"
                             }}
-                            onMouseEnter={(e) => e.target.style.color = 'var(--accent)'}
-                            onMouseLeave={(e) => e.target.style.color = 'var(--text)'}
                           >
-                            {currentProduct.title}
-                          </h3>
-                        </Link>
-                        
-                        {currentProduct.categories && currentProduct.categories.length > 0 && (
-                          <div className="d-flex flex-wrap gap-2 mb-3">
-                            {currentProduct.categories.map((category, index) => (
-                              <span 
-                                key={index}
-                                className="badge bg-primary bg-opacity-25 text-white border border-primary border-opacity-25"
-                                style={{ 
-                                  fontSize: '0.75rem',
-                                  fontWeight: '500'
-                                }}
-                              >
-                                {category.description}
-                              </span>
-                            ))}
-                          </div>
+                            {category.description}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="col-md-4 text-md-end mt-3 mt-md-0">
+                    {/* Precio */}
+                    <div className="d-flex flex-column align-items-md-end">
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <span className="text-light fw-bold fs-4">
+                          ${getDisplayPrice(currentProduct).toFixed(2)}
+                        </span>
+                        {currentProduct.discountedPrice && (
+                          <span 
+                            className="text-muted text-decoration-line-through"
+                            style={{ fontSize: "1rem" }}
+                          >
+                            ${Number(currentProduct.price).toFixed(2)}
+                          </span>
                         )}
                       </div>
-
-                      {/* Descripción */}
-                      <div className="mb-3 flex-grow-1">
-                        <p className="text-light" style={{ 
-                          lineHeight: '1.5',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}>
-                          {currentProduct.description || 'Descripción no disponible'}
-                        </p>
-                      </div>
-
-                      {/* Plataforma y región */}
-                      <div className="row text-sm mb-3">
-                        <div className="col-6">
-                          <strong className="text-primary-light">Plataforma:</strong>
-                          <br />
-                          <span className="text-light">{currentProduct.platform}</span>
-                        </div>
-                        <div className="col-6">
-                          <strong className="text-primary-light">Región:</strong>
-                          <br />
-                          <span className="text-light">{currentProduct.region}</span>
-                        </div>
-                      </div>
-
-                      {/* Precio y stock */}
-                      <div className="row text-sm mb-4">
-                        <div className="col-6">
-                          <strong className="text-primary-light">Precio:</strong>
-                          <br />
-                          <div className="d-flex align-items-center gap-2">
-                            <span className="text-light fw-bold fs-5">
-                              ${getDisplayPrice(currentProduct).toFixed(2)}
-                            </span>
-                            {currentProduct.discountedPrice && (
-                              <span 
-                                className="text-muted text-decoration-line-through"
-                                style={{ fontSize: '0.9rem' }}
-                              >
-                                ${Number(currentProduct.price).toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                          {currentProduct.discountPctDisplay > 0 && (
-                            <span className="badge bg-success mt-1">
-                              {currentProduct.discountPctDisplay}% OFF
-                            </span>
-                          )}
-                        </div>
-                        <div className="col-6">
-                          <strong className="text-primary-light">Stock:</strong>
-                          <br />
-                          <span className={`badge ${
-                            getAvailableStock(currentProduct) > 0 
-                              ? 'bg-success' 
-                              : 'bg-danger'
-                          }`}>
-                            {getAvailableStock(currentProduct)} disponibles
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Botón para ver detalles */}
-                      <div className="d-flex flex-column flex-sm-row gap-2 justify-content-start">
-                        <Link 
-                          to={`/product/${currentProduct.id}`}
-                          className="btn btn-primary"
-                          style={{ minWidth: '160px' }}
-                        >
-                          <i className="fas fa-info-circle me-2"></i>
-                          Ver Detalles del Juego
-                        </Link>
-                      </div>
+                      {currentProduct.discountPctDisplay > 0 && (
+                        <span className="badge bg-success">
+                          {currentProduct.discountPctDisplay}% OFF
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

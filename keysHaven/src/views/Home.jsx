@@ -30,22 +30,24 @@ export default function Home() {
   //MiniNavBar Variables
   const inputRef = useRef(null);
   const [searchMode, setSearchMode] = useState(false);
-  const [active, setActive] = useState("pc");
+  const [active, setActive] = useState("all");
   const icons = [
-    { id: "pc", icon: "fab fa-windows" },
-    { id: "ps", icon: "fab fa-playstation" },
-    { id: "xbox", icon: "fab fa-xbox" },
-    { id: "switch", icon: "fas fa-gamepad" },
+    { id: "PC", icon: "fab fa-windows" },
+    { id: "PlayStation", icon: "fab fa-playstation" },
+    { id: "Xbox", icon: "fab fa-xbox" },
+    { id: "Nintendo", icon: "fas fa-gamepad" },
+    { id: "all", icon: "fa-solid fa-dice-d20" },
   ];
   const navigate = useNavigate();
   const handleSearch = (term) => {
     const query = term.trim();
-    if (query.length > 0) {
-      navigate(`/catalog?title=${encodeURIComponent(query)}`);
-    } else {
-      navigate(`/catalog`);
+    let url = `/catalog?`;
+    if (query.length > 0) url += `title=${encodeURIComponent(query)}`;
+    if (active && active !== "all") {
+      url += `${query.length > 0 ? "&" : ""}platform=${encodeURIComponent(active)}`;
     }
-  };
+    navigate(url);
+  }
   const [searchText, setSearchText] = useState("");
 
  
@@ -230,6 +232,9 @@ export default function Home() {
           <h2 className="fw-bold mb-5 text-primary-light">Categorías Destacadas</h2>
           <div className="row g-4 justify-content-center">
             {loadingCategories && (<div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
+              <div className="spinner-border text-light ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}>
+                <span className="visually-hidden">Loading...</span>
+              </div>
               <img
                 src={Loading}
                 alt="Loading..."
@@ -278,6 +283,9 @@ export default function Home() {
                 className="col-12 d-flex justify-content-center align-items-center"
                 style={{ height: "40px" }}
               >
+                <div className="spinner-border text-light ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}>
+                  <span className="visually-hidden">Loading...</span>
+                </div>
                 <img
                   src={Loading}
                   alt="Loading..."
@@ -324,6 +332,9 @@ export default function Home() {
           <h2 className="fw-bold text-center mb-5 text-primary-light">Llaves Más Elegidas</h2>
 
            {loadingProducts && (<div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
+              <div className="spinner-border text-light ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}>
+                <span className="visually-hidden">Loading...</span>
+              </div>
               <img
                 src={Loading}
                 alt="Loading..."
