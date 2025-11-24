@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { validations, validationMessages } from "../utils/validations";
 
 export default function Login() {
   const { login } = useAuth();
@@ -9,9 +10,32 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [errors, setErrors] = useState({});
+
+  function validateForm() {
+    const newErrors = {};
+    
+    if (!email) {
+      newErrors.email = "El email es requerido";
+    } else if (!validations.email(email)) {
+      newErrors.email = validationMessages.email;
+    }
+    
+    if (!password) {
+      newErrors.password = "La contraseña es requerida";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
 
   async function onSubmit(e) {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     setSubmitting(true);
     setError(null);
     try {
@@ -38,13 +62,29 @@ export default function Login() {
             <form onSubmit={onSubmit}>
               <div className="mb-4">
                 <div className="form-floating m-1">
-                  <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="form-control bg-dark border-secondary text-white" id="emailInput" placeholder="Email address" />
+                  <input 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    type="email" 
+                    className={`form-control bg-dark border-secondary text-white ${errors.email ? 'is-invalid' : ''}`} 
+                    id="emailInput" 
+                    placeholder="Email address" 
+                  />
                   <label htmlFor="emailInput" className="text-muted">Dirección de Email</label>
+                  {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                 </div>
 
                 <div className="form-floating m-1">
-                  <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="form-control bg-dark border-secondary text-white" id="passwordInput" placeholder="Password" />
+                  <input 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    type="password" 
+                    className={`form-control bg-dark border-secondary text-white ${errors.password ? 'is-invalid' : ''}`} 
+                    id="passwordInput" 
+                    placeholder="Password" 
+                  />
                   <label htmlFor="passwordInput" className="text-muted">Contraseña</label>
+                  {errors.password && <div className="invalid-feedback">{errors.password}</div>}
                 </div>
               </div>
 
