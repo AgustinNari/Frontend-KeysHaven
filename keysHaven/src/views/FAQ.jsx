@@ -1,5 +1,7 @@
 import React from "react";
 
+import DoppyProf from "../assets/doppyKnight/doppyProfessor.png"
+
 export default function FAQ() {
 
   return (
@@ -101,6 +103,15 @@ export default function FAQ() {
             </div>
           </div>
         </div>
+      </div>
+      <div className="col-12 col-md-4 text-center" style={{position: "relative", zIndex: 2}}>
+              <img
+                src=  {DoppyProf}
+                alt= "Doppy"
+                width={550}
+                height={700}
+                style={{ display: "block", margin: "0 auto", marginTop: "-90px" }}
+              />
       </div>
     </div>
   );

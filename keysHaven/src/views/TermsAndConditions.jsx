@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+import Doppy from "../assets/doppyKnight/doppyStand.png"
+
 export default function TermsAndConditions() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -160,6 +162,26 @@ export default function TermsAndConditions() {
             )}
           </div>
         </div>
+      </div>
+      <div
+        className="col-12 d-flex justify-content-between"
+        style={{ position: "relative", zIndex: 2, marginTop: "-750px" }}
+      >
+        <img
+          src={Doppy}
+          alt="Doppy"
+          width={450}
+          height={620}
+          style={{ marginLeft: "-230px" }}
+        />
+
+        <img
+          src={Doppy}
+          alt="Doppy"
+          width={450}
+          height={620}
+          style={{ marginRight: "-230px" }}
+        />
       </div>
     </div>
   );

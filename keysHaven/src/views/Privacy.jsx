@@ -1,5 +1,7 @@
 import React from "react";
 
+import DoppyTU from "../assets/doppyKnight/doppyThumbsUp.png"
+
 export default function Privacy() {
   return (
     <div className="container py-5" data-bs-theme="dark">
@@ -53,6 +55,18 @@ export default function Privacy() {
             </div>
           </div>
         </div>
+      </div>
+      <div
+        className="col-12 d-flex justify-content-end"
+        style={{ position: "relative", height: "40px", zIndex: 2 }}
+      >
+        <img
+          src={DoppyTU}
+          alt="Doppy"
+          width={550}
+          height={700}
+          style={{ marginRight: "-280px", marginTop: "-700px" }}
+        />
       </div>
     </div>
   );
