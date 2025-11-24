@@ -51,6 +51,10 @@ export default function FeaturedProductsCarousel() {
     setCurrentIndex(index);
   };
 
+  // Calcular índices de productos anteriores y siguientes
+  const getPrevIndex = () => currentIndex === 0 ? featuredProducts.length - 1 : currentIndex - 1;
+  const getNextIndex = () => currentIndex === featuredProducts.length - 1 ? 0 : currentIndex + 1;
+
   // Función para obtener la imagen principal del producto
   const getPrimaryImage = (product) => {
     if (product.primaryImageDataUrl) return product.primaryImageDataUrl;
@@ -121,6 +125,8 @@ export default function FeaturedProductsCarousel() {
   }
 
   const currentProduct = featuredProducts[currentIndex];
+  const prevProductItem = featuredProducts[getPrevIndex()];
+  const nextProductItem = featuredProducts[getNextIndex()];
 
   return (
     <section className="py-5 bg-primary-dark">
@@ -129,14 +135,66 @@ export default function FeaturedProductsCarousel() {
           Productos Destacados
         </h2>
 
-        <div className="row justify-content-center">
-          <div className="col-12 col-lg-10">
+        <div className="row justify-content-center align-items-center">
+          {/* Producto anterior - lado izquierdo */}
+          <div className="col-md-3 d-none d-md-block">
+            <div 
+              className="position-relative rounded-3 overflow-hidden"
+              style={{ 
+                opacity: 0.6,
+                filter: "blur(2px)",
+                transform: "scale(0.85)",
+                transition: "all 0.3s ease",
+                cursor: "pointer"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "0.8";
+                e.currentTarget.style.filter = "blur(1px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "0.6";
+                e.currentTarget.style.filter = "blur(2px)";
+              }}
+              onClick={prevProduct}
+            >
+              <Link 
+                to={`/product/${prevProductItem.id}`}
+                className="text-decoration-none d-block"
+              >
+                {getPrimaryImage(prevProductItem) ? (
+                  <img
+                    src={getPrimaryImage(prevProductItem)}
+                    alt={prevProductItem.title}
+                    className="img-fluid w-100 rounded-3"
+                    style={{ 
+                      height: "200px",
+                      objectFit: "contain",
+                      backgroundColor: "var(--primary-dark)"
+                    }}
+                  />
+                ) : (
+                  <div 
+                    className="bg-secondary w-100 rounded-3 d-flex align-items-center justify-content-center"
+                    style={{ height: "200px" }}
+                  >
+                    <i className="fas fa-gamepad fa-2x text-light"></i>
+                  </div>
+                )}
+              </Link>
+              <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+                <i className="fas fa-chevron-left text-white fs-1 opacity-75"></i>
+              </div>
+            </div>
+          </div>
+
+          {/* Producto actual - centro */}
+          <div className="col-12 col-md-6">
             <div className="card shadow-lg border-0 rounded-3 bg-primary-mid overflow-hidden">
               {/* Imagen del producto que ocupa casi todo el carrusel */}
-              <div className="position-relative" style={{ height: "400px" }}>
+              <div className="position-relative" style={{ height: "400px", backgroundColor: "var(--primary-dark)" }}>
                 <Link 
                   to={`/product/${currentProduct.id}`}
-                  className="text-decoration-none d-block h-100"
+                  className="text-decoration-none d-block h-100 w-100"
                 >
                   {getPrimaryImage(currentProduct) ? (
                     <img
@@ -144,11 +202,12 @@ export default function FeaturedProductsCarousel() {
                       alt={currentProduct.title}
                       className="img-fluid w-100 h-100"
                       style={{ 
-                        objectFit: "cover",
+                        objectFit: "contain",
                         transition: "transform 0.3s ease",
-                        cursor: "pointer"
+                        cursor: "pointer",
+                        padding: "10px"
                       }}
-                      onMouseEnter={(e) => e.target.style.transform = "scale(1.02)"}
+                      onMouseEnter={(e) => e.target.style.transform = "scale(1.05)"}
                       onMouseLeave={(e) => e.target.style.transform = "scale(1)"}
                     />
                   ) : (
@@ -158,32 +217,13 @@ export default function FeaturedProductsCarousel() {
                         transition: "transform 0.3s ease",
                         cursor: "pointer"
                       }}
-                      onMouseEnter={(e) => e.target.style.transform = "scale(1.02)"}
+                      onMouseEnter={(e) => e.target.style.transform = "scale(1.05)"}
                       onMouseLeave={(e) => e.target.style.transform = "scale(1)"}
                     >
                       <i className="fas fa-gamepad fa-5x text-light"></i>
                     </div>
                   )}
                 </Link>
-
-                {/* Controles del carousel superpuestos en la imagen */}
-                <button 
-                  className="btn btn-outline-primary position-absolute top-50 start-0 translate-middle-y ms-3"
-                  onClick={prevProduct}
-                  disabled={featuredProducts.length <= 1}
-                  style={{ zIndex: 10 }}
-                >
-                  <i className="fas fa-chevron-left"></i>
-                </button>
-                
-                <button 
-                  className="btn btn-outline-primary position-absolute top-50 end-0 translate-middle-y me-3"
-                  onClick={nextProduct}
-                  disabled={featuredProducts.length <= 1}
-                  style={{ zIndex: 10 }}
-                >
-                  <i className="fas fa-chevron-right"></i>
-                </button>
 
                 {/* Indicadores superpuestos en la imagen */}
                 <div className="position-absolute bottom-0 start-50 translate-middle-x mb-3" style={{ zIndex: 10 }}>
@@ -268,6 +308,81 @@ export default function FeaturedProductsCarousel() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Producto siguiente - lado derecho */}
+          <div className="col-md-3 d-none d-md-block">
+            <div 
+              className="position-relative rounded-3 overflow-hidden"
+              style={{ 
+                opacity: 0.6,
+                filter: "blur(2px)",
+                transform: "scale(0.85)",
+                transition: "all 0.3s ease",
+                cursor: "pointer"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "0.8";
+                e.currentTarget.style.filter = "blur(1px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "0.6";
+                e.currentTarget.style.filter = "blur(2px)";
+              }}
+              onClick={nextProduct}
+            >
+              <Link 
+                to={`/product/${nextProductItem.id}`}
+                className="text-decoration-none d-block"
+              >
+                {getPrimaryImage(nextProductItem) ? (
+                  <img
+                    src={getPrimaryImage(nextProductItem)}
+                    alt={nextProductItem.title}
+                    className="img-fluid w-100 rounded-3"
+                    style={{ 
+                      height: "200px",
+                      objectFit: "contain",
+                      backgroundColor: "var(--primary-dark)"
+                    }}
+                  />
+                ) : (
+                  <div 
+                    className="bg-secondary w-100 rounded-3 d-flex align-items-center justify-content-center"
+                    style={{ height: "200px" }}
+                  >
+                    <i className="fas fa-gamepad fa-2x text-light"></i>
+                  </div>
+                )}
+              </Link>
+              <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+                <i className="fas fa-chevron-right text-white fs-1 opacity-75"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Controles de navegación para móviles */}
+        <div className="row mt-4 d-md-none">
+          <div className="col-6">
+            <button 
+              className="btn btn-outline-primary w-100"
+              onClick={prevProduct}
+              disabled={featuredProducts.length <= 1}
+            >
+              <i className="fas fa-chevron-left me-2"></i>
+              Anterior
+            </button>
+          </div>
+          <div className="col-6">
+            <button 
+              className="btn btn-outline-primary w-100"
+              onClick={nextProduct}
+              disabled={featuredProducts.length <= 1}
+            >
+              Siguiente
+              <i className="fas fa-chevron-right ms-2"></i>
+            </button>
           </div>
         </div>
       </div>
