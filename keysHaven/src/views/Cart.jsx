@@ -2,6 +2,8 @@ import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
 
+import DoppyCart from "../assets/doppyKnight/doppyShoppingCart.png"
+
 export default function Cart() {
   const {
     items,
@@ -68,6 +70,17 @@ export default function Cart() {
           <Link to="/catalog" className="btn btn-link" style = {{ color: "#8a4ff0" }}>
             Ir al catálogo
           </Link>
+        </div>
+        <div
+          className="col-12 d-flex justify-content-center"
+          style={{ position: "relative", zIndex: 2 }}
+        >
+          <img
+            src={DoppyCart}
+            alt="Doppy"
+            width={450}
+            height={620}
+          />
         </div>
       </div>
     );
