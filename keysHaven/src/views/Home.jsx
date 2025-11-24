@@ -6,7 +6,8 @@ import { getTopSellers } from "../services/sellers";
 import productsService from "../services/productsService";
 import HomeBanner from '../assets/homeImage.png';
 import Loading from "../assets/doppyKnight/doppyTimeCheck.png";
-import ReviewCarousel from "../components/home/ReviewCarousel"; // NUEVO IMPORT
+import ReviewCarousel from "../components/home/ReviewCarousel";
+import FeaturedProductsCarousel from "../components/home/FeaturedProductsCarrousel";
 
 export default function Home() {
   const [theme, setTheme] = useState("bg-primary-dark");
@@ -221,6 +222,8 @@ export default function Home() {
         </div>
       </section>
 
+      <FeaturedProductsCarousel />
+
       {/* Categories */}
       <section className="py-5 bg-primary-dark">
         <div className="container text-center">
@@ -262,6 +265,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      
 
       {/* Top Sellers */}
       <section className="py-5 bg-primary-dark">

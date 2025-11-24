@@ -201,6 +201,10 @@ async function getFilterExtras() {
   return resp ?? { developers: [], publishers: [] };
 }
 
+async function getFeaturedProducts(size = 10) {
+  return search({ featured: true }, 0, size, "createdAt_desc", true);
+}
+
 export default {
   search,
   getTopSoldProducts,
@@ -209,5 +213,6 @@ export default {
   productsBySeller,
   mapSortKey,
   SORT_MAP,
-  getFilterExtras
+  getFilterExtras,
+  getFeaturedProducts
 };
