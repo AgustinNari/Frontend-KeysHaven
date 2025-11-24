@@ -166,7 +166,7 @@ export default function TermsAndConditions() {
       </div>
       <div
         className="col-12 d-flex justify-content-between"
-        style={{ position: "relative", zIndex: 2, marginTop: "-750px" }}
+        style={{ position: "relative", zIndex: -1, marginTop: "-750px" }}
       >
         <img
           src={Doppy}
