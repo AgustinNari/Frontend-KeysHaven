@@ -217,7 +217,7 @@ export default function ReviewCarousel() {
                             count={0}
                           />
                           <span className="ms-2 text-light" style={{ fontSize: '1.1rem' }}>
-                            {currentReview.rating}/10
+                            {currentReview.rating / 2}/5
                           </span>
                         </div>
                       

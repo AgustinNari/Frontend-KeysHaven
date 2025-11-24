@@ -128,7 +128,7 @@ export default function SalesAnalytics({ sellerId }) {
         <div className="card bg-primary-dark border-0 h-100">
           <div className="card-body text-center">
             <div className="text-primary mb-2"><i className="fas fa-star fa-2x"></i></div>
-            <h3 className="text-primary-light">{(stats.avgRating || 0).toFixed(1)}/5</h3>
+            <h3 className="text-primary-light">{(stats.avgRating/2 || 0).toFixed(1)}/5</h3>
             <p className="text-muted mb-0">Rating Promedio</p>
           </div>
         </div>

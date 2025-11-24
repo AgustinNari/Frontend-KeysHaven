@@ -266,7 +266,7 @@ export default function Home() {
       {/* Top Sellers */}
       <section className="py-5 bg-primary-dark">
         <div className="container text-center">
-          <h2 className="fw-bold mb-5 text-primary-light">Vendedores más Elegidos</h2>
+          <h2 className="fw-bold mb-5 text-primary-light">Vendedores Más Elegidos</h2>
           <div className="row g-5 justify-content-center">
             {loadingSellers && (
               <div
@@ -303,9 +303,9 @@ export default function Home() {
                     alt={seller.displayName}
                   />
                   <h5 className="text-light fw-bold">{seller.displayName}</h5>
-                  <small className="text-light">
-                    {seller.amountSold} keys sold • {seller.avgRating}★
-                  </small>
+                    <small className="text-light">
+                      {seller.amountSold} keys sold • {(seller.avgRating / 2).toFixed(1)}★
+                    </small>
                 </a>
               </div>
             ))}
@@ -316,7 +316,7 @@ export default function Home() {
       {/* Most Bought Products */}
       <section className="py-5 bg-primary-dark">
         <div className="container">
-          <h2 className="fw-bold text-center mb-5 text-primary-light">Llaves más Elegidas</h2>
+          <h2 className="fw-bold text-center mb-5 text-primary-light">Llaves Más Elegidas</h2>
 
            {loadingProducts && (<div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
               <img

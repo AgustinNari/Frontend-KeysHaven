@@ -422,7 +422,7 @@ export const getSellerStats = async (sellerId) => {
       phone: sellerDetail.phone,
       country: sellerDetail.country,
 
-      avgRating: (sellerDetail.avgRating ?? 0) / 2,
+      avgRating: (sellerDetail.avgRating ?? 0),
       ratingCount: sellerDetail.ratingCount ?? 0,
       soldKeys: sellerDetail.soldKeys ?? 0,
       amountSold: sellerDetail.amountSold ?? 0,
