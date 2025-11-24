@@ -55,10 +55,20 @@ export default function Login() {
               </button>
 
               <p className="text-muted small text-center">
-                Al continuar aceptas nuestros{' '}
-                <Link to="/terms" className="text-primary text-decoration-none">Términos y Condiciones</Link>{' '}
-                y nuestras{' '}
-                <Link to="/privacy" className="text-primary text-decoration-none">Políticas de Privacidad</Link>.
+                Al continuar aceptas nuestros{" "}
+                <Link
+                  to="/termsandconditions"
+                  className="text-primary text-decoration-none"
+                >
+                  Términos y Condiciones
+                </Link>{" "}
+                y nuestras{" "}
+                <Link
+                  to="/privacy"
+                  className="text-primary text-decoration-none"
+                >
+                  Políticas de Privacidad
+                </Link>.
               </p>
             </form>
           </div>
