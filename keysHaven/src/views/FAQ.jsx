@@ -85,11 +85,11 @@ export default function FAQ() {
 
               <h5 className="text-primary mt-4">10. ¿Necesito crear una cuenta para comprar?</h5>
               <p className="text-light">
-                No es obligatorio crear una cuenta para realizar compras, pero te recomendamos hacerlo porque: <br/>
-                - Tendrás acceso a tu historial de compras <br/>
-                - Podrás gestionar reclamaciones más fácilmente <br/>
-                - Recibirás ofertas exclusivas y descuentos <br/>
-                - Podrás acumular puntos en nuestro programa de fidelidad
+                Sí, para añadir artículos al carrito y completar una compra, es necesario crear una cuenta. Adicionalmente, esto te permitirá: <br/>
+                - Acceder a tu historial de compras <br/>
+                - Dejar reseñas sobre los productos que compres <br/>
+                - Recibir ofertas exclusivas y descuentos <br/>
+                - Gestionar reclamaciones
               </p>
 
               <div className="alert alert-warning mt-4" role="alert">
