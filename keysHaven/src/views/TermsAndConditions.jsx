@@ -32,8 +32,8 @@ export default function TermsAndConditions() {
           <div className="card shadow-lg p-4 bg-dark text-white">
             <h4 className="fw-bold text-primary text-center mb-4">Términos y Condiciones</h4>
             <p className="text-center text-muted mb-4">
-              Por favor, lee atentamente nuestros términos y condiciones antes de utilizar nuestros servicios.
-            </p>
+              Por favor, lee atentamente nuestros Términos y Condiciones y nuestra Política de Privacidad antes de utilizar la plataforma.
+             </p>
 
             <div className="terms-content" style={{ maxHeight: "60vh", overflowY: "auto" }}>
               <h5 className="text-primary mt-4">1. Aceptación de los Términos</h5>

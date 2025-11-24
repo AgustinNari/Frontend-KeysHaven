@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export default function Footer() {
   return (
@@ -7,24 +7,66 @@ export default function Footer() {
       <div className="container app-container text-center">
         <div className="row g-4">
           <div className="col-md-3">
-            <a href="#" className="d-flex align-items-center gap-2 mb-3 text-decoration-none text-light">
+            <Link
+              to="/"
+              className="d-flex align-items-center gap-2 mb-3 text-decoration-none text-light"
+            >
               <img src="/src/assets/keyLogo.svg" width={55} height={50} />
               <strong>KeysHaven</strong>
-            </a>
-            <small className="text-light">© 2025 KeysHaven. All rights reserved.</small>
+            </Link>
+            <small className="text-light">
+              © {new Date().getFullYear()} KeysHaven. Todos los derechos
+              reservados.
+            </small>
           </div>
+
           <div className="col-md-2">
-            <h6 className="fw-bold">Support</h6>
+            <h6 className="fw-bold">Soporte</h6>
             <ul className="list-unstyled small">
-              <li><a href="#" className="text-light text-decoration-none">Activate Keys</a></li>
-              <li><a href="#" className="text-light text-decoration-none">Refund Policy</a></li>
+              {/* Más adelante pueden ir a una vista específica de activación */}
+              <li>
+                <Link
+                  to="/faq"
+                  className="text-light text-decoration-none"
+                >
+                  Cómo activar tus claves
+                </Link>
+              </li>
+              <li>
+                <span className="text-light text-decoration-none">
+                  Política de reembolso
+                </span>
+              </li>
             </ul>
           </div>
+
           <div className="col-md-2">
-            <h6 className="fw-bold">Company</h6>
+            <h6 className="fw-bold">Compañía</h6>
             <ul className="list-unstyled small">
-              <li><Link className="text-light text-decoration-none" to="/termsandconditions">Terminos de servicio</Link></li>
-              <li><Link className="text-light text-decoration-none" to="/faq">Preguntas Frecuentes</Link></li>
+              <li>
+                <Link
+                  className="text-light text-decoration-none"
+                  to="/termsandconditions"
+                >
+                  Términos y Condiciones
+                </Link>
+              </li>
+              <li>
+                <Link
+                  className="text-light text-decoration-none"
+                  to="/faq"
+                >
+                  Preguntas frecuentes
+                </Link>
+              </li>
+              <li>
+                <Link
+                  className="text-light text-decoration-none"
+                  to="/privacy"
+                >
+                  Política de Privacidad
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
