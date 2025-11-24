@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { registerThunk, selectAuthLoading, selectAuthError, selectIsAuthenticated } from "../redux/slices/authSlice";
+import { validations, validationMessages } from "../utils/validations";
 
 const DRAFT_KEY = "register_form_draft_v1";
 
@@ -16,6 +17,7 @@ export default function Register() {
 
   const [step, setStep] = useState(1);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -86,10 +88,53 @@ export default function Register() {
   }, [step, termsAccepted, displayName, email, password, firstName, lastName, phone, country, sellerDescription, role]);
 
   function validateStep1() {
-    if (!displayName || !email || !password) return false;
-    if (password.length < 8) return false;
-    if (!termsAccepted) return false;
-    return true;
+    const newErrors = {};
+    
+    if (!displayName.trim()) {
+      newErrors.displayName = "El nombre de usuario es requerido";
+    }
+    
+    if (!email) {
+      newErrors.email = "El email es requerido";
+    } else if (!validations.email(email)) {
+      newErrors.email = validationMessages.email;
+    }
+    
+    if (!password) {
+      newErrors.password = "La contraseña es requerida";
+    } else if (!validations.password(password)) {
+      newErrors.password = validationMessages.password;
+    }
+    
+    if (!termsAccepted) {
+      newErrors.terms = "Debes aceptar los términos y condiciones";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  function validateStep2() {
+    const newErrors = {};
+    
+    if (firstName && !validations.onlyText(firstName)) {
+      newErrors.firstName = validationMessages.onlyText;
+    }
+    
+    if (lastName && !validations.onlyText(lastName)) {
+      newErrors.lastName = validationMessages.onlyText;
+    }
+    
+    if (phone && !validations.phone(phone)) {
+      newErrors.phone = validationMessages.phone;
+    }
+    
+    if (country && !validations.onlyText(country)) {
+      newErrors.country = validationMessages.onlyText;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   }
 
   function onContinue() {
@@ -147,6 +192,11 @@ export default function Register() {
     setSubmitting(true);
     setLocalError(null);
 
+    if (!validateStep2()) {
+      setSubmitting(false);
+      return;
+    }
+
     const payload = {
       displayName,
       firstName,
@@ -188,11 +238,12 @@ export default function Register() {
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       type="text"
-                      className="form-control bg-dark border-secondary text-white"
+                      className={`form-control bg-dark border-secondary text-white ${errors.displayName ? 'is-invalid' : ''}`}
                       id="displayNameInput"
                       placeholder="Nombre de usuario"
                     />
-                    <label htmlFor="displayNameInput" className="text-muted">Nombre para mostrar</label>
+                    <label htmlFor="displayNameInput" className="text-muted">Nombre para mostrar *</label>
+                    {errors.displayName && <div className="invalid-feedback">{errors.displayName}</div>}
                   </div>
 
                   <div className="form-floating m-1">
@@ -200,11 +251,12 @@ export default function Register() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       type="email"
-                      className="form-control bg-dark border-secondary text-white"
+                      className={`form-control bg-dark border-secondary text-white ${errors.email ? 'is-invalid' : ''}`}
                       id="emailInput"
                       placeholder="Email address"
                     />
-                    <label htmlFor="emailInput" className="text-muted">Dirección de Email</label>
+                    <label htmlFor="emailInput" className="text-muted">Dirección de Email *</label>
+                    {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                   </div>
 
                   <div className="form-floating m-1">
@@ -212,25 +264,30 @@ export default function Register() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       type="password"
-                      className="form-control bg-dark border-secondary text-white"
+                      className={`form-control bg-dark border-secondary text-white ${errors.password ? 'is-invalid' : ''}`}
                       id="passwordInput"
                       placeholder="Password"
                     />
-                    <label htmlFor="passwordInput" className="text-muted">Contraseña (mín 8 caracteres)</label>
+                    <label htmlFor="passwordInput" className="text-muted">Contraseña (mín 8 caracteres) *</label>
+                    {errors.password && <div className="invalid-feedback">{errors.password}</div>}
+                    <div className="form-text text-muted">
+                      La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número
+                    </div>
                   </div>
 
                   <div className="mt-4 p-3 border rounded bg-dark">
                     <div className="form-check">
                       <input
-                        className="form-check-input"
+                        className={`form-check-input ${errors.terms ? 'is-invalid' : ''}`}
                         type="checkbox"
                         id="termsCheck"
                         checked={termsAccepted}
-                        onChange={() => setTermsAccepted(s => !s)}
+                        onChange={() => setTermsAccepted(!termsAccepted)}
                       />
                       <label className="form-check-label text-light" htmlFor="termsCheck">
-                        He leído y acepto los Términos y Condiciones
+                        He leído y acepto los Términos y Condiciones *
                       </label>
+                      {errors.terms && <div className="invalid-feedback d-block">{errors.terms}</div>}
                     </div>
 
                     <div className="mt-3 d-flex gap-2">
@@ -258,7 +315,6 @@ export default function Register() {
                 <button
                   className="btn btn-primary btn-lg w-100 py-2 fw-bold mb-4"
                   onClick={onContinue}
-                  disabled={!termsAccepted}
                 >
                   Continuar
                 </button>
@@ -270,30 +326,61 @@ export default function Register() {
                 <div className="row g-2 mb-3">
                   <div className="col">
                     <div className="form-floating">
-                      <input value={firstName} onChange={(e)=>setFirstName(e.target.value)} className="form-control bg-dark border-secondary text-white" placeholder="Nombre" />
+                      <input 
+                        value={firstName} 
+                        onChange={(e)=>setFirstName(e.target.value)} 
+                        className={`form-control bg-dark border-secondary text-white ${errors.firstName ? 'is-invalid' : ''}`} 
+                        placeholder="Nombre" 
+                      />
                       <label className="text-muted">Nombre</label>
+                      {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
                     </div>
                   </div>
                   <div className="col">
                     <div className="form-floating">
-                      <input value={lastName} onChange={(e)=>setLastName(e.target.value)} className="form-control bg-dark border-secondary text-white" placeholder="Apellido" />
+                      <input 
+                        value={lastName} 
+                        onChange={(e)=>setLastName(e.target.value)} 
+                        className={`form-control bg-dark border-secondary text-white ${errors.lastName ? 'is-invalid' : ''}`} 
+                        placeholder="Apellido" 
+                      />
                       <label className="text-muted">Apellido</label>
+                      {errors.lastName && <div className="invalid-feedback">{errors.lastName}</div>}
                     </div>
                   </div>
                 </div>
 
                 <div className="form-floating mb-2">
-                  <input value={phone} onChange={(e)=>setPhone(e.target.value)} className="form-control bg-dark border-secondary text-white" placeholder="Teléfono" />
+                  <input 
+                    value={phone} 
+                    onChange={(e)=>setPhone(e.target.value)} 
+                    className={`form-control bg-dark border-secondary text-white ${errors.phone ? 'is-invalid' : ''}`} 
+                    placeholder="Teléfono" 
+                  />
                   <label className="text-muted">Teléfono</label>
+                  {errors.phone && <div className="invalid-feedback">{errors.phone}</div>}
+                  <div className="form-text text-muted">Formato: +54 11 1234-5678</div>
                 </div>
 
                 <div className="form-floating mb-2">
-                  <input value={country} onChange={(e)=>setCountry(e.target.value)} className="form-control bg-dark border-secondary text-white" placeholder="País" />
+                  <input 
+                    value={country} 
+                    onChange={(e)=>setCountry(e.target.value)} 
+                    className={`form-control bg-dark border-secondary text-white ${errors.country ? 'is-invalid' : ''}`} 
+                    placeholder="País" 
+                  />
                   <label className="text-muted">País</label>
+                  {errors.country && <div className="invalid-feedback">{errors.country}</div>}
                 </div>
 
                 <div className="form-floating mb-2">
-                  <textarea value={sellerDescription} onChange={(e)=>setSellerDescription(e.target.value)} className="form-control bg-dark border-secondary text-white" rows="2" placeholder="Descripción (si sos seller)"></textarea>
+                  <textarea 
+                    value={sellerDescription} 
+                    onChange={(e)=>setSellerDescription(e.target.value)} 
+                    className="form-control bg-dark border-secondary text-white" 
+                    rows="2" 
+                    placeholder="Descripción (si sos seller)">
+                  </textarea>
                   <label className="text-muted">Descripción de vendedor (opcional)</label>
                 </div>
 

@@ -81,7 +81,10 @@ export default function ReviewCarousel() {
           <h2 className="fw-bold text-center mb-5 text-primary-light">
             Reseñas Recientes de Nuestros Clientes
           </h2>
-          <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "300px" }}>
+          <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
+            <div className="spinner-border text-light ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}>
+              <span className="visually-hidden">Loading...</span>
+            </div>
             <img
               src={Loading}
               alt="Loading..."
@@ -100,7 +103,7 @@ export default function ReviewCarousel() {
           <h2 className="fw-bold text-center mb-5 text-primary-light">
             Reseñas Recientes de Nuestros Clientes
           </h2>
-          <div className="col-12 text-center" style={{ height: "300px", color: "red" }}>
+          <div className="col-12 text-center" style={{ height: "40px", color: "red" }}>
             <p>Error cargando las reseñas: {error}</p>
           </div>
         </div>
@@ -115,7 +118,7 @@ export default function ReviewCarousel() {
           <h2 className="fw-bold text-center mb-5 text-primary-light">
             Reseñas Recientes de Nuestros Clientes
           </h2>
-          <div className="col-12 text-center" style={{ color: "var(--muted)", height: "300px" }}>
+          <div className="col-12 text-center" style={{ color: "var(--muted)", height: "40px" }}>
             <p>No hay reseñas recientes</p>
           </div>
         </div>

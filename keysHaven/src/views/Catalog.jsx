@@ -16,6 +16,7 @@ export default function Catalog() {
   const queryParams = new URLSearchParams(location.search);
   const queryTitle = queryParams.get("title");
   const querySellerId = queryParams.get("sellerId");
+  const rawPlatform = queryParams.get("platform");
 
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
@@ -35,6 +36,14 @@ export default function Catalog() {
   const [publisherOptions, setPublisherOptions] = useState([]);
 
   const queryCategoryId = queryParams.get("categoryId");
+
+  const platformMap = {
+    PC: "PC – Steam",
+    PlayStation: "PlayStation 5",
+    Xbox: "Xbox Series X|S",
+    Nintendo: "Nintendo Switch 2",
+    all: null
+  };
 
   const { add } = useCart();
 
@@ -65,6 +74,7 @@ export default function Catalog() {
       }
     }
   }, [queryCategoryId]);
+  
 
   useEffect(() => {
     if (querySellerId) {
@@ -80,6 +90,33 @@ export default function Catalog() {
   useEffect(() => {
     if (queryTitle) setSearchText(queryTitle);
   }, [queryTitle]);
+  
+  useEffect(() => {
+    if (!rawPlatform) return;
+    const mapped = platformMap[rawPlatform];
+    if (!mapped) {
+      setAppliedFilters(prev => {
+        const copy = { ...prev };
+        delete copy.platform;
+        return copy;
+      });
+      setWorkingFilters(prev => {
+        const copy = { ...prev };
+        delete copy.platform;
+        return copy;
+      });
+      return;
+    }
+    setAppliedFilters(prev => ({ 
+      ...prev, 
+      platform: mapped 
+    }));
+    setWorkingFilters(prev => ({ 
+      ...prev, 
+      platform: mapped 
+    }));
+    setPage(1);
+  }, [rawPlatform]);
 
   useEffect(() => {
     let cancelled = false;
