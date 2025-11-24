@@ -6,22 +6,26 @@ import CategoryManagement from './CategoryManagement';
 import CouponManagement from './CouponManagement';
 import AdminDashboard from './AdminDashboard';
 import ReviewsManagement from './ReviewsManagement';
-import { useAuth } from '../../context/AuthContext';
+
+import { useAppSelector } from '../../redux/hooks';
+import { selectUser, selectIsAuthenticated, selectAuthLoading } from '../../redux/slices/authSlice';
 
 export default function AdminPanel() {
   const [activeSection, setActiveSection] = useState('dashboard');
-  const { user, loading: authLoading, isAuthenticated, hasRole } = useAuth();
+  const user = useAppSelector(selectUser);
+  const authLoading = useAppSelector(selectAuthLoading);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!authLoading) {
       if (!isAuthenticated) {
         navigate('/login', { replace: true });
-      } else if (!hasRole('ADMIN')) {
+      } else if (user?.role !== 'ADMIN') {
         navigate('/403', { replace: true });
       }
     }
-  }, [authLoading, isAuthenticated, hasRole, navigate]);
+  }, [authLoading, isAuthenticated, user, navigate]);
 
   if (authLoading) {
     return (

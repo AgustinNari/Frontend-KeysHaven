@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import * as discountsApi from "../../services/discountsService";
 import PaginationBar from "../catalog/PaginationBar";
 
-import productService from "../../services/productService";
-import categoriesService from "../../services/categoriesService";
+import productsService from "../../services/productsService";
+import categoriesService from "../../services/categories.js";
 import sellersService from "../../services/sellers";
 
 export default function ProfileCoupons({ profile }) {
@@ -35,7 +35,7 @@ export default function ProfileCoupons({ profile }) {
 
       let categoryMap = {};
       try {
-        const cats = await categoriesService.getAllCategories();
+        const cats = await categoriesService.getAllCategoriesAlt();
         if (Array.isArray(cats)) {
           categoryMap = cats.reduce((acc, cat) => {
             if (cat?.id != null) acc[String(cat.id)] = cat;
@@ -49,7 +49,7 @@ export default function ProfileCoupons({ profile }) {
       const productMap = {};
       await Promise.all(productIds.map(async (pid) => {
         try {
-          const prod = await productService.getProductById(pid);
+          const prod = await productsService.getProductById(pid);
           if (prod && prod.id != null) {
             productMap[String(prod.id)] = prod;
           }

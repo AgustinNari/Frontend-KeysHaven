@@ -8,7 +8,7 @@ import PaginationBar from "../components/catalog/PaginationBar";
 import "../components/estilos/catalog.css";
 
 import productsService from "../services/productsService";
-import categoriesService from "../services/categoriesService";
+import categoriesService from "../services/categories.js";
 import { useCart } from "../store/cart.jsx";
 
 export default function Catalog() {
@@ -123,7 +123,7 @@ export default function Catalog() {
     (async () => {
       try {
         const [cats, extras] = await Promise.all([
-          categoriesService.getAllCategories().catch(err => { console.error("cats", err); return []; }),
+          categoriesService.getAllCategoriesAlt().catch(err => { console.error("cats", err); return []; }),
           productsService.getFilterExtras().catch(err => { console.error("extras", err); return null; })
         ]);
 

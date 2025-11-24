@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAppSelector } from "../redux/hooks";
+import { selectIsAuthenticated } from "../redux/slices/authSlice";
 
 import Doppy from "../assets/doppyKnight/doppyStand.png"
 
 export default function TermsAndConditions() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const [accepted, setAccepted] = useState(false);
 
   const handleAccept = () => {

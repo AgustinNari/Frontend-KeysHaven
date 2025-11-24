@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
-import { useAuth } from "../context/AuthContext";
+import { useAppSelector } from "../redux/hooks";
+import { selectUser } from "../redux/slices/authSlice";
 import "../components/estilos/Fondos.css";
 import "../components/estilos/product.css";
 import ActivationSteps from "../components/product/ActivationSteps.jsx";
@@ -19,7 +20,7 @@ import reviewsService from "../services/reviews";
 export default function ProductDetail() {
   const { id } = useParams();
   const { add } = useCart();
-  const { user } = useAuth();
+  const user = useAppSelector(selectUser);
   const navigate = useNavigate();
 
   const [product, setProduct] = useState(null);
@@ -135,7 +136,6 @@ export default function ProductDetail() {
 
     fetchDetail();
   }, [id]);
-
 
   useEffect(() => {
     const fetchReviews = async () => {

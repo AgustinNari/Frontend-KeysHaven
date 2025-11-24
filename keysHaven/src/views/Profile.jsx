@@ -9,15 +9,19 @@ import ChangePasswordModal from "../components/profile/ChangePasswordModal";
 
 import ProfileCoupons from "../components/profile/ProfileCoupons";
 
-import { useAuth } from "../context/AuthContext";
 import * as usersApi from "../services/users";
 import * as ordersApi from "../services/orders";
 import * as reviewsApi from "../services/reviews";
 import * as authApi from "../services/auth";
 import apiClient from "../api/apiClient";
 
+import { useAppSelector, useAppDispatch } from "../redux/hooks";
+import { selectUser, refreshProfile, logout as logoutAction } from "../redux/slices/authSlice";
+
 export default function Profile() {
-  const { user: ctxUser, refreshProfile, logout } = useAuth();
+  const ctxUser = useAppSelector(selectUser);
+  const dispatch = useAppDispatch();
+
   const [profile, setProfile] = useState(ctxUser ?? null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
@@ -42,6 +46,7 @@ export default function Profile() {
       try {
         const p = await usersApi.getMyProfile();
         setProfile(p);
+        try { await dispatch(refreshProfile()); } catch {}
       } catch (err) {
         console.error("No se pudo cargar perfil:", err);
       } finally {
@@ -99,9 +104,14 @@ export default function Profile() {
     if (!profile) return;
     try {
       await usersApi.updateUser(profile.id, updated);
-      await refreshProfile();
-      const p = await usersApi.getMyProfile();
-      setProfile(p);
+      try {
+        await dispatch(refreshProfile());
+        const p = await usersApi.getMyProfile();
+        setProfile(p);
+      } catch {
+        const p = await usersApi.getMyProfile();
+        setProfile(p);
+      }
       setMessage({ type: "success", text: "Perfil actualizado correctamente." });
     } catch (err) {
       console.error("Error actualizando perfil:", err);
@@ -115,7 +125,7 @@ export default function Profile() {
     if (!profile) return;
     try {
       await usersApi.uploadAvatar(profile.id, file);
-      await refreshProfile();
+      await dispatch(refreshProfile());
       const p = await usersApi.getMyProfile();
       setProfile(p);
       setMessage({ type: "success", text: "Avatar subido." });
@@ -131,7 +141,7 @@ export default function Profile() {
     if (!profile) return;
     try {
       await usersApi.replaceAvatar(profile.id, file);
-      await refreshProfile();
+      await dispatch(refreshProfile());
       const p = await usersApi.getMyProfile();
       setProfile(p);
       setMessage({ type: "success", text: "Avatar reemplazado." });
@@ -147,7 +157,7 @@ export default function Profile() {
     if (!profile) return;
     try {
       await usersApi.deleteAvatar(profile.id);
-      await refreshProfile();
+      await dispatch(refreshProfile());
       const p = await usersApi.getMyProfile();
       setProfile(p);
       setMessage({ type: "success", text: "Avatar eliminado." });
@@ -271,7 +281,7 @@ export default function Profile() {
     setProfile(null);
     setOrdersPage(null);
     setUserReviews([]);
-    logout();
+    try { dispatch(logoutAction()); } catch { window.location.reload(); }
   }
 
   function formatDate(iso) {

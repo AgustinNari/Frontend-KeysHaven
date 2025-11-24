@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAppDispatch, useAppSelector } from "../redux/hooks";
+import { registerThunk, selectAuthLoading, selectAuthError, selectIsAuthenticated } from "../redux/slices/authSlice";
 import { validations, validationMessages } from "../utils/validations";
 
 const DRAFT_KEY = "register_form_draft_v1";
 
 export default function Register() {
-  const { register } = useAuth();
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const loading = useAppSelector(selectAuthLoading);
+  const authError = useAppSelector(selectAuthError);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
 
   const [step, setStep] = useState(1);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -26,7 +31,7 @@ export default function Register() {
   const [role, setRole] = useState("BUYER");
 
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [localError, setLocalError] = useState(null);
 
   useEffect(() => {
     try {
@@ -133,15 +138,20 @@ export default function Register() {
   }
 
   function onContinue() {
-    setError(null);
+    setLocalError(null);
     if (!validateStep1()) {
+      if (!termsAccepted) {
+        setLocalError("Debes aceptar los Términos y Condiciones para continuar.");
+      } else {
+        setLocalError("Completa nombre, email y contraseña (min 8 caracteres).");
+      }
       return;
     }
     setStep(2);
   }
 
   function onBackToStep1() {
-    setError(null);
+    setLocalError(null);
     setStep(1);
   }
 
@@ -170,10 +180,17 @@ export default function Register() {
     });
   };
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   async function onSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
-    setError(null);
+    setLocalError(null);
 
     if (!validateStep2()) {
       setSubmitting(false);
@@ -181,27 +198,26 @@ export default function Register() {
     }
 
     const payload = {
-      displayName: displayName,
-      firstName: firstName,
-      lastName: lastName,
-      email: email,
-      password: password,
-      role: role,
+      displayName,
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
       phone: phone || null,
       sellerDescription: sellerDescription || null,
       country: country || null,
     };
 
     try {
-      const out = await register(payload);
-      if (out.success) {
-        try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
-        navigate("/", { replace: true });
+      const resultAction = await dispatch(registerThunk(payload));
+      if (registerThunk.fulfilled.match(resultAction)) {
       } else {
-        setError(out.error?.message || "Error al registrarse");
+        const payloadErr = resultAction.payload || resultAction.error;
+        setLocalError(payloadErr?.message || payloadErr?.error?.message || 'Error al registrarse');
       }
     } catch (err) {
-      setError(err?.message || "Error en el servidor");
+      setLocalError(err?.message || 'Error en el servidor');
     } finally {
       setSubmitting(false);
     }
@@ -259,7 +275,6 @@ export default function Register() {
                     </div>
                   </div>
 
-                  {/* Sección de Términos y Condiciones */}
                   <div className="mt-4 p-3 border rounded bg-dark">
                     <div className="form-check">
                       <input
@@ -295,7 +310,7 @@ export default function Register() {
                   </div>
                 </div>
 
-                {error && <div className="alert alert-danger">{error}</div>}
+                {(localError || authError) && <div className="alert alert-danger">{localError || authError?.message || authError}</div>}
 
                 <button
                   className="btn btn-primary btn-lg w-100 py-2 fw-bold mb-4"
@@ -377,14 +392,14 @@ export default function Register() {
                   </select>
                 </div>
 
-                {error && <div className="alert alert-danger">{error}</div>}
+                {(localError || authError) && <div className="alert alert-danger">{localError || authError?.message || authError}</div>}
 
                 <div className="d-flex gap-2">
-                  <button type="button" className="btn btn-outline-secondary flex-grow-1" onClick={onBackToStep1} disabled={submitting}>
+                  <button type="button" className="btn btn-outline-secondary flex-grow-1" onClick={onBackToStep1} disabled={submitting || loading}>
                     Volver
                   </button>
-                  <button type="submit" className="btn btn-primary flex-grow-1" disabled={submitting}>
-                    {submitting ? "Registrando..." : "Registrar y Entrar"}
+                  <button type="submit" className="btn btn-primary flex-grow-1" disabled={submitting || loading}>
+                    {submitting || loading ? "Registrando..." : "Registrar y Entrar"}
                   </button>
                 </div>
               </form>
