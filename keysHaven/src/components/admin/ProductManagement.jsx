@@ -858,7 +858,7 @@ export default function ProductManagement() {
             <div className="card bg-primary-mid border-0">
               <div className="card-body text-center py-3">
                 <h4 className="text-primary-light mb-1">{products.length}</h4>
-                <p className="text-muted mb-0 small">Total Productos</p>
+                <p className="text-muted mb-0 small">Total Productos (página)</p>
               </div>
             </div>
           </div>
@@ -868,7 +868,7 @@ export default function ProductManagement() {
                 <h4 className="text-primary-light mb-1">
                   {products.filter(p => p.active).length}
                 </h4>
-                <p className="text-muted mb-0 small">Productos Activos</p>
+                <p className="text-muted mb-0 small">Productos Activos (página)</p>
               </div>
             </div>
           </div>
@@ -878,7 +878,7 @@ export default function ProductManagement() {
                 <h4 className="text-primary-light mb-1">
                   {products.filter(p => p.featured).length}
                 </h4>
-                <p className="text-muted mb-0 small">Destacados</p>
+                <p className="text-muted mb-0 small">Destacados (página)</p>
               </div>
             </div>
           </div>
@@ -888,7 +888,7 @@ export default function ProductManagement() {
                 <h4 className="text-primary-light mb-1">
                   {new Set(products.map(p => p.sellerId)).size}
                 </h4>
-                <p className="text-muted mb-0 small">Vendedores Únicos</p>
+                <p className="text-muted mb-0 small">Vendedores Únicos (página)</p>
               </div>
             </div>
           </div>

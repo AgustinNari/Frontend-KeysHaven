@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getSellerStats, getSellerOrders } from '../../services/sellerService';
 import PaginationBar from '../catalog/PaginationBar';
 
@@ -7,40 +7,60 @@ export default function SalesAnalytics({ sellerId }) {
     totalSales: 0, totalRevenue: 0, activeProducts: 0, totalProducts: 0, avgRating: 0, pendingOrders: 0
   });
   const [recentOrders, setRecentOrders] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('month');
 
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(5);
+  const [pageSize] = useState(10);
   const [totalOrders, setTotalOrders] = useState(0);
+
+  const [sortBy, setSortBy] = useState('date_desc');
 
   useEffect(() => {
     loadDashboardData();
-  }, [timeRange, sellerId, page]);
+  }, [sellerId, page]);
 
   const loadDashboardData = async () => {
     if (!sellerId) return;
     setLoading(true);
     try {
-      const statsData = await getSellerStats(sellerId, timeRange);
+      const statsData = await getSellerStats(sellerId);
       setStats(statsData || {});
 
       const ordersResp = await getSellerOrders({ sellerId, page: Math.max(0, page - 1), size: pageSize, status: 'COMPLETED' });
-      setRecentOrders(ordersResp.items || []);
-      setTotalOrders(ordersResp.total || 0);
+      const items = ordersResp.items || [];
+      const total = ordersResp.total ?? (Array.isArray(items) ? items.length : 0);
 
-      setTopProducts([
-        { id: 1, name: "Cyberpunk 2077", sold: 45, revenue: 2245.50 },
-        { id: 2, name: "The Witcher 3", sold: 32, revenue: 1279.68 },
-        { id: 3, name: "Red Dead Redemption 2", sold: 28, revenue: 1679.72 }
-      ]);
+      setRecentOrders(items);
+      setTotalOrders(total);
+
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const computeOrderAmount = (order) => {
+    if (!order || !Array.isArray(order.items)) return 0;
+    return order.items.reduce((acc, it) => {
+      const v = parseFloat(it?.lineTotal ?? it?.lineSubtotal ?? (it?.unitPrice * (it?.quantity ?? 1))) || 0;
+      return acc + v;
+    }, 0);
+  };
+
+  const sortedOrders = useMemo(() => {
+    const arr = (recentOrders || []).slice();
+    if (sortBy === 'date_desc') {
+      arr.sort((a, b) => new Date(b.createdAt || b.completedAt || 0).getTime() - new Date(a.createdAt || a.completedAt || 0).getTime());
+    } else if (sortBy === 'date_asc') {
+      arr.sort((a, b) => new Date(a.createdAt || a.completedAt || 0).getTime() - new Date(b.createdAt || b.completedAt || 0).getTime());
+    } else if (sortBy === 'amount_desc') {
+      arr.sort((a, b) => computeOrderAmount(b) - computeOrderAmount(a));
+    } else if (sortBy === 'amount_asc') {
+      arr.sort((a, b) => computeOrderAmount(a) - computeOrderAmount(b));
+    }
+    return arr;
+  }, [recentOrders, sortBy]);
 
   if (loading) {
     return (
@@ -60,6 +80,15 @@ export default function SalesAnalytics({ sellerId }) {
           <div className="card-body py-3">
             <div className="d-flex justify-content-between align-items-center">
               <h6 className="text-primary-light mb-0">Resumen de Ventas</h6>
+              <div>
+                <small className="text-muted me-2">Ordenar órdenes de página por:</small>
+                <select className="form-select form-select-sm d-inline-block w-auto" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                  <option value="date_desc">Fecha (más recientes)</option>
+                  <option value="date_asc">Fecha (más antiguas)</option>
+                  <option value="amount_desc">Monto (mayor)</option>
+                  <option value="amount_asc">Monto (menor)</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -79,7 +108,7 @@ export default function SalesAnalytics({ sellerId }) {
         <div className="card bg-primary-dark border-0 h-100">
           <div className="card-body text-center">
             <div className="text-primary mb-2"><i className="fas fa-dollar-sign fa-2x"></i></div>
-            <h3 className="text-primary-light">${(stats.totalRevenue || 0).toLocaleString()}</h3>
+            <h3 className="text-primary-light">${(Number(stats.totalRevenue || 0)).toLocaleString()}</h3>
             <p className="text-muted mb-0">Ingresos Totales</p>
           </div>
         </div>
@@ -108,28 +137,45 @@ export default function SalesAnalytics({ sellerId }) {
       <div className="col-12 mb-4">
         <div className="card bg-primary-dark border-0">
           <div className="card-header bg-primary-mid d-flex justify-content-between align-items-center">
-            <h6 className="text-primary-light mb-0">Órdenes Recientes</h6>
+            <h6 className="text-primary-light mb-0">Tus Ventas</h6>
+            <div className="text-muted small">Mostrando página {page} de {totalPages} — {totalOrders} órdenes</div>
           </div>
           <div className="card-body">
             <div className="table-responsive">
               <table className="table table-dark table-borderless mb-0">
                 <thead>
-                  <tr><th>Orden ID</th><th>Cliente</th><th>Producto</th><th>Monto</th><th>Fecha</th><th>Estado</th></tr>
+                  <tr>
+                    <th>Orden ID</th>
+                    <th>Cliente</th>
+                    <th>Productos</th>
+                    <th>Monto</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {(recentOrders || []).map(order => (
-                    <tr key={order.id}>
-                      <td className="text-muted">#{order.id}</td>
-                      <td className="text-primary-light">{order.buyerId || order.customerName || order.customer}</td>
-                      <td>{(order.items && order.items[0] && order.items[0].productTitle) || order.productName || '-'}</td>
-                      <td>${order.totalAmount || order.amount || 0}</td>
-                      <td className="text-muted">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-'}</td>
-                      <td><span className="badge bg-success">Completado</span></td>
-                    </tr>
-                  ))}
+                  {sortedOrders.map(order => {
+                    const amount = computeOrderAmount(order);
+                    const productsList = (order.items || []).map(it => `${it.productTitle || it.productName || '—'} x${it.quantity ?? 1}`).join(', ');
+                    const dateStr = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : (order.completedAt ? new Date(order.completedAt).toLocaleDateString() : '-');
+                    return (
+                      <tr key={order.id}>
+                        <td className="text-muted">#{order.id}</td>
+                        <td className="text-primary-light">{order.buyerDisplayName ?? order.buyerId ?? order.customerName ?? order.customer ?? '-'}</td>
+                        <td style={{ maxWidth: 420, whiteSpace: 'normal' }}>{productsList || '-'}</td>
+                        <td>${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-muted">{dateStr}</td>
+                        <td>
+                          <span className={`badge ${order.status === 'COMPLETED' ? 'bg-success' : order.status === 'PENDING' ? 'bg-warning' : 'bg-secondary'}`}>
+                            {order.status ?? '—'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
-              {recentOrders.length === 0 && <div className="text-center text-muted py-3">No hay órdenes recientes</div>}
+              {sortedOrders.length === 0 && <div className="text-center text-muted py-3">No hay órdenes recientes</div>}
             </div>
             <div className="d-flex justify-content-center mt-3">
               <PaginationBar page={page} setPage={setPage} totalPages={totalPages} />

@@ -6,10 +6,12 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalProducts: 0,
+    totalActiveProducts: 0,
     totalOrders: 0,
+    ordersToday: 0,
+    totalReviews: 0,
     totalRevenue: 0,
-    activeSellers: 0,
-    pendingReviews: 0
+    activeSellers: 0
   });
 
   const [platformMetrics, setPlatformMetrics] = useState({
@@ -23,7 +25,6 @@ export default function AdminDashboard() {
 
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
-
 
   const [activityPage, setActivityPage] = useState(1);
   const activityPageSize = 6;
@@ -45,9 +46,9 @@ export default function AdminDashboard() {
         getPlatformMetrics(),
         getRecentActivity()
       ]);
-      
-      setStats(statsData);
-      setPlatformMetrics(metricsData);
+
+      setStats(prev => ({ ...prev, ...(statsData || {}) }));
+      setPlatformMetrics(metricsData || {});
       setRecentActivity(activityData || []);
     } catch (error) {
       console.error('Error loading admin dashboard:', error);
@@ -112,7 +113,7 @@ export default function AdminDashboard() {
             <div className="text-primary mb-2">
               <i className="fas fa-dollar-sign fa-2x"></i>
             </div>
-            <h3 className="text-primary-light">${stats.totalRevenue.toLocaleString()}</h3>
+            <h3 className="text-primary-light">${Number(stats.totalRevenue || 0).toLocaleString()}</h3>
             <p className="text-muted mb-0">Ingresos Totales</p>
           </div>
         </div>
@@ -130,16 +131,16 @@ export default function AdminDashboard() {
               <span className="badge bg-success">{stats.activeSellers}</span>
             </div>
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <span className="text-primary-light">Reseñas Pendientes</span>
-              <span className="badge bg-warning">{stats.pendingReviews}</span>
+              <span className="text-primary-light">Reseñas Totales</span>
+              <span className="badge bg-warning">{stats.totalReviews}</span>
             </div>
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <span className="text-primary-light">Productos Activos</span>
-              <span className="badge bg-info">{stats.totalProducts}</span>
+              <span className="text-primary-light">Productos Activos en Stock</span>
+              <span className="badge bg-info">{stats.totalActiveProducts}</span>
             </div>
             <div className="d-flex justify-content-between align-items-center">
               <span className="text-primary-light">Órdenes Hoy</span>
-              <span className="badge bg-primary">24</span>
+              <span className="badge bg-primary">{stats.ordersToday}</span>
             </div>
           </div>
         </div>
@@ -151,30 +152,51 @@ export default function AdminDashboard() {
             <h6 className="text-primary-light mb-0">Actividad Reciente</h6>
           </div>
           <div className="card-body">
-            {activityPageItems.map(activity => (
-              <div key={activity.id} className="d-flex align-items-start mb-3 pb-2 border-bottom border-secondary">
-                <div className={`rounded-circle d-flex align-items-center justify-content-center me-3 ${
-                  activity.type === 'user' ? 'bg-success' :
-                  activity.type === 'order' ? 'bg-primary' : 'bg-info'
-                }`} style={{width: '40px', height: '40px'}}>
-                  <i className={`fas ${
-                    activity.type === 'user' ? 'fa-user' :
-                    activity.type === 'order' ? 'fa-shopping-cart' : 'fa-box'
-                  } text-white`}></i>
+            {activityPageItems.map(activity => {
+              let bgClass = 'bg-info';
+              let icon = 'fa-box';
+              if (activity.type === 'user') {
+                if ((activity.role || '').toUpperCase() === 'SELLER') {
+                  bgClass = 'bg-warning';
+                  icon = 'fa-store';
+                } else if ((activity.role || '').toUpperCase() === 'ADMIN') {
+                  bgClass = 'bg-danger';
+                  icon = 'fa-user-shield';
+                } else {
+                  bgClass = 'bg-success';
+                  icon = 'fa-user';
+                }
+              } else if (activity.type === 'order') {
+                bgClass = 'bg-primary';
+                icon = 'fa-shopping-cart';
+              } else if (activity.type === 'review') {
+                bgClass = 'bg-secondary';
+                icon = 'fa-comments';
+              } else if (activity.type === 'product') {
+                bgClass = 'bg-info';
+                icon = activity.action && activity.action.toLowerCase().includes('desactiv') ? 'fa-box-open' : 'fa-box';
+              }
+
+              return (
+                <div key={activity.id} className="d-flex align-items-start mb-3 pb-2 border-bottom border-secondary">
+                  <div className={`rounded-circle d-flex align-items-center justify-content-center me-3 ${bgClass}`} style={{width: '40px', height: '40px'}}>
+                    <i className={`fas ${icon} text-white`}></i>
+                  </div>
+                  <div className="flex-grow-1">
+                    <div className="text-primary-light">{activity.action}</div>
+                    <small className="text-muted">
+                      {activity.user}
+                      {activity.product && ` • ${activity.product}`}
+                      {activity.amount && ` • ${activity.amount}`}
+                      {activity.role && ` • ${activity.role}`}
+                    </small>
+                  </div>
+                  <div className="text-muted small">
+                    {activity.time ? new Date(activity.time).toLocaleString('es-ES', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                  </div>
                 </div>
-                <div className="flex-grow-1">
-                  <div className="text-primary-light">{activity.action}</div>
-                  <small className="text-muted">
-                    {activity.user}
-                    {activity.product && ` • ${activity.product}`}
-                    {activity.amount && ` • ${activity.amount}`}
-                  </small>
-                </div>
-                <div className="text-muted small">
-                  {new Date(activity.time).toLocaleTimeString()}
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div className="d-flex justify-content-center mt-3">
               <PaginationBar page={activityPage} setPage={setActivityPage} totalPages={Math.max(1, totalActivityPages)} />

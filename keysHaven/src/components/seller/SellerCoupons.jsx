@@ -333,7 +333,7 @@ export default function SellerCoupons() {
               ))}
             </tbody>
           </table>
-          {!loading && (coupons || []).length === 0 && <div className="text-center text-muted py-4">No hay descuentos/cupons creados.</div>}
+          {!loading && (coupons || []).length === 0 && <div className="text-center text-muted py-4">No hay descuentos/cupones creados.</div>}
         </div>
 
         <div className="d-flex justify-content-center mt-3">

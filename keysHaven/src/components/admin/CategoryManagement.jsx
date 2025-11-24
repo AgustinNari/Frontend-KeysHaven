@@ -217,7 +217,7 @@ export default function CategoryManagement() {
             <div className="card bg-primary-mid border-0">
               <div className="card-body text-center py-3">
                 <h4 className="text-primary-light mb-1">{categories.length}</h4>
-                <p className="text-muted mb-0 small">Total Categorías (pagina)</p>
+                <p className="text-muted mb-0 small">Total Categorías (página)</p>
               </div>
             </div>
           </div>
@@ -227,7 +227,7 @@ export default function CategoryManagement() {
                 <h4 className="text-primary-light mb-1">
                   {categories.filter(c => c.featured).length}
                 </h4>
-                <p className="text-muted mb-0 small">Categorías Destacadas (pagina)</p>
+                <p className="text-muted mb-0 small">Categorías Destacadas (página)</p>
               </div>
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function CategoryManagement() {
                 <h4 className="text-primary-light mb-1">
                   {categories.reduce((sum, cat) => sum + (cat.productCount || 0), 0)}
                 </h4>
-                <p className="text-muted mb-0 small">Total Productos (pagina)</p>
+                <p className="text-muted mb-0 small">Total Productos (página)</p>
               </div>
             </div>
           </div>

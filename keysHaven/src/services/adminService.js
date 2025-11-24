@@ -57,6 +57,12 @@ export const getAllProducts = async () => {
   return extractContentIfPage(resp);
 };
 
+export const getActiveProducts = async () => {
+  const qs = `?page=0&size=2147483647`;
+  const resp = await tryEndpoints(candidatesPreferApiV1(`/products/filtered/active${qs}`), { method: "GET" });
+  return extractContentIfPage(resp);
+};
+
 export const updateProduct = async (productId, productData) => {
   if (typeof productData.featured === "boolean") {
     return tryEndpoints(candidatesDefault(`/products/${productId}/featured?featured=${productData.featured}`), { method: "PATCH" });
@@ -108,6 +114,7 @@ export const deleteDiscount = async (discountId) => {
   return updateDiscount(discountId, { active: false });
 };
 
+
 export const getAllReviews = async () => {
   const resp = await tryEndpoints(candidatesDefault(`/reviews?page=0&size=2147483647`), { method: "GET" });
   return extractContentIfPage(resp);
@@ -118,34 +125,55 @@ export const toggleReviewVisibility = async (reviewId, visible) => {
 };
 
 
+export const getAdminStatsExtras = async () => {
+  const paths = candidatesPreferApiV1(`/admin/stats/extras`);
+  paths.push(...candidatesPreferApiV1(`/orders/admin/stats/extras`));
+  const resp = await tryEndpoints(paths, { method: "GET" });
+  return resp ?? null;
+};
+
+
 export const getAdminStats = async () => {
   try {
-    const [users, products, reviews] = await Promise.all([getUsers(), getAllProducts(), getAllReviews()]);
+    const [users, allProducts, activeProducts, extras] = await Promise.all([
+      getUsers().catch(e => { console.warn("getUsers failed", e); return []; }),
+      getAllProducts().catch(e => { console.warn("getAllProducts failed", e); return []; }),
+      getActiveProducts().catch(e => { console.warn("getActiveProducts failed", e); return []; }),
+      getAdminStatsExtras().catch(e => { console.warn("getAdminStatsExtras failed", e); return null; })
+    ]);
 
     const totalUsers = Array.isArray(users) ? users.length : (users?.length ?? 0);
-    const totalProducts = Array.isArray(products) ? products.length : (products?.length ?? 0);
-    const totalOrders = 0;
-    const totalRevenue = 0;
-    const activeSellers = Array.isArray(products) ? new Set((products || []).map(p => p.sellerId).filter(Boolean)).size : 0;
-    const pendingReviews = Array.isArray(reviews) ? (reviews.filter(r => (typeof r.visible !== "undefined") ? !r.visible : false).length) : 0;
+    const totalProducts = Array.isArray(allProducts) ? allProducts.length : (allProducts?.length ?? 0);
+    const totalActiveProducts = Array.isArray(activeProducts) ? activeProducts.length : (activeProducts?.length ?? 0);
+
+    const totalOrders = extras?.totalOrders ?? 0;
+    const ordersToday = extras?.ordersToday ?? 0;
+    const totalReviews = extras?.totalReviews ?? (Array.isArray(await getAllReviews()) ? (await getAllReviews()).length : 0);
+    const totalRevenue = extras?.totalRevenue ?? 0;
+
+    const activeSellers = Array.isArray(activeProducts) ? new Set((activeProducts || []).map(p => p.sellerId).filter(Boolean)).size : 0;
 
     return {
       totalUsers,
       totalProducts,
+      totalActiveProducts,
       totalOrders,
+      ordersToday,
+      totalReviews,
       totalRevenue,
-      activeSellers,
-      pendingReviews
+      activeSellers
     };
   } catch (err) {
     console.error("getAdminStats error:", err);
     return {
       totalUsers: 0,
       totalProducts: 0,
+      totalActiveProducts: 0,
       totalOrders: 0,
+      ordersToday: 0,
+      totalReviews: 0,
       totalRevenue: 0,
-      activeSellers: 0,
-      pendingReviews: 0
+      activeSellers: 0
     };
   }
 };
@@ -180,13 +208,20 @@ export const getRecentActivity = async () => {
     const activities = [];
 
     if (Array.isArray(users)) {
-      users.slice(-10).forEach(u => {
-        const time = u.createdAt ?? u.lastLogin ?? null;
+      const usersSorted = users.slice().sort((a,b) => {
+        const at = new Date(a.createdAt || a.registeredAt || a.lastLogin || 0).getTime();
+        const bt = new Date(b.createdAt || b.registeredAt || b.lastLogin || 0).getTime();
+        return bt - at;
+      }).slice(0, 10);
+
+      usersSorted.forEach(u => {
+        const time = u.createdAt ?? u.registeredAt ?? u.lastLogin ?? null;
         activities.push({
           id: `user-${u.id}`,
           type: 'user',
+          role: u.role ?? (u.seller ? 'SELLER' : 'BUYER'),
           action: 'Registro de nuevo usuario',
-          user: `${(u.displayName ?? '')} ${(u.firstName ?? '')} ${(u.lastName ?? '').trim() || 'User ' + u.id}`,
+          user: `${(u.displayName ?? '')}`.trim() || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || `User ${u.id}`,
           product: null,
           amount: null,
           time
@@ -195,13 +230,14 @@ export const getRecentActivity = async () => {
     }
 
     if (Array.isArray(reviews)) {
-      reviews.slice(-20).forEach(r => {
+      const reviewsSorted = reviews.slice().sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 20);
+      reviewsSorted.forEach(r => {
         activities.push({
           id: `review-${r.id}`,
           type: 'review',
           action: `Reseña (${r.rating ?? '—'}★)`,
-          user: `Buyer ${r.buyerId}`,
-          product: `Producto ${r.productId}`,
+          user: r.buyerDisplayName ?? `Buyer ${r.buyerId}` ?? `Buyer ${r.buyerId}`,
+          product: r.productTitle ?? `Producto ${r.productId}`,
           amount: null,
           time: r.createdAt ?? null
         });
@@ -209,16 +245,20 @@ export const getRecentActivity = async () => {
     }
 
     if (Array.isArray(products)) {
-      products.slice(-10).forEach(p => {
-        const time = p.createdAt ?? p.updatedAt ?? null;
+      const productsSorted = products.slice().sort((a,b) => {
+        const at = new Date(a.createdAt ?? a.updatedAt ?? 0).getTime();
+        const bt = new Date(b.createdAt ?? b.updatedAt ?? 0).getTime();
+        return bt - at;
+      }).slice(0, 20);
+      productsSorted.forEach(p => {
         activities.push({
           id: `product-${p.id}`,
           type: 'product',
-          action: 'Producto creado/actualizado',
+          action: p.active === false ? 'Producto desactivado' : 'Producto publicado',
           user: p.sellerDisplayName ?? `Seller ${p.sellerId}`,
           product: p.title ?? `#${p.id}`,
           amount: null,
-          time
+          time: p.createdAt ?? p.updatedAt ?? null
         });
       });
     }
@@ -232,7 +272,6 @@ export const getRecentActivity = async () => {
     return [];
   }
 };
-
 
 export const getUsersPage = async (page = 1, size = 10) => {
   const resp = await tryEndpoints(candidatesDefault(`/users?page=${Math.max(0, page-1)}&size=${size}`), { method: "GET" });

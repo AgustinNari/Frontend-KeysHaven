@@ -386,7 +386,7 @@ export default function CouponManagement() {
               ))}
             </tbody>
           </table>
-          {!loading && categoryDiscounts.length === 0 && <div className="text-center text-muted py-4">No hay descuentos/cupons por categoría.</div>}
+          {!loading && categoryDiscounts.length === 0 && <div className="text-center text-muted py-4">No hay descuentos/cupones por categoría.</div>}
         </div>
 
         <div className="d-flex justify-content-center mt-3">

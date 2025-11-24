@@ -391,15 +391,21 @@ export const getSellerStats = async (sellerId) => {
     if (!sellerDetail) return null;
 
     const products = await getSellerProducts(sellerId);
-    const ordersResp = await getSellerOrders({ sellerId, limit: 1000 });
+    const ordersResp = await getSellerOrders({ sellerId, page: 0, size: 1000 });
     const orders = ordersResp.items || [];
+    const totalSales = ordersResp.total ?? (Array.isArray(orders) ? orders.length : 0);
 
-    const totalSales = orders.length;
     let totalRevenue = 0;
-    orders.forEach(o => {
-      const amount = o.totalAmount ?? o.amount ?? 0;
-      totalRevenue += Number(amount || 0);
-    });
+    if (Array.isArray(orders)) {
+      orders.forEach(o => {
+        const items = Array.isArray(o.items) ? o.items : [];
+        const itemsSum = items.reduce((acc, it) => {
+          const val = parseFloat(it?.lineTotal ?? it?.lineSubtotal ?? it?.unitPrice * (it?.quantity ?? 1)) || 0;
+          return acc + val;
+        }, 0);
+        totalRevenue += itemsSum;
+      });
+    }
 
     const activeProducts = (products || []).filter(p => p.active).length;
     const totalProducts = (products || []).length;
@@ -430,13 +436,17 @@ export const getSellerStats = async (sellerId) => {
 
     try {
       const products = await getSellerProducts(sellerId);
-      const ordersResp = await getSellerOrders({ sellerId, limit: 1000 });
+      const ordersResp = await getSellerOrders({ sellerId, page: 0, size: 1000 });
       const orders = ordersResp.items || [];
-      const totalSales = orders.length;
+      const totalSales = ordersResp.total ?? (Array.isArray(orders) ? orders.length : 0);
+
       let totalRevenue = 0;
       orders.forEach(o => {
-        const amount = o.totalAmount ?? o.amount ?? 0;
-        totalRevenue += Number(amount || 0);
+        const items = Array.isArray(o.items) ? o.items : [];
+        totalRevenue += items.reduce((acc, it) => {
+          const val = parseFloat(it?.lineTotal ?? it?.lineSubtotal ?? it?.unitPrice * (it?.quantity ?? 1)) || 0;
+          return acc + val;
+        }, 0);
       });
       const activeProducts = (products || []).filter(p => p.active).length;
       const totalProducts = (products || []).length;
