@@ -1,32 +1,49 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAppDispatch, useAppSelector } from "../redux/hooks";
+import { loginThunk, selectAuthLoading, selectAuthError, selectIsAuthenticated } from "../redux/slices/authSlice";
 
 export default function Login() {
-  const { login } = useAuth();
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
+
+  const loading = useAppSelector(selectAuthLoading);
+  const authError = useAppSelector(selectAuthError);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [localError, setLocalError] = useState(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   async function onSubmit(e) {
     e.preventDefault();
-    setSubmitting(true);
-    setError(null);
+    setLocalError(null);
+
+    if (!email || !password) {
+      setLocalError("Completa email y contraseña");
+      return;
+    }
+
     try {
-      const out = await login({ email, password });
-      if (out.success) {
+      const resultAction = await dispatch(loginThunk({ email, password }));
+      if (loginThunk.fulfilled.match(resultAction)) {
         navigate("/", { replace: true });
       } else {
-        setError(out.error?.message || "Email o contraseña inválidos");
+        const payload = resultAction.payload || resultAction.error;
+        setLocalError(payload?.message || payload?.error?.message || "Email o contraseña inválidos");
       }
     } catch (err) {
-      setError(err?.message || "Error de conexión");
-    } finally {
-      setSubmitting(false);
+      setLocalError(err?.message || "Error de conexión");
     }
   }
+
+  const submitDisabled = loading;
 
   return (
     <div data-bs-theme="dark" className="bg-primary-dark text-body d-flex justify-content-center align-items-center">
@@ -48,10 +65,10 @@ export default function Login() {
                 </div>
               </div>
 
-              {error && <div className="alert alert-danger">{error}</div>}
+              {(localError || authError) && <div className="alert alert-danger">{localError || authError?.message || authError}</div>}
 
-              <button type="submit" className="btn btn-primary btn-lg w-100 py-2 fw-bold mb-4" disabled={submitting}>
-                {submitting ? "Iniciando..." : "Continuar"}
+              <button type="submit" className="btn btn-primary btn-lg w-100 py-2 fw-bold mb-4" disabled={submitDisabled}>
+                {submitDisabled ? "Iniciando..." : "Continuar"}
               </button>
 
               <p className="text-muted small text-center">

@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { getSellerProductsPaginated, getProductDetail, updateProduct } from '../../services/sellerService';
-import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
 import { deriveAvailableStock } from '../../utils/stock';
 
+import { useAppSelector } from '../../redux/hooks';
+import { selectUser } from '../../redux/slices/authSlice';
+
 export default function ProductList({ onEditProduct }) {
-  const { user } = useAuth();
+  const user = useAppSelector(selectUser);
   const sellerId = user?.id;
 
   const [products, setProducts] = useState([]);

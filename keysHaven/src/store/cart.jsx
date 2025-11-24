@@ -8,7 +8,9 @@ import React, {
 } from "react";
 import productsService from "../services/productsService";
 import * as discountsService from "../services/discountsService";
-import { useAuth } from "../context/AuthContext";
+
+import { useAppSelector } from "../redux/hooks";
+import { selectUser, selectIsAuthenticated } from "../redux/slices/authSlice";
 
 const CartContext = createContext(null);
 
@@ -31,7 +33,9 @@ function normalizeProduct(p) {
 }
 
 export function CartProvider({ children }) {
-  const { user, isAuthenticated } = useAuth();
+  const user = useAppSelector(selectUser);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+
   const [items, setItems] = useState(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);

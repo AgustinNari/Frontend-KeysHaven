@@ -1,12 +1,19 @@
 import React from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import "../estilos/Fondos.css";
-import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../store/cart.jsx";
 import DoppyThumbsUp from "../../assets/doppyKnight/doppyThumbsUp.png";
 
+import { useAppSelector, useAppDispatch } from "../../redux/hooks";
+import { selectUser, selectIsAuthenticated, logout } from "../../redux/slices/authSlice";
+
 export default function Navigation() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+
+  const user = useAppSelector(selectUser);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+
   const { items } = useCart();
   const cartCount = items.reduce((acc, it) => acc + (it.qty ?? 0), 0);
 
@@ -14,6 +21,16 @@ export default function Navigation() {
   const avatar = user?.avatarDataUrl ?? DoppyThumbsUp;
 
   const showCartInNavbar = !user || user?.role !== "ADMIN";
+
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout());
+    } catch (e) {
+      console.warn("Logout failed:", e);
+    } finally {
+      navigate("/", { replace: true });
+    }
+  };
 
   return (
     <nav className="navbar navbar-expand-lg sticky-top navbar-dark bg-primary-dark border-bottom border-light">
@@ -105,7 +122,7 @@ export default function Navigation() {
                 </div>
                 <button
                   className="btn btn-outline-danger rounded-circle p-2"
-                  onClick={logout}
+                  onClick={handleLogout}
                   title="Cerrar sesión"
                   aria-label="Cerrar sesión"
                 >

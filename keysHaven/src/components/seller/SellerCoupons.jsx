@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { createDiscount, getSellerDiscounts, updateDiscount, getSellerProducts } from '../../services/sellerService';
 import ConfirmModal from '../profile/ConfirmModal';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import PaginationBar from '../catalog/PaginationBar';
 
+import { useAppSelector } from '../../redux/hooks';
+import { selectUser } from '../../redux/slices/authSlice';
+
 export default function SellerCoupons() {
-  const { user } = useAuth();
+  const user = useAppSelector(selectUser);
   const sellerId = user?.id;
   const navigate = useNavigate();
 

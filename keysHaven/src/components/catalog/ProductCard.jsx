@@ -2,15 +2,21 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Rating from "./Rating";
 import { useCart } from "../../store/cart.jsx";
-import { useAuth } from "../../context/AuthContext";
+
+import { useAppSelector } from "../../redux/hooks";
+import { selectUser } from "../../redux/slices/authSlice";
 
 export default function ProductCard({ product }) {
   const { add } = useCart();
-  const { user } = useAuth();
+  const user = useAppSelector(selectUser);
   const [toast, setToast] = useState(null);
 
-  const hasDiscount = (product.bestDiscountFrac != null && Number(product.bestDiscountFrac) > 0) || (product.bestDiscountPercentage != null && Number(product.bestDiscountPercentage) > 0);
-  const discountFrac = product.bestDiscountFrac ?? (product.bestDiscountPercentage != null ? Number(product.bestDiscountPercentage) / 100 : null);
+  const hasDiscount =
+    (product.bestDiscountFrac != null && Number(product.bestDiscountFrac) > 0) ||
+    (product.bestDiscountPercentage != null && Number(product.bestDiscountPercentage) > 0);
+  const discountFrac =
+    product.bestDiscountFrac ??
+    (product.bestDiscountPercentage != null ? Number(product.bestDiscountPercentage) / 100 : null);
   const discountPct = hasDiscount && discountFrac != null ? Math.round(discountFrac * 100) : 0;
 
   const baseOriginalPrice = Number(product.price ?? 0);

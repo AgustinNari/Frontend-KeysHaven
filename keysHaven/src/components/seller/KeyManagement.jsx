@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getSellerActiveProducts, addBulkDigitalKeys, getProductKeys } from '../../services/sellerService';
-import { useAuth } from '../../context/AuthContext';
 import PaginationBar from '../catalog/PaginationBar';
+import { useAppSelector } from '../../redux/hooks';
+import { selectUser } from '../../redux/slices/authSlice';
+
+
 
 export default function KeyManagement() {
-  const { user } = useAuth();
+  const user = useAppSelector(selectUser);
   const sellerId = user?.id;
 
   const [selectedProduct, setSelectedProduct] = useState('');

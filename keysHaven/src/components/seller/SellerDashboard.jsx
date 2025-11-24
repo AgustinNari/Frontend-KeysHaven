@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { updateUser, getUserById } from '../../services/usersService';
 
@@ -10,8 +9,15 @@ import SalesAnalytics from './SalesAnalytics';
 import SellerCoupons from './SellerCoupons';
 import ErrorBoundary from '../common/ErrorBoundary';
 
+import { useAppSelector, useAppDispatch } from '../../redux/hooks';
+import { selectUser, selectIsAuthenticated, selectAuthLoading, refreshProfile, setUser } from '../../redux/slices/authSlice';
+
 export default function SellerDashboard() {
-  const { user, loading: authLoading, isAuthenticated, hasRole, refreshUser, setUser } = useAuth();
+  const user = useAppSelector(selectUser);
+  const authLoading = useAppSelector(selectAuthLoading);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const dispatch = useAppDispatch();
+
   const navigate = useNavigate();
 
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -33,8 +39,8 @@ export default function SellerDashboard() {
     if (!authLoading) {
       if (!isAuthenticated) {
         navigate('/login', { replace: true });
-      } else if (!hasRole || !hasRole('SELLER')) {
-        if (user?.role !== 'SELLER') navigate('/403', { replace: true });
+      } else if (user?.role !== 'SELLER') {
+        navigate('/403', { replace: true });
       } else {
         if (user) {
           setSellerData({
@@ -49,65 +55,57 @@ export default function SellerDashboard() {
         }
       }
     }
-  }, [authLoading, isAuthenticated, hasRole, navigate, user]);
+  }, [authLoading, isAuthenticated, user, navigate]);
 
-
-const handleUpdateDescription = async () => {
-  if (!sellerData.sellerDescription || !sellerData.sellerDescription.trim()) return;
-  setDescriptionLoading(true);
-  setDescriptionError('');
-  try {
-    await updateUser(user.id, { sellerDescription: sellerData.sellerDescription });
-
+  const handleUpdateDescription = async () => {
+    if (!sellerData.sellerDescription || !sellerData.sellerDescription.trim()) return;
+    setDescriptionLoading(true);
+    setDescriptionError('');
     try {
-      if (typeof refreshUser === 'function') {
-        const refreshed = await refreshUser();
-        if (refreshed) {
-          setSellerData(prev => ({ ...prev, sellerDescription: refreshed.sellerDescription ?? sellerData.sellerDescription }));
+      await updateUser(user.id, { sellerDescription: sellerData.sellerDescription });
+
+      try {
+        if (typeof dispatch === 'function') {
+          await dispatch(refreshProfile());
+          const updated = (await getUserById(user.id)) || null;
+          if (updated) {
+            dispatch(setUser(updated));
+            setSellerData(prev => ({ ...prev, sellerDescription: updated.sellerDescription ?? sellerData.sellerDescription }));
+          } else {
+            setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
+          }
         } else {
           const byId = await getUserById(user.id);
           if (byId) {
-            if (typeof setUser === 'function') setUser(byId);
             setSellerData(prev => ({ ...prev, sellerDescription: byId.sellerDescription ?? sellerData.sellerDescription }));
           } else {
             setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
           }
         }
-      } else if (typeof setUser === 'function') {
-        const byId = await getUserById(user.id);
-        if (byId) {
-          setUser(byId);
-          setSellerData(prev => ({ ...prev, sellerDescription: byId.sellerDescription ?? sellerData.sellerDescription }));
-        } else {
+      } catch (ctxErr) {
+        console.warn("No se pudo refrescar el usuario tras actualizar descripción:", ctxErr);
+        try {
+          const byId = await getUserById(user.id);
+          if (byId) {
+            if (typeof dispatch === 'function') dispatch(setUser(byId));
+            setSellerData(prev => ({ ...prev, sellerDescription: byId.sellerDescription ?? sellerData.sellerDescription }));
+          } else {
+            setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
+          }
+        } catch (byIdErr) {
+          console.warn("getUserById failed:", byIdErr);
           setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
         }
-      } else {
-        setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
       }
-    } catch (ctxErr) {
-      console.warn("No se pudo refrescar el usuario tras actualizar descripción:", ctxErr);
-      try {
-        const byId = await getUserById(user.id);
-        if (byId) {
-          if (typeof setUser === 'function') setUser(byId);
-          setSellerData(prev => ({ ...prev, sellerDescription: byId.sellerDescription ?? sellerData.sellerDescription }));
-        } else {
-          setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
-        }
-      } catch (byIdErr) {
-        console.warn("getUserById failed:", byIdErr);
-        setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
-      }
-    }
 
-    setIsEditingDescription(false);
-  } catch (err) {
-    console.error("Error actualizando descripción:", err);
-    setDescriptionError(err?.message || 'Error actualizando descripción');
-  } finally {
-    setDescriptionLoading(false);
-  }
-};
+      setIsEditingDescription(false);
+    } catch (err) {
+      console.error("Error actualizando descripción:", err);
+      setDescriptionError(err?.message || 'Error actualizando descripción');
+    } finally {
+      setDescriptionLoading(false);
+    }
+  };
 
   const renderContent = () => {
     switch (activeSection) {
