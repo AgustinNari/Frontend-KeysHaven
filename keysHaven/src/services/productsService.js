@@ -205,6 +205,9 @@ async function getFeaturedProducts(size = 10) {
   return search({ featured: true }, 0, size, "createdAt_desc", true);
 }
 
+export const getProductById = (productId) =>
+  apiClient.apiFetch(`/products/${productId}`, { method: "GET" });
+
 export default {
   search,
   getTopSoldProducts,
@@ -214,5 +217,6 @@ export default {
   mapSortKey,
   SORT_MAP,
   getFilterExtras,
-  getFeaturedProducts
+  getFeaturedProducts,
+  getProductById
 };

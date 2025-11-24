@@ -13,4 +13,10 @@ export async function getFeaturedCategories(page = 0, size = 5) {
   return apiClient.apiFetch(`/categories/featured?page=${page}&size=${size}`);
 }
 
-export default { getAllCategories, getFeaturedCategories };
+async function getAllCategoriesAlt() {
+  const resp = await apiClient.apiFetch(`/categories?page=0&size=1000`);
+  const content = resp?.content ?? resp?.items ?? [];
+  return content;
+}
+
+export default { getAllCategories, getFeaturedCategories , getAllCategoriesAlt};

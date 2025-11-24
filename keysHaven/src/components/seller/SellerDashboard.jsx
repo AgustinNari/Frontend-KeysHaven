@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateUser, getUserById } from '../../services/usersService';
+import { updateUser, getUserById } from '../../services/sellerService';
 
 import ProductList from './ProductList';
 import ProductForm from './ProductForm';
