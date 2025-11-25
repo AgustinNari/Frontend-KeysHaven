@@ -33,7 +33,7 @@ export default function FilterGroup({ title, options = [], selected = [], onTogg
         )}
       </div>
 
-      <div className="d-flex flex-column gap-1">
+      <div className="d-flex flex-column gap-1 text-white text-opacity-50">
         {visible.map(o => (
           <label key={o.value} className="form-check">
             <input

@@ -99,6 +99,11 @@ export default function ProductCard({ product }) {
             <div className="h6 mb-0">
               ${displayPrice.toFixed(2)}
             </div>
+            <div className="discount-placeholder">
+              {hasDiscount && (
+                <span className="badge bg-primary">-{discountPct}%</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -115,11 +120,7 @@ export default function ProductCard({ product }) {
           </div>
 
           <div className="actions d-flex align-items-center gap-2">
-            <div className="discount-placeholder">
-              {hasDiscount && (
-                <span className="badge bg-primary">-{discountPct}%</span>
-              )}
-            </div>
+
             <div className="action-buttons" role="group" aria-label="acciones producto">
               <button
                 className={`btn btn-sm ${blockedPurchase ? "btn-secondary" : "btn-primary"}`}
