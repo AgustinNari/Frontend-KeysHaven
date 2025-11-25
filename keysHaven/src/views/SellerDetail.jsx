@@ -149,7 +149,7 @@ export default function SellerDetail() {
 
   return (
     <div className="product-page">
-      {hasError && (
+      {error && (
         <div className="container mt-3">
           <ApiErrorAlert error={apiError} onRetry={handleRetry} onClose={clear} />
         </div>
@@ -199,7 +199,11 @@ export default function SellerDetail() {
                 </div>
 
                 <div className="mt-3 d-flex justify-content-center">
-                  <PaginationBar page={safePage} setPage={setPage} totalPages={totalPages} />
+                  <PaginationBar 
+                    page={safePage} 
+                    setPage={handleSetPage} 
+                    totalPages={totalPages} 
+                  />
                 </div>
 
                 <div className="meta mt-2 text-center" style={{ color: "var(--muted)" }}>
