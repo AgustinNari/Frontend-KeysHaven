@@ -5,8 +5,8 @@ import { useAppSelector } from "../redux/hooks";
 import { selectUser } from "../redux/slices/authSlice";
 import "../components/estilos/Fondos.css";
 import "../components/estilos/product.css";
-import ActivationSteps from "../components/product/ActivationSteps.jsx";
 
+import ActivationSteps from "../components/product/ActivationSteps.jsx";
 import ImageCarousel from "../components/product/ImageCarousel";
 import SellerCard from "../components/product/SellerCard";
 import RelatedProducts from "../components/product/RelatedProducts";

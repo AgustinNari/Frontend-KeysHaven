@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from "react";
+
+import React, { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 
 import SellerCard from "../components/product/SellerCard";
 import ProductGrid from "../components/catalog/ProductGrid";
@@ -9,129 +11,49 @@ import Rating from "../components/catalog/Rating";
 import "../components/estilos/Fondos.css";
 import "../components/estilos/product.css";
 
-import { getSellerStats, getSellerActiveProductsForDetail } from "../services/sellerService";
-import useApiError from "../hooks/useApiError";
+import { fetchSellerDetail, clearError, setPage } from "../redux/slices/sellerDetailSlice";
 import ApiErrorAlert from "../components/common/ApiErrorAlert";
 
 export default function SellerDetail() {
   const { sellerId } = useParams();
-
-  const [seller, setSeller] = useState(null);
-  const [allProducts, setAllProducts] = useState([]);
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
   
-  const { apiError, setFrom, clear, hasError } = useApiError();
+  // Seleccionar estado desde Redux
+  const { 
+    seller, 
+    products: allProducts, 
+    loading, 
+    error, 
+    page, 
+    pageSize 
+  } = useSelector((state) => state.sellerDetail);
 
   useEffect(() => {
-    const loadSellerData = async () => {
-      try {
-        setLoading(true);
-        clear(); 
-
-        console.log("🔍 Cargando datos para sellerId:", sellerId);
-
-        
-        const stats = await getSellerStats(sellerId);
-        console.log("📊 Stats recibidas:", stats);
-        
-        if (!stats) {
-          setFrom(new Error("Vendedor no encontrado"));
-          return;
-        }
-
-        // Devuelve los productos activos del vendedor
-        const activeProducts = await getSellerActiveProductsForDetail(sellerId);
-        console.log("🎮 Productos activos recibidos:", activeProducts);
-
-        // Objeto Seller
-        const sellerData = {
-          id: sellerId,
-          displayName: stats.displayName || `Vendedor #${sellerId}`,
-          sellerDescription: stats.sellerDescription || "Vendedor de productos digitales",
-          avatarDataUrl: stats.avatarDataUrl || null,
-          firstName: stats.firstName || "",
-          lastName: stats.lastName || "",
-          email: stats.email || "",
-          phone: stats.phone || "",
-          country: stats.country || "",
-          
-          // Estadísticas
-          avgRating: stats.avgRating || 0,
-          ratingCount: stats.ratingCount || 0,
-          soldKeys: stats.soldKeys || 0,
-          amountSold: stats.amountSold || 0,
-          totalSales: stats.totalSales || 0,
-          totalRevenue: stats.totalRevenue || 0,
-          activeProducts: stats.activeProducts || 0,
-          totalProducts: stats.totalProducts || 0
-        };
-
-        console.log("🛠️ Seller data construido:", sellerData);
-
-        setSeller(sellerData);
-        setAllProducts(activeProducts || []);
-        setPage(1);
-
-      } catch (err) {
-        console.error("❌ Error cargando datos del seller:", err);
-        setFrom(err); // Usar setFrom en lugar de setError
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (sellerId) {
-      loadSellerData();
+      dispatch(fetchSellerDetail(sellerId));
     }
-  }, [sellerId]);
+
+    // Cleanup al desmontar el componente
+    return () => {
+      dispatch(clearError());
+    };
+  }, [sellerId, dispatch]);
 
   // Función para reintentar la carga
   const handleRetry = () => {
     if (sellerId) {
-      const loadSellerData = async () => {
-        try {
-          setLoading(true);
-          clear();
-          // ... (misma lógica de carga)
-          const stats = await getSellerStats(sellerId);
-          if (!stats) {
-            setFrom(new Error("Vendedor no encontrado"));
-            return;
-          }
-          const activeProducts = await getSellerActiveProductsForDetail(sellerId);
-          const sellerData = {
-            // ... (misma construcción de datos)
-            id: sellerId,
-            displayName: stats.displayName || `Vendedor #${sellerId}`,
-            sellerDescription: stats.sellerDescription || "Vendedor de productos digitales",
-            avatarDataUrl: stats.avatarDataUrl || null,
-            firstName: stats.firstName || "",
-            lastName: stats.lastName || "",
-            email: stats.email || "",
-            phone: stats.phone || "",
-            country: stats.country || "",
-            avgRating: stats.avgRating || 0,
-            ratingCount: stats.ratingCount || 0,
-            soldKeys: stats.soldKeys || 0,
-            amountSold: stats.amountSold || 0,
-            totalSales: stats.totalSales || 0,
-            totalRevenue: stats.totalRevenue || 0,
-            activeProducts: stats.activeProducts || 0,
-            totalProducts: stats.totalProducts || 0
-          };
-          setSeller(sellerData);
-          setAllProducts(activeProducts || []);
-          setPage(1);
-        } catch (err) {
-          setFrom(err);
-        } finally {
-          setLoading(false);
-        }
-      };
-      loadSellerData();
+      dispatch(fetchSellerDetail(sellerId));
     }
+  };
+
+  // Función para limpiar error
+  const handleClearError = () => {
+    dispatch(clearError());
+  };
+
+  // Función para cambiar página
+  const handleSetPage = (newPage) => {
+    dispatch(setPage(newPage));
   };
 
   if (loading) {
@@ -143,13 +65,13 @@ export default function SellerDetail() {
     );
   }
 
-  if (hasError && !seller) {
+  if (error && !seller) {
     return (
       <div className="container mt-4">
         <ApiErrorAlert 
-          error={apiError} 
+          error={error} 
           onRetry={handleRetry}
-          onClose={clear}
+          onClose={handleClearError}
         />
       </div>
     );
@@ -183,12 +105,12 @@ export default function SellerDetail() {
 
   return (
     <div className="product-page">
-      {hasError && (
+      {error && (
         <div className="container mt-3">
           <ApiErrorAlert 
-            error={apiError} 
+            error={error} 
             onRetry={handleRetry}
-            onClose={clear}
+            onClose={handleClearError}
           />
         </div>
       )}
@@ -239,7 +161,11 @@ export default function SellerDetail() {
                 </div>
 
                 <div className="mt-3 d-flex justify-content-center">
-                  <PaginationBar page={safePage} setPage={setPage} totalPages={totalPages} />
+                  <PaginationBar 
+                    page={safePage} 
+                    setPage={handleSetPage} 
+                    totalPages={totalPages} 
+                  />
                 </div>
 
                 <div className="meta mt-2 text-center" style={{ color: "var(--muted)" }}>
