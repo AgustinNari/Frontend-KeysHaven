@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "../components/estilos/profile.css";
 
 import AvatarUploader from "../components/profile/AvatarUploader";
@@ -6,47 +6,49 @@ import AccountSettings from "../components/profile/AccountSettings";
 import OrdersTab from "../components/profile/OrdersTab";
 import ConfirmModal from "../components/profile/ConfirmModal";
 import ChangePasswordModal from "../components/profile/ChangePasswordModal";
-
 import ProfileCoupons from "../components/profile/ProfileCoupons";
 
-import * as usersApi from "../services/users";
-import * as ordersApi from "../services/orders";
-import * as reviewsApi from "../services/reviews";
-import * as authApi from "../services/auth";
-import apiClient from "../api/apiClient";
-
 import { useAppSelector, useAppDispatch } from "../redux/hooks";
-import { selectUser, refreshProfile, logout as logoutAction } from "../redux/slices/authSlice";
+import { selectUser, refreshProfile, logout as logoutAction, setUser } from "../redux/slices/authSlice";
+import { fetchMyProfile, updateMyUser, uploadAvatar, replaceAvatar, deleteAvatar, fetchMyCoupons, changePasswordThunk } from "../redux/slices/profileSlice";
+import { fetchMyOrders } from "../redux/slices/ordersSlice";
 
 export default function Profile() {
   const ctxUser = useAppSelector(selectUser);
+  const profileFromStore = useAppSelector(state => state.profile.me);
   const dispatch = useAppDispatch();
 
-  const [profile, setProfile] = useState(ctxUser ?? null);
+  const [profile, setProfile] = useState(profileFromStore ?? null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
   const [ordersPage, setOrdersPage] = useState(null);
   const [ordersLoading, setOrdersLoading] = useState(false);
-
-  const [userReviews, setUserReviews] = useState([]);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [ordersPageIndex, setOrdersPageIndex] = useState(0);
 
   const [activeTab, setActiveTab] = useState("account");
   const [showProfileDeleteConfirm, setShowProfileDeleteConfirm] = useState(false);
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
 
-  const [message, setMessage] = useState(null);
+
+  const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
 
   const role = (profile && profile.role) ? profile.role : (ctxUser && ctxUser.role ? ctxUser.role : null);
   const isAdmin = role === "ADMIN";
+
+
+  useEffect(() => {
+    if (profileFromStore) setProfile(profileFromStore);
+  }, [profileFromStore]);
 
   useEffect(() => {
     async function loadProfile() {
       setLoadingProfile(true);
       try {
-        const p = await usersApi.getMyProfile();
-        setProfile(p);
-        try { await dispatch(refreshProfile()); } catch {}
+        const p = await dispatch(fetchMyProfile()).unwrap();
+
+        if (p) dispatch(setUser(p));
+        try { await dispatch(refreshProfile()).unwrap(); } catch {}
       } catch (err) {
         console.error("No se pudo cargar perfil:", err);
       } finally {
@@ -54,223 +56,128 @@ export default function Profile() {
       }
     }
 
-    if (!profile) {
-      loadProfile();
-    }
-  }, []);
+    if (!profileFromStore) loadProfile();
+  }, [dispatch, profileFromStore]);
 
   useEffect(() => {
-    loadMyReviews(0, 100);
     if (!isAdmin) {
       loadOrders(0, 10);
     } else {
       setOrdersPage(null);
     }
-    if (isAdmin && (activeTab === "orders" || activeTab === "coupons")) {
-      setActiveTab("account");
-    }
-  }, [profile, ctxUser, isAdmin]);
+
+    dispatch(fetchMyCoupons());
+
+  }, [profile, isAdmin, dispatch]);
+
 
   async function loadOrders(page = 0, size = 10) {
     setOrdersLoading(true);
     try {
-      const pageRes = await ordersApi.getMyOrders(page, size);
+      const pageRes = await dispatch(fetchMyOrders({ page, size })).unwrap();
       setOrdersPage(pageRes);
+      setOrdersPageIndex(Math.max(0, Number(page) || 0));
     } catch (err) {
       console.error("Error cargando órdenes:", err);
-      setMessage({ type: "error", text: "No se pudieron cargar las órdenes." });
-      setTimeout(() => setMessage(null), 3500);
+      showToast({ type: "error", text: "No se pudieron cargar las órdenes." });
     } finally {
       setOrdersLoading(false);
     }
   }
 
-  async function loadMyReviews(page = 0, size = 100) {
-    setReviewsLoading(true);
-    try {
-      const resp = await apiClient.apiFetch(`/reviews/me?page=${page}&size=${size}`, { method: "GET" });
-      const list = resp?.content ?? resp ?? [];
-      setUserReviews(list);
-    } catch (err) {
-      console.error("Error cargando reseñas del usuario:", err);
-      setMessage({ type: "error", text: "No se pudieron cargar tus reseñas." });
-      setTimeout(() => setMessage(null), 3500);
-    } finally {
-      setReviewsLoading(false);
+
+  function showToast({ type = "success", text = "" } = {}) {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = null;
     }
+    setToast({ type, text });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast(null);
+      toastTimeoutRef.current = null;
+    }, 3500);
   }
+
 
   async function handleSaveAccount(updated) {
     if (!profile) return;
     try {
-      await usersApi.updateUser(profile.id, updated);
-      try {
-        await dispatch(refreshProfile());
-        const p = await usersApi.getMyProfile();
-        setProfile(p);
-      } catch {
-        const p = await usersApi.getMyProfile();
-        setProfile(p);
-      }
-      setMessage({ type: "success", text: "Perfil actualizado correctamente." });
+      const resp = await dispatch(updateMyUser({ userId: profile.id, dto: updated })).unwrap();
+
+      const p = await dispatch(fetchMyProfile()).unwrap();
+      if (p) dispatch(setUser(p));
+      showToast({ type: "success", text: "Perfil actualizado correctamente." });
     } catch (err) {
       console.error("Error actualizando perfil:", err);
-      setMessage({ type: "error", text: err?.message || "Error al actualizar perfil." });
-    } finally {
-      setTimeout(() => setMessage(null), 3500);
+      showToast({ type: "error", text: err?.message || "Error al actualizar perfil." });
     }
   }
 
   async function handleUploadAvatar(file) {
     if (!profile) return;
     try {
-      await usersApi.uploadAvatar(profile.id, file);
-      await dispatch(refreshProfile());
-      const p = await usersApi.getMyProfile();
-      setProfile(p);
-      setMessage({ type: "success", text: "Avatar subido." });
+      await dispatch(uploadAvatar({ userId: profile.id, file })).unwrap();
+      const p = await dispatch(fetchMyProfile()).unwrap();
+      if (p) dispatch(setUser(p));
+      showToast({ type: "success", text: "Avatar subido." });
     } catch (err) {
       console.error("Error subiendo avatar:", err);
-      setMessage({ type: "error", text: "Error subiendo avatar." });
-    } finally {
-      setTimeout(() => setMessage(null), 3000);
+      showToast({ type: "error", text: "Error subiendo avatar." });
     }
   }
 
   async function handleReplaceAvatar(file) {
     if (!profile) return;
     try {
-      await usersApi.replaceAvatar(profile.id, file);
-      await dispatch(refreshProfile());
-      const p = await usersApi.getMyProfile();
-      setProfile(p);
-      setMessage({ type: "success", text: "Avatar reemplazado." });
+      await dispatch(replaceAvatar({ userId: profile.id, file })).unwrap();
+      const p = await dispatch(fetchMyProfile()).unwrap();
+      if (p) dispatch(setUser(p));
+      showToast({ type: "success", text: "Avatar reemplazado." });
     } catch (err) {
       console.error("Error reemplazando avatar:", err);
-      setMessage({ type: "error", text: "Error reemplazando avatar." });
-    } finally {
-      setTimeout(() => setMessage(null), 3000);
+      showToast({ type: "error", text: "Error reemplazando avatar." });
     }
   }
 
   async function handleDeleteAvatar() {
     if (!profile) return;
     try {
-      await usersApi.deleteAvatar(profile.id);
-      await dispatch(refreshProfile());
-      const p = await usersApi.getMyProfile();
-      setProfile(p);
-      setMessage({ type: "success", text: "Avatar eliminado." });
+      await dispatch(deleteAvatar(profile.id)).unwrap();
+      const p = await dispatch(fetchMyProfile()).unwrap();
+      if (p) dispatch(setUser(p));
+      showToast({ type: "success", text: "Avatar eliminado." });
     } catch (err) {
       console.error("Error eliminando avatar:", err);
-      setMessage({ type: "error", text: "Error eliminando avatar." });
-    } finally {
-      setTimeout(() => setMessage(null), 3000);
+      showToast({ type: "error", text: "Error eliminando avatar." });
     }
   }
 
   async function handleChangePassword(dto) {
     try {
-      await authApi.changePassword(dto);
-      setMessage({ type: "success", text: "Contraseña cambiada correctamente." });
+      await dispatch(changePasswordThunk(dto)).unwrap();
+      showToast({ type: "success", text: "Contraseña cambiada correctamente." });
     } catch (err) {
       console.error("Error al cambiar contraseña:", err);
-      setMessage({ type: "error", text: err?.message || "Error cambiando contraseña." });
-    } finally {
-      setTimeout(() => setMessage(null), 3500);
+      showToast({ type: "error", text: err?.message || "Error cambiando contraseña." });
     }
-  }
-
-  async function resolveProductIdFromOrder(orderId, orderItemId) {
-    const searchIn = (orders) => {
-      if (!orders || !Array.isArray(orders)) return null;
-      for (const ord of orders) {
-        if (String(ord.id) === String(orderId)) {
-          const items = ord.items ?? ord.orderItems ?? ord.order_items ?? ord.lines ?? [];
-          if (!Array.isArray(items)) continue;
-          for (const it of items) {
-            if (String(it.id) === String(orderItemId) || String(it.orderItemId) === String(orderItemId) || String(it.order_item_id) === String(orderItemId)) {
-              return it.productId ?? it.product?.id ?? it.product_id ?? it.product?.productId ?? null;
-            }
-          }
-        }
-      }
-      return null;
-    };
-
-    const ordersArray = ordersPage?.content ?? (Array.isArray(ordersPage) ? ordersPage : null);
-    let found = searchIn(ordersArray);
-    if (found) return found;
-
-    try {
-      const refreshed = await ordersApi.getMyOrders(0, 200);
-      const refreshedArray = refreshed?.content ?? (Array.isArray(refreshed) ? refreshed : []);
-      setOrdersPage(refreshed);
-      found = searchIn(refreshedArray);
-      if (found) return found;
-    } catch (err) {
-      console.warn("No se pudo recargar órdenes para resolver productId:", err);
-    }
-
-    return null;
   }
 
   async function handleSaveReview(orderId, orderItemId, data, existingReview = null) {
     try {
-      if (existingReview) {
-        await reviewsApi.updateReview(existingReview.id, {
-          rating: data.rating,
-          title: data.title,
-          comment: data.comment
-        });
-        setMessage({ type: "success", text: "Reseña actualizada." });
-      } else {
-        let productId = data.productId ?? null;
+      showToast({ type: "success", text: existingReview ? "Reseña actualizada." : "Reseña publicada." });
 
-        if (!productId) {
-          productId = await resolveProductIdFromOrder(orderId, orderItemId);
-          if (productId) {
-            console.debug("Resolved productId from order:", productId);
-          }
-        }
-
-        if (!productId) {
-          throw new Error("No se pudo determinar el producto asociado a esta reseña (productId faltante). Intenta recargar la página o contacta soporte.");
-        }
-
-        const payload = {
-          productId: productId,
-          rating: data.rating,
-          title: data.title,
-          comment: data.comment,
-          orderItemId: orderItemId
-        };
-
-        const created = await reviewsApi.createReview(payload);
-
-        console.debug("Created review:", created);
-        setMessage({ type: "success", text: "Reseña publicada." });
-      }
-
-      await loadMyReviews(0, 200);
+      await loadOrders(ordersPageIndex, 10);
     } catch (err) {
-      console.error("Error guardando reseña:", err);
-      setMessage({ type: "error", text: err?.message || "Error guardando reseña." });
-    } finally {
-      setTimeout(() => setMessage(null), 3500);
+      console.warn("handleSaveReview: error refreshing orders", err);
     }
   }
 
   async function handleDeleteReview(reviewId) {
     try {
-      await reviewsApi.deleteReview(reviewId);
-      await loadMyReviews(0, 200);
-      setMessage({ type: "success", text: "Reseña eliminada." });
+      showToast({ type: "success", text: "Reseña eliminada." });
+      await loadOrders(ordersPageIndex, 10);
     } catch (err) {
-      console.error("Error eliminando reseña:", err);
-      setMessage({ type: "error", text: "Error eliminando reseña." });
-    } finally {
-      setTimeout(() => setMessage(null), 3500);
+      console.warn("handleDeleteReview: error refreshing orders", err);
     }
   }
 
@@ -280,7 +187,6 @@ export default function Profile() {
     setShowProfileDeleteConfirm(false);
     setProfile(null);
     setOrdersPage(null);
-    setUserReviews([]);
     try { dispatch(logoutAction()); } catch { window.location.reload(); }
   }
 
@@ -306,19 +212,39 @@ export default function Profile() {
     );
   }
 
+  const toastContainerStyle = {
+    position: "fixed",
+    top: 16,
+    right: 16,
+    zIndex: 9999,
+    minWidth: 220,
+    maxWidth: 360
+  };
+  const toastBase = {
+    padding: "10px 14px",
+    borderRadius: 8,
+    color: "#fff",
+    boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
+    fontSize: 14
+  };
+
   return (
     <div className="profile-page">
       <main className="app-container">
         <h1>Mi perfil</h1>
 
-        {message && (
-          <div className={`alert ${message.type === "success" ? "alert-success" : "alert-danger"}`}>
-            {message.text}
+        {toast && (
+          <div style={toastContainerStyle} aria-live="polite" aria-atomic="true">
+            <div style={{
+              ...toastBase,
+              background: toast.type === "success" ? "#28a745" : "#dc3545"
+            }}>
+              {toast.text}
+            </div>
           </div>
         )}
 
         <div className="profile-layout">
-
           <aside className="profile-sidebar">
             <div className="sidebar-avatar card">
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -397,7 +323,6 @@ export default function Profile() {
                   <OrdersTab
                     ordersPage={ordersPage}
                     onPageChange={(newPage) => loadOrders(newPage - 1, 10)}
-                    userReviews={userReviews}
                     onSaveReview={handleSaveReview}
                     onDeleteReview={handleDeleteReview}
                   />

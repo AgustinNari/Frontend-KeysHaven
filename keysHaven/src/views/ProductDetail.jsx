@@ -1,159 +1,197 @@
-import React, { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useMemo } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
-import { useAppSelector } from "../redux/hooks";
+import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { selectUser } from "../redux/slices/authSlice";
 import "../components/estilos/Fondos.css";
 import "../components/estilos/product.css";
 import ActivationSteps from "../components/product/ActivationSteps.jsx";
-
 import ImageCarousel from "../components/product/ImageCarousel";
 import SellerCard from "../components/product/SellerCard";
 import RelatedProducts from "../components/product/RelatedProducts";
 import ReviewList from "../components/product/ReviewList";
 import Rating from "../components/catalog/Rating";
 
-import productsService from "../services/productsService.js";
-import sellersService from "../services/sellers";
-import reviewsService from "../services/reviews";
+
+import {
+  fetchProductDetail,
+  fetchRelatedProducts,
+  fetchProductReviews,
+  clearProductDetail,
+  upsertProductDetail
+} from "../redux/slices/productDetailSlice";
+import {
+  fetchSellerDetail,
+  selectSellerDetail,
+  fetchSellerActiveProductsForDetail,
+  selectSellerDetailProducts
+} from "../redux/slices/sellersSlice";
+import {
+  selectProduct,
+  selectProductDetail,
+  selectRelatedProducts,
+  selectProductReviews
+} from "../redux/slices/productDetailSlice";
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const { add } = useCart();
   const user = useAppSelector(selectUser);
-  const navigate = useNavigate();
 
-  const [product, setProduct] = useState(null);
+
+  const product = useAppSelector((s) => s.productDetail.product);
+  const productLoading = useAppSelector((s) => s.productDetail.loading);
+  const related = useAppSelector((s) => s.productDetail.related || []);
+  const reviewsFromSlice = useAppSelector((s) => s.productDetail.reviews || []);
+  const sellersDetail = useAppSelector((s) => s.sellers.detail);
+  const sellerDetailProducts = useAppSelector(selectSellerDetailProducts);
+  const sellersNeedsRefresh = useAppSelector((s) => s.sellers.needsRefresh);
+
+
   const [productImages, setProductImages] = useState([]);
-  const [reviewsPage, setReviewsPage] = useState({ content: [], totalElements: 0, totalPages: 0 });
-  const [seller, setSeller] = useState(null);
-  const [sellerProducts, setSellerProducts] = useState([]);
-  const [related, setRelated] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("descripcion");
-
   const [reviewsPageNumber, setReviewsPageNumber] = useState(1);
   const reviewsPageSize = 5;
-
   const [toast, setToast] = useState(null);
 
-  function parseLocalDate(value) {
-    if (!value) return null;
-
-    if (value instanceof Date && !isNaN(value)) return value;
-
-    if (typeof value === "number") return new Date(value);
-
-    if (typeof value === "string") {
-      const exact = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (exact) {
-        const y = Number(exact[1]), m = Number(exact[2]), d = Number(exact[3]);
-        return new Date(y, m - 1, d);
-      }
-
-      const parsed = new Date(value);
-      if (!isNaN(parsed)) return parsed;
-    }
-
-    return null;
-  }
-
-  function formatLocalDateString(value) {
-    const dt = parseLocalDate(value);
-    if (!dt) return "N/A";
-    try {
-      return dt.toLocaleDateString();
-    } catch {
-      return "N/A";
-    }
-  }
 
   useEffect(() => {
-    const fetchDetail = async () => {
-      setLoading(true);
+    if (!id) return;
+    let mounted = true;
+
+    const load = async () => {
       try {
-        const detail = await productsService.getById(id);
-        if (!detail) {
-          setProduct(null);
-          return;
-        }
-
-        setProduct(detail);
-
-        const imgs = (detail.images || []).slice().sort((a, b) => {
-          if (a.isPrimary && !b.isPrimary) return -1;
-          if (!a.isPrimary && b.isPrimary) return 1;
-          return (a.name || "").localeCompare(b.name || "");
-        });
-        setProductImages(imgs);
-        setActiveImageIndex(0);
-
-        if (detail.sellerId) {
-          try {
-            const s = await sellersService.getSellerDetail(detail.sellerId);
-            setSeller(s);
-          } catch (e) {
-            setSeller(null);
-          }
-        } else {
-          setSeller(null);
-        }
-
-        const categoryIds = (detail.categories || []).map(c => (c?.id ?? null)).filter(Boolean);
-        if (categoryIds.length > 0) {
-          const rel = await productsService.relatedByCategories(categoryIds, detail.id, 6);
-          setRelated(rel);
-        } else {
-          setRelated([]);
-        }
-
-        if (detail.sellerId) {
-          try {
-            let sp = await productsService.productsBySeller(detail.sellerId, detail.id, 7);
-            sp = Array.isArray(sp) ? sp.slice(0, 6) : [];
-            setSellerProducts(sp);
-          } catch (e) {
-            setSellerProducts([]);
-          }
-        } else {
-          setSellerProducts([]);
-        }
-
-        const r = await reviewsService.getReviewsByProduct(id, 0, reviewsPageSize);
-        setReviewsPage({
-          content: r?.content ?? [],
-          totalElements: r?.totalElements ?? r?.total ?? 0,
-          totalPages: r?.totalPages ?? Math.max(1, Math.ceil((r?.totalElements ?? r?.total ?? 0) / reviewsPageSize))
-        });
+        await dispatch(fetchProductDetail(Number(id))).unwrap();
+        await dispatch(fetchProductReviews({ productId: Number(id), page: 0, size: reviewsPageSize })).unwrap();
       } catch (err) {
-        console.error("Error loading product detail:", err);
+        console.error("ProductDetail load error:", err);
       } finally {
-        setLoading(false);
-        window.scrollTo(0,0);
+        if (mounted) window.scrollTo(0, 0);
       }
     };
 
-    fetchDetail();
-  }, [id]);
+    load();
+
+    return () => {
+      mounted = false;
+      dispatch(clearProductDetail());
+    };
+  }, [id, dispatch]);
 
   useEffect(() => {
-    const fetchReviews = async () => {
+    if (!product) {
+      setProductImages([]);
+      return;
+    }
+
+    const imgs = (product.images || []).slice().sort((a, b) => {
+      if (a.isPrimary && !b.isPrimary) return -1;
+      if (!a.isPrimary && b.isPrimary) return 1;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+    setProductImages(imgs);
+    setActiveImageIndex(0);
+
+    const categoryIds = (product.categories || []).map(c => (c?.id ?? null)).filter(Boolean);
+    if (categoryIds.length > 0) {
+      dispatch(fetchRelatedProducts({ categoryIds, excludeProductId: product.id, size: 6 }));
+    }
+
+    if (product.sellerId) {
+      dispatch(fetchSellerDetail(product.sellerId));
+
+      dispatch(fetchSellerActiveProductsForDetail(product.sellerId));
+    }
+  }, [product, dispatch]);
+
+  useEffect(() => {
+    if (!product) return;
+    if (sellersNeedsRefresh && product.sellerId) {
+      dispatch(fetchSellerDetail(product.sellerId));
+      dispatch(fetchProductDetail(product.id));
+      dispatch(fetchSellerActiveProductsForDetail(product.sellerId));
+    }
+  }, [sellersNeedsRefresh, product, dispatch]);
+
+  const sellerPanelProducts = useAppSelector((s) => s.sellerPanel.products || []);
+  useEffect(() => {
+    if (!product) return;
+    const found = sellerPanelProducts.find(p => Number(p.id) === Number(product.id));
+    if (found) {
+      dispatch(upsertProductDetail(found));
+    }
+  }, [sellerPanelProducts, product, dispatch]);
+
+  useEffect(() => {
+    if (!product) return;
+    const loadPage = async () => {
       try {
-        const r = await reviewsService.getReviewsByProduct(id, reviewsPageNumber - 1, reviewsPageSize);
-        setReviewsPage({
-          content: r?.content ?? [],
-          totalElements: r?.totalElements ?? r?.total ?? 0,
-          totalPages: r?.totalPages ?? Math.max(1, Math.ceil((r?.totalElements ?? r?.total ?? 0) / reviewsPageSize))
-        });
-      } catch (e) {
-        console.error("Error loading reviews page", e);
+        await dispatch(fetchProductReviews({ productId: product.id, page: Math.max(0, reviewsPageNumber - 1), size: reviewsPageSize })).unwrap();
+      } catch (err) {
+        console.error("Error loading reviews page:", err);
       }
     };
-    if (product) fetchReviews();
-  }, [id, reviewsPageNumber, reviewsPageSize, product]);
+    loadPage();
+  }, [reviewsPageNumber, product, dispatch]);
 
-  if (loading) {
+  const showToast = (text, type = "warn", duration = 2600) => {
+    setToast({ text, type });
+    setTimeout(() => setToast(null), duration);
+  };
+
+  const blockedPurchase = useMemo(() => {
+    const isAdmin = user?.role === "ADMIN";
+    const isSellerOwner = user?.role === "SELLER" && String(user?.id) === String(product?.sellerId);
+    return isAdmin || isSellerOwner;
+  }, [user, product]);
+
+  const buildAddPayload = () => {
+    const basePrice = Number(product?.price ?? 0);
+    return {
+      id: product.id,
+      title: product.title,
+      price: basePrice,
+      currency: product.currency ?? "USD",
+      imageUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? (product.images && product.images.length ? (product.images[0].dataUrl ?? product.images[0].file) : null),
+      platform: product.platform,
+      region: product.region,
+      _raw: {
+        id: product.id,
+        price: basePrice,
+        bestDiscount: product.bestDiscount ?? null,
+        primaryImageDataUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? null,
+        availableStock: product.availableStock ?? product.stock ?? null
+      }
+    };
+  };
+
+  const handleAddToCart = async () => {
+    if (blockedPurchase) {
+      showToast(product?.sellerId && user?.role === "SELLER" ? "No se pueden comprar productos propios" : "El administrador no puede comprar productos", "warn");
+      return;
+    }
+    const res = await add(buildAddPayload(), 1);
+    if (!res || !res.ok) showToast(res?.reason ?? "No se pudo agregar al carrito", "warn");
+    else showToast("Añadido al carrito", "info");
+  };
+
+  const handleBuyNow = async () => {
+    if (blockedPurchase) {
+      showToast(product?.sellerId && user?.role === "SELLER" ? "No se pueden comprar productos propios" : "El administrador no puede comprar productos", "warn");
+      return;
+    }
+    const res = await add(buildAddPayload(), 1);
+    if (!res || !res.ok) {
+      showToast(res?.reason ?? "No se pudo agregar al carrito", "warn");
+      return;
+    }
+    navigate("/cart");
+  };
+
+  if (productLoading) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
         <div className="spinner-border text-primary" role="status"><span className="visually-hidden">Cargando...</span></div>
@@ -192,65 +230,8 @@ export default function ProductDetail() {
       }
     }
   }
-
   const basePrice = Number(product.price ?? 0);
   const priceToShow = discountedPrice != null ? discountedPrice : basePrice;
-
-  const buildAddPayload = () => {
-    return {
-      id: product.id,
-      title: product.title,
-      price: basePrice,
-      currency: product.currency ?? "USD",
-      imageUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? (product.images && product.images.length ? (product.images[0].dataUrl ?? product.images[0].file) : null),
-      platform: product.platform,
-      region: product.region,
-      _raw: {
-        id: product.id,
-        price: basePrice,
-        bestDiscount: product.bestDiscount ?? product.bestDiscount,
-        primaryImageDataUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? null,
-        availableStock: product.availableStock ?? product.stock ?? null
-      }
-    };
-  };
-
-  const isAdmin = user?.role === "ADMIN";
-  const isSellerOwner = user?.role === "SELLER" && String(user?.id) === String(product?.sellerId);
-  const blockedPurchase = isAdmin || isSellerOwner;
-
-  const showToast = (text, type = "warn", duration = 2600) => {
-    setToast({ text, type });
-    setTimeout(() => setToast(null), duration);
-  };
-
-  const handleAddToCart = async () => {
-    if (blockedPurchase) {
-      if (isAdmin) showToast("El administrador no puede comprar productos");
-      else showToast("No se pueden comprar productos propios");
-      return;
-    }
-    const res = await add(buildAddPayload(), 1);
-    if (!res || !res.ok) {
-      showToast(res?.reason ?? "No se pudo agregar al carrito", "warn");
-      return;
-    }
-    showToast("Añadido al carrito", "info");
-  };
-
-  const handleBuyNow = async () => {
-    if (blockedPurchase) {
-      if (isAdmin) showToast("El administrador no puede comprar productos");
-      else showToast("No se pueden comprar productos propios");
-      return;
-    }
-    const res = await add(buildAddPayload(), 1);
-    if (!res || !res.ok) {
-      showToast(res?.reason ?? "No se pudo agregar al carrito", "warn");
-      return;
-    }
-    navigate("/cart");
-  };
 
   return (
     <div className="product-page" style={{ position: "relative" }}>
@@ -276,12 +257,7 @@ export default function ProductDetail() {
               <div className="stat muted">Reseñas: <strong style={{ color: "var(--text)" }}>{product.ratingCount ?? 0}</strong></div>
               <div className="stat muted">Ventas: <strong style={{ color: "var(--text)" }}>{product.sold ?? 0}</strong></div>
               <div className="stat muted">Stock: <strong style={{ color: "var(--text)" }}>{product.stock ?? 0}</strong></div>
-
-              <div className="stat muted">
-                Lanzamiento: <strong style={{ color: "var(--text)" }}>
-                  {product.releaseDate ? formatLocalDateString(product.releaseDate) : "N/A"}
-                </strong>
-              </div>
+              <div className="stat muted">Lanzamiento: <strong style={{ color: "var(--text)" }}>{product.releaseDate ?? "N/A"}</strong></div>
               <div className="stat muted">Metacritic: <strong style={{ color: "var(--text)" }}>{product.metacriticScore ?? "N/A"}</strong></div>
             </div>
           </div>
@@ -313,12 +289,12 @@ export default function ProductDetail() {
                   <h5 className="text-primary">Más juegos de {product.sellerDisplayName}</h5>
                   <div className="muted mb-3">Vendedor: <strong style={{ color: "var(--text)" }}>{product.sellerDisplayName}</strong></div>
 
-                  <SellerCard seller={seller} />
+                  <SellerCard seller={sellersDetail || { displayName: product.sellerDisplayName, id: product.sellerId }} />
 
                   <div className="mt-3">
                     <h6 style={{ color: "var(--text)" }}>Otros títulos</h6>
                     <div className="row">
-                      {sellerProducts.map(sp => (
+                      {(sellerDetailProducts || []).slice(0, 6).map(sp => (
                         <div key={sp.id} className="col-6 col-md-4 mb-2">
                           <Link to={`/product/${sp.id}`} onClick={() => window.scrollTo(0,0)} style={{ textDecoration: "none" }}>
                             <div className="card" style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.03)" }}>
@@ -344,10 +320,10 @@ export default function ProductDetail() {
               <h5 className="text-primary">Opiniones de clientes</h5>
               <div className="mt-2">
                 <ReviewList
-                  reviews={reviewsPage.content}
+                  reviews={reviewsFromSlice}
                   page={reviewsPageNumber}
                   setPage={setReviewsPageNumber}
-                  totalPages={reviewsPage.totalPages}
+                  totalPages={Math.max(1, Math.ceil(((product.ratingCount ?? 0) / reviewsPageSize)))}
                   pageSize={reviewsPageSize}
                 />
               </div>
@@ -355,7 +331,6 @@ export default function ProductDetail() {
           </div>
 
           <ActivationSteps platform={product.platform} region={product.region} />
-
         </div>
 
         <aside className="product-right">
@@ -394,7 +369,7 @@ export default function ProductDetail() {
                 className={`btn btn-lg ${blockedPurchase ? "btn-secondary" : "btn-primary"}`}
                 onClick={handleBuyNow}
                 aria-disabled={blockedPurchase}
-                title={blockedPurchase ? (isAdmin ? "Administrador: no puede comprar" : "No puedes comprar tus propios productos") : "Comprar ahora"}
+                title={blockedPurchase ? (user?.role === "ADMIN" ? "Administrador: no puede comprar" : "No puedes comprar tus propios productos") : "Comprar ahora"}
               >
                 Comprar ahora
               </button>
@@ -403,7 +378,7 @@ export default function ProductDetail() {
                 className={`btn ${blockedPurchase ? "btn-outline-secondary" : "btn-outline-primary"}`}
                 onClick={handleAddToCart}
                 aria-disabled={blockedPurchase}
-                title={blockedPurchase ? (isAdmin ? "Administrador: no puede comprar" : "No puedes comprar tus propios productos") : "Agregar al carrito"}
+                title={blockedPurchase ? (user?.role === "ADMIN" ? "Administrador: no puede comprar" : "No puedes comprar tus propios productos") : "Agregar al carrito"}
               >
                 Agregar al carrito
               </button>
@@ -417,7 +392,7 @@ export default function ProductDetail() {
 
           <div className="card shadow-sm p-3 mb-3">
             <h6 style={{ color: "var(--text)" }}>Vendedor</h6>
-            <SellerCard seller={seller} />
+            <SellerCard seller={sellersDetail || { displayName: product.sellerDisplayName, id: product.sellerId }} />
             <div className="mt-2">
               <Link to={`/seller-detail/${product.sellerId}`} className="btn btn-outline-primary btn-sm">Ver vendedor</Link>
             </div>

@@ -1,38 +1,45 @@
 import React, { useEffect, useState } from 'react';
-import { getReviewsPage, toggleReviewVisibility, getProductsPage, getUsersPage } from '../../services/adminService';
+import { useDispatch, useSelector } from 'react-redux';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
 
+import { fetchReviewsPage, adminToggleReviewVisibility } from '../../redux/slices/adminPanelSlice';
+import { fetchProductsPage } from '../../redux/slices/adminPanelSlice';
+import { fetchLatestReviews, fetchReviewsByProduct } from '../../redux/slices/reviewsSlice';
+import { fetchProductDetail } from '../../redux/slices/productDetailSlice';
+import { fetchSellerDetail } from '../../redux/slices/sellersSlice';
+import { selectAdminPanel } from '../../redux/slices/adminPanelSlice';
+
 export default function ReviewsManagement() {
-  const [reviews, setReviews] = useState([]);
+  const dispatch = useDispatch();
+  const admin = useSelector(selectAdminPanel);
+  const reviewsPage = admin?.reviewsPage ?? null;
+  const reviews = reviewsPage?.content ?? [];
+
   const [productsMap, setProductsMap] = useState({});
   const [usersMap, setUsersMap] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [loadingLocal, setLoadingLocal] = useState(false);
   const [error, setError] = useState('');
 
   const [confirm, setConfirm] = useState({ show:false, title:'', message:'', onConfirm:null });
 
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const [totalPages, setTotalPages] = useState(1);
+  const totalPages = Math.max(1, reviewsPage?.totalPages ?? 1);
 
-  useEffect(()=>{ load(); }, [page]);
+  useEffect(()=>{ load();}, [page]);
 
   const load = async () => {
-    setLoading(true);
+    setLoadingLocal(true);
     try {
-      const [rvwsResp, prodsResp, usersResp] = await Promise.all([
-        getReviewsPage(page, pageSize),
-        getProductsPage(1, 100),
-        getUsersPage(1, 200)
+      const [rvwsResp] = await Promise.all([
+        dispatch(fetchReviewsPage({ page, size: pageSize })).unwrap()
       ]);
+      const prodsResp = await dispatch(fetchProductsPage({ page: 1, size: 200 })).unwrap().catch(()=>null);
+      const usersResp = await dispatch(fetchProductsPage({ page: 1, size: 200 })).unwrap().catch(()=>null);
 
-      const rvws = (rvwsResp && rvwsResp.content && Array.isArray(rvwsResp.content)) ? rvwsResp.content : (Array.isArray(rvwsResp) ? rvwsResp : []);
-      setReviews(rvws);
-      setTotalPages(rvwsResp?.totalPages ?? 1);
-
-      const prods = (prodsResp && prodsResp.content) ? prodsResp.content : (Array.isArray(prodsResp) ? prodsResp : []);
-      const us = (usersResp && usersResp.content) ? usersResp.content : (Array.isArray(usersResp) ? usersResp : []);
+      const prods = prodsResp?.content ?? prodsResp ?? [];
+      const us = usersResp?.content ?? usersResp ?? [];
 
       setProductsMap(Object.fromEntries((prods || []).map(p => [p.id, p])));
       setUsersMap(Object.fromEntries((us || []).map(u => [u.id, u])));
@@ -40,7 +47,7 @@ export default function ReviewsManagement() {
       console.error(err);
       setError('Error cargando reseñas');
     } finally {
-      setLoading(false);
+      setLoadingLocal(false);
     }
   };
 
@@ -60,29 +67,49 @@ export default function ReviewsManagement() {
   };
 
   const handleHideConfirmed = async (reviewId) => {
-    setLoading(true);
+    setLoadingLocal(true);
     try {
-      await toggleReviewVisibility(reviewId, false);
-      await load();
+      const payload = await dispatch(adminToggleReviewVisibility({ reviewId, visible: false })).unwrap();
+      await dispatch(fetchReviewsPage({ page, size: pageSize })).unwrap();
+      dispatch(fetchLatestReviews()).catch(()=>{});
+      const prodId = payload?.resp?.productId ?? payload?.resp?.product?.id ?? payload?.resp?.productId;
+      const sellerId = payload?.resp?.sellerId ?? payload?.resp?.seller?.id;
+      if (prodId) {
+        dispatch(fetchReviewsByProduct({ productId: prodId, page: 0, size: 20 })).catch(()=>{});
+        dispatch(fetchProductDetail(prodId)).catch(()=>{});
+      }
+      if (sellerId) {
+        dispatch(fetchSellerDetail(sellerId)).catch(()=>{});
+      }
     } catch (err) {
       console.error(err);
       setError('Error ocultando reseña');
     } finally {
-      setLoading(false);
+      setLoadingLocal(false);
       closeConfirm();
     }
   };
 
   const handleShow = async (reviewId) => {
-    setLoading(true);
+    setLoadingLocal(true);
     try {
-      await toggleReviewVisibility(reviewId, true);
-      await load();
+      const payload = await dispatch(adminToggleReviewVisibility({ reviewId, visible: true })).unwrap();
+      await dispatch(fetchReviewsPage({ page, size: pageSize })).unwrap();
+      dispatch(fetchLatestReviews()).catch(()=>{});
+      const prodId = payload?.resp?.productId ?? payload?.resp?.product?.id ?? payload?.resp?.productId;
+      const sellerId = payload?.resp?.sellerId ?? payload?.resp?.seller?.id;
+      if (prodId) {
+        dispatch(fetchReviewsByProduct({ productId: prodId, page: 0, size: 20 })).catch(()=>{});
+        dispatch(fetchProductDetail(prodId)).catch(()=>{});
+      }
+      if (sellerId) {
+        dispatch(fetchSellerDetail(sellerId)).catch(()=>{});
+      }
     } catch (err) {
       console.error(err);
       setError('Error mostrando reseña');
     } finally {
-      setLoading(false);
+      setLoadingLocal(false);
     }
   };
 
@@ -90,7 +117,7 @@ export default function ReviewsManagement() {
     <div className="card bg-primary-dark border-0">
       <div className="card-header bg-primary-mid d-flex justify-content-between align-items-center">
         <h5 className="text-primary-light mb-0">Gestión de Reseñas</h5>
-        <button className="btn btn-outline-secondary" onClick={load} disabled={loading}>Refrescar</button>
+        <button className="btn btn-outline-secondary" onClick={load} disabled={loadingLocal}>Refrescar</button>
       </div>
 
       <div className="card-body">
@@ -110,7 +137,7 @@ export default function ReviewsManagement() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loadingLocal ? (
                 <tr><td colSpan="7" className="text-center py-4 text-muted">Cargando reseñas...</td></tr>
               ) : reviews.map(r => (
                 <tr key={r.id}>
@@ -122,7 +149,7 @@ export default function ReviewsManagement() {
                   <td><span className={`badge ${r.visible ? 'bg-success' : 'bg-danger'}`}>{r.visible ? 'Visible' : 'Oculta'}</span></td>
                   <td>
                     <div className="btn-group btn-group-sm">
-                      <button className="btn btn-outline-secondary" onClick={()=>handleToggleRequest(r.id, r.visible)} disabled={loading}>
+                      <button className="btn btn-outline-secondary" onClick={()=>handleToggleRequest(r.id, r.visible)} disabled={loadingLocal}>
                         {r.visible ? 'Ocultar' : 'Mostrar'}
                       </button>
                     </div>
@@ -131,22 +158,14 @@ export default function ReviewsManagement() {
               ))}
             </tbody>
           </table>
-          {!loading && reviews.length === 0 && <div className="text-center text-muted py-4">No hay reseñas</div>}
+          {!loadingLocal && reviews.length === 0 && <div className="text-center text-muted py-4">No hay reseñas</div>}
         </div>
 
         <div className="d-flex justify-content-center mt-3">
-          <PaginationBar page={page} setPage={setPage} totalPages={Math.max(1, totalPages)} />
+          <PaginationBar page={page} setPage={setPage} totalPages={totalPages} />
         </div>
 
-        <ConfirmModal
-          show={confirm.show}
-          title={confirm.title}
-          message={confirm.message}
-          onConfirm={() => { confirm.onConfirm && confirm.onConfirm(); }}
-          onCancel={closeConfirm}
-          confirmText="Confirmar"
-          cancelText="Cancelar"
-        />
+        <ConfirmModal show={confirm.show} title={confirm.title} message={confirm.message} onConfirm={() => { confirm.onConfirm && confirm.onConfirm(); }} onCancel={closeConfirm} confirmText="Ocultar" cancelText="Cancelar" />
       </div>
     </div>
   );

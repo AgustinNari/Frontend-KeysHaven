@@ -7,16 +7,25 @@ import ProductGrid from "../components/catalog/ProductGrid";
 import PaginationBar from "../components/catalog/PaginationBar";
 import "../components/estilos/catalog.css";
 
-import productsService from "../services/productsService";
-import categoriesService from "../services/categories.js";
+import { useAppDispatch, useAppSelector } from "../redux/hooks";
+import { searchProducts, fetchFilterExtras, selectSearchResult, selectProductsFilterExtras } from "../redux/slices/productsSlice";
+import { fetchAllCategories, selectAllCategories } from "../redux/slices/categoriesSlice";
+
 import { useCart } from "../store/cart.jsx";
 
 export default function Catalog() {
   const location = useLocation();
+  const dispatch = useAppDispatch();
+
   const queryParams = new URLSearchParams(location.search);
   const queryTitle = queryParams.get("title");
   const querySellerId = queryParams.get("sellerId");
   const rawPlatform = queryParams.get("platform");
+  const queryCategoryId = queryParams.get("categoryId");
+
+  const searchResult = useAppSelector(selectSearchResult) ?? { content: [], totalElements: 0, totalPages: 0, number: 0, size: 12 };
+  const filterExtras = useAppSelector(selectProductsFilterExtras) ?? { developers: [], publishers: [] };
+  const allCategories = useAppSelector(selectAllCategories) ?? [];
 
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
@@ -29,13 +38,14 @@ export default function Catalog() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
+
   const [categoriesOptions, setCategoriesOptions] = useState([]);
   const [sellersOptions, setSellersOptions] = useState([]);
 
   const [developerOptions, setDeveloperOptions] = useState([]);
   const [publisherOptions, setPublisherOptions] = useState([]);
 
-  const queryCategoryId = queryParams.get("categoryId");
+  const { add } = useCart();
 
   const platformMap = {
     PC: "PC – Steam",
@@ -43,25 +53,6 @@ export default function Catalog() {
     Xbox: "Xbox Series X|S",
     Nintendo: "Nintendo Switch 2",
     all: null
-  };
-
-  const { add } = useCart();
-
-  const extractUniqueSellers = (products) => {
-    const sellerMap = new Map();
-    
-    products.forEach(product => {
-      if (product.sellerId && (product.sellerDisplayName || product.sellerName || product.seller)) {
-        if (!sellerMap.has(product.sellerId)) {
-          sellerMap.set(product.sellerId, {
-            id: product.sellerId,
-            displayName: product.sellerDisplayName || product.sellerName || product.seller
-          });
-        }
-      }
-    });
-    
-    return Array.from(sellerMap.values());
   };
 
   useEffect(() => {
@@ -74,7 +65,6 @@ export default function Catalog() {
       }
     }
   }, [queryCategoryId]);
-  
 
   useEffect(() => {
     if (querySellerId) {
@@ -90,7 +80,7 @@ export default function Catalog() {
   useEffect(() => {
     if (queryTitle) setSearchText(queryTitle);
   }, [queryTitle]);
-  
+
   useEffect(() => {
     if (!rawPlatform) return;
     const mapped = platformMap[rawPlatform];
@@ -107,119 +97,24 @@ export default function Catalog() {
       });
       return;
     }
-    setAppliedFilters(prev => ({ 
-      ...prev, 
-      platform: mapped 
-    }));
-    setWorkingFilters(prev => ({ 
-      ...prev, 
-      platform: mapped 
-    }));
+    setAppliedFilters(prev => ({ ...prev, platform: mapped }));
+    setWorkingFilters(prev => ({ ...prev, platform: mapped }));
     setPage(1);
   }, [rawPlatform]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [cats, extras] = await Promise.all([
-          categoriesService.getAllCategoriesAlt().catch(err => { console.error("cats", err); return []; }),
-          productsService.getFilterExtras().catch(err => { console.error("extras", err); return null; })
-        ]);
-
-        if (cancelled) return;
-
-        const opts = (cats || []).map(c => ({ id: c.id, description: c.description }));
-        setCategoriesOptions(opts);
-
-        if (extras) {
-          const devs = Array.isArray(extras.developers) ? extras.developers : (extras?.developers ?? []);
-          const pubs = Array.isArray(extras.publishers) ? extras.publishers : (extras?.publishers ?? []);
-          setDeveloperOptions(devs.map(d => ({ value: d, label: d })));
-          setPublisherOptions(pubs.map(p => ({ value: p, label: p })));
-        }
-      } catch (err) {
-        console.error("Error loading categories or filter extras", err);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    dispatch(fetchAllCategories()).catch(err => console.error("fetchAllCategories", err));
+    dispatch(fetchFilterExtras()).catch(err => console.error("fetchFilterExtras", err));
+  }, [dispatch]);
 
   useEffect(() => {
-    let cancelled = false;
-    const fetchItems = async () => {
-      setLoading(true);
-      try {
-        const backendPage = Math.max(0, page - 1);
-        
-        const backendFilters = { ...appliedFilters };
-
-        if (backendFilters.sellerIds && !Array.isArray(backendFilters.sellerIds)) {
-          backendFilters.sellerIds = [backendFilters.sellerIds];
-        }
-        if (backendFilters.categories && !Array.isArray(backendFilters.categories)) {
-          backendFilters.categories = [backendFilters.categories];
-        }
-
-        const resp = await productsService.search(backendFilters, backendPage, pageSize, sortBy, true);
-        if (cancelled) return;
-        
-        const content = resp.content || [];
-        setItems(content);
-        setTotalItems(resp.totalElements ?? content.length);
-        setTotalPages(Math.max(1, resp.totalPages ?? Math.ceil((resp.totalElements ?? content.length) / pageSize)));
-        
-        const uniqueSellers = extractUniqueSellers(content);
-        setSellersOptions(prev => {
-          const combined = [...prev];
-          uniqueSellers.forEach(ns => {
-            if (!combined.find(s => s.id === ns.id)) combined.push(ns);
-          });
-          return combined;
-        });
-        
-      } catch (err) {
-        console.error("Error fetching products:", err);
-        setItems([]);
-        setTotalItems(0);
-        setTotalPages(1);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    fetchItems();
-  }, [appliedFilters, page, pageSize, sortBy]);
+    setCategoriesOptions((allCategories || []).map(c => ({ id: c.id, description: c.description || c.name })));
+  }, [allCategories]);
 
   useEffect(() => {
-    let cancelled = false;
-    const loadInitialSellers = async () => {
-      try {
-        const resp = await productsService.search({}, 0, 50, "amountSold_desc", true);
-        if (cancelled) return;
-        
-        const content = resp.content || [];
-        const uniqueSellers = extractUniqueSellers(content);
-        setSellersOptions(prev => {
-          const combined = [...prev];
-          uniqueSellers.forEach(newSeller => {
-            if (!combined.find(s => s.id === newSeller.id)) {
-              combined.push(newSeller);
-            }
-          });
-          return combined;
-        });
-      } catch (err) {
-        console.error("Error loading initial sellers:", err);
-      }
-    };
-
-    if (sellersOptions.length === 0) {
-      loadInitialSellers();
-    }
-    
-    return () => { cancelled = true; };
-  }, []);
+    setDeveloperOptions((filterExtras?.developers || []).map(d => ({ value: d, label: d })));
+    setPublisherOptions((filterExtras?.publishers || []).map(p => ({ value: p, label: p })));
+  }, [filterExtras]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -228,6 +123,56 @@ export default function Catalog() {
     }, 600);
     return () => clearTimeout(t);
   }, [searchText]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const runSearch = async () => {
+      try {
+        setLoading(true);
+        const backendPage = Math.max(0, page - 1);
+        const backendFilters = { ...appliedFilters };
+        if (backendFilters.sellerIds && !Array.isArray(backendFilters.sellerIds)) backendFilters.sellerIds = [backendFilters.sellerIds];
+        if (backendFilters.categories && !Array.isArray(backendFilters.categories)) backendFilters.categories = [backendFilters.categories];
+
+        await dispatch(searchProducts({ filters: backendFilters, page: backendPage, size: pageSize, sort: sortBy, onlyActive: true })).unwrap();
+      } catch (err) {
+        console.error("Error searching products (redux)", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    runSearch();
+    return () => { cancelled = true; };
+  }, [appliedFilters, page, sortBy, dispatch]);
+  useEffect(() => {
+    const content = searchResult?.content || [];
+    setItems(content);
+    setTotalItems(searchResult?.totalElements ?? content.length);
+    setTotalPages(Math.max(1, searchResult?.totalPages ?? Math.ceil((searchResult?.totalElements ?? content.length) / pageSize)));
+  }, [searchResult]);
+
+  useEffect(() => {
+    const extractUniqueSellers = (products) => {
+      const sellerMap = new Map();
+      products.forEach(product => {
+        const sid = product.sellerId ?? product.seller?.id;
+        const display = product.sellerDisplayName || product.sellerName || product.seller?.displayName || product.seller;
+        if (sid && display) {
+          if (!sellerMap.has(sid)) sellerMap.set(sid, { id: sid, displayName: display });
+        }
+      });
+      return Array.from(sellerMap.values());
+    };
+
+    const unique = extractUniqueSellers(items);
+    setSellersOptions(prev => {
+      const map = new Map(prev.map(s => [String(s.id), s]));
+      unique.forEach(u => { if (!map.has(String(u.id))) map.set(String(u.id), u); });
+      return Array.from(map.values());
+    });
+  }, [items]);
 
   const handleSearchSubmit = () => {
     setAppliedFilters(prev => ({ ...prev, title: searchText }));
@@ -283,11 +228,7 @@ export default function Catalog() {
 
             <div className="d-flex align-items-center justify-content-space-between gap-2">
               <div className="search-bar-wrapper" style={{ minWidth: 260 }}>
-                <SearchBar
-                  value={searchText}
-                  onChange={setSearchText}
-                  onSearch={handleSearchSubmit}
-                />
+                <SearchBar value={searchText} onChange={setSearchText} onSearch={handleSearchSubmit} />
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div className="small muted">Ordenar:</div>

@@ -1,46 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { getUsersPage, updateUser, deleteUser } from '../../services/adminService';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
 
+import {
+  fetchUsersPage,
+  adminUpdateUser,
+  fetchAdminStats
+} from '../../redux/slices/adminPanelSlice';
+import { selectAdminPanel } from '../../redux/slices/adminPanelSlice';
+
 export default function UserManagement() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+  const admin = useSelector(selectAdminPanel);
+  const usersPage = admin?.usersPage ?? null;
+  const users = usersPage?.content ?? [];
+
+  const [loadingLocal, setLoadingLocal] = useState(false);
   const [error, setError] = useState('');
   const [viewingUser, setViewingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const [confirm, setConfirm] = useState({
-    show: false,
-    title: '',
-    message: '',
-    onConfirm: null
-  });
+  const [confirm, setConfirm] = useState({ show: false, title: '', message: '', onConfirm: null });
 
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const [totalPages, setTotalPages] = useState(1);
+  const totalPages = Math.max(1, usersPage?.totalPages ?? 1);
 
-  useEffect(() => { loadUsers(); }, [page]);
+  useEffect(() => {
+    loadUsers();
+  }, [page]);
 
   const loadUsers = async () => {
-    setLoading(true);
+    setLoadingLocal(true);
+    setError('');
     try {
-      const resp = await getUsersPage(page, pageSize);
-      if (resp && resp.content && Array.isArray(resp.content)) {
-        setUsers(resp.content);
-        setTotalPages(resp.totalPages ?? 1);
-      } else {
-        setUsers(Array.isArray(resp) ? resp : []);
-        setTotalPages(1);
-      }
+      await dispatch(fetchUsersPage({ page, size: pageSize })).unwrap();
     } catch (err) {
-      console.error(err);
+      console.error('loadUsers err', err);
       setError('Error cargando usuarios');
     } finally {
-      setLoading(false);
+      setLoadingLocal(false);
     }
   };
 
@@ -60,34 +62,36 @@ export default function UserManagement() {
   };
 
   const handleDeactivateConfirmed = async (userId) => {
-    setLoading(true);
+    setLoadingLocal(true);
     try {
-      await updateUser(userId, { active: false });
-      await loadUsers();
+      await dispatch(adminUpdateUser({ userId, payload: { active: false } })).unwrap();
+      await dispatch(fetchUsersPage({ page, size: pageSize })).unwrap();
+      dispatch(fetchAdminStats());
     } catch (err) {
       console.error(err);
       setError('Error desactivando usuario');
     } finally {
-      setLoading(false);
+      setLoadingLocal(false);
       closeConfirm();
     }
   };
 
   const handleActivate = async (userId) => {
-    setLoading(true);
+    setLoadingLocal(true);
     try {
-      await updateUser(userId, { active: true });
-      await loadUsers();
+      await dispatch(adminUpdateUser({ userId, payload: { active: true } })).unwrap();
+      await dispatch(fetchUsersPage({ page, size: pageSize })).unwrap();
+      dispatch(fetchAdminStats());
     } catch (err) {
       console.error(err);
       setError('Error activando usuario');
     } finally {
-      setLoading(false);
+      setLoadingLocal(false);
     }
   };
 
   const filteredUsers = users.filter(user => {
-    const nameOrEmail = (user.displayName || `${user.firstName || ''} ${user.lastName || ''}`).toLowerCase() + (user.email || '').toLowerCase();
+    const nameOrEmail = ((user.displayName || `${user.firstName || ''} ${user.lastName || ''}`) + (user.email || '')).toLowerCase();
     const matchesSearch = nameOrEmail.includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? user.active : !user.active);
@@ -143,7 +147,7 @@ export default function UserManagement() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {(loadingLocal && !users.length) ? (
                 <tr><td colSpan="5" className="text-center py-4 text-muted">Cargando usuarios...</td></tr>
               ) : filteredUsers.map(user => (
                 <tr key={user.id}>
@@ -166,7 +170,7 @@ export default function UserManagement() {
                   <td>
                     <div className="btn-group btn-group-sm">
                       <button className="btn btn-outline-primary" onClick={() => setViewingUser(user)}>Ver</button>
-                      <button className="btn btn-outline-warning" onClick={() => handleToggleRequest(user)} disabled={loading}>
+                      <button className="btn btn-outline-warning" onClick={() => handleToggleRequest(user)} disabled={loadingLocal}>
                         {user.active ? 'Desactivar' : 'Activar'}
                       </button>
                     </div>
@@ -176,11 +180,11 @@ export default function UserManagement() {
             </tbody>
           </table>
 
-          {!loading && filteredUsers.length === 0 && <div className="text-center text-muted py-4">No se encontraron usuarios</div>}
+          {!loadingLocal && filteredUsers.length === 0 && <div className="text-center text-muted py-4">No se encontraron usuarios</div>}
         </div>
 
         <div className="d-flex justify-content-center mt-3">
-          <PaginationBar page={page} setPage={setPage} totalPages={Math.max(1, totalPages)} />
+          <PaginationBar page={page} setPage={setPage} totalPages={totalPages} />
         </div>
 
         {viewingUser && (

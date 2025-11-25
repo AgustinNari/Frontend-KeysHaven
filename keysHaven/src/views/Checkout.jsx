@@ -1,10 +1,16 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
-import * as ordersService from "../services/orders";
+import { useAppDispatch, useAppSelector } from "../redux/hooks";
+import { createOrder } from "../redux/slices/ordersSlice";
+import { fetchActiveCouponsByBuyer } from "../redux/slices/discountsSlice";
+import { fetchMyProfile } from "../redux/slices/profileSlice";
+import { setAvailableCoupons } from "../redux/slices/cartSlice";
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+
   const {
     items,
     subtotal,
@@ -19,6 +25,8 @@ export default function Checkout() {
     clear,
     hasProductPercentDiscount
   } = useCart();
+
+  const buyerBalance = useAppSelector(state => state.profile?.me?.buyerBalance ?? 0);
 
   const [placing, setPlacing] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -48,7 +56,7 @@ export default function Checkout() {
         notes: null,
       };
 
-      const serverOrder = await ordersService.createOrder(orderDto);
+      const serverOrder = await dispatch(createOrder(orderDto)).unwrap();
 
       const clientItems = items.map(it => {
         const b = priceBreakdown(it);
@@ -64,22 +72,51 @@ export default function Checkout() {
             total: b.lineTotal,
             unitOriginal: b.unitOriginal,
             unitFinal: b.unitFinal,
-            productPercent: b.productPercent
+            productPercent: b.productPercent,
+            currency: b.currency ?? currency
           }
         };
       });
 
       clear();
+
+      try {
+        const serverTotalAmount = Number(serverOrder?.totalAmount ?? serverOrder?.total ?? total ?? 0);
+
+        const prevQuotient = Math.floor(Number(buyerBalance || 0) / 100);
+        const afterQuotient = Math.floor((Number(buyerBalance || 0) + serverTotalAmount) / 100);
+        const couponsGenerated = Math.max(0, afterQuotient - prevQuotient);
+
+        try {
+          await dispatch(fetchMyProfile()).unwrap();
+        } catch (errProfile) {
+          console.warn("No se pudo refrescar perfil luego de crear orden:", errProfile);
+        }
+
+        try {
+          const couponsResp = await dispatch(fetchActiveCouponsByBuyer({ page: 0, size: 200 })).unwrap();
+          const list = couponsResp?.content ?? couponsResp ?? [];
+          dispatch(setAvailableCoupons(list));
+        } catch (errCoupons) {
+          console.warn("No se pudieron refrescar los cupones del usuario:", errCoupons);
+        }
+      } catch (postProcessErr) {
+        console.warn("Post-order processing failed (profile/coupons refresh):", postProcessErr);
+      }
+
       navigate("/order-confirmation", { state: { order: serverOrder, clientItems } });
     } catch (err) {
       console.error("Error creando orden", err);
-      if (err?.status === 401) {
+      const payload = err?.payload ?? err;
+      if (payload?.status === 401 || payload?.status === "401") {
         setErrorMsg("Debes iniciar sesión para completar la compra.");
         navigate("/login");
-      } else if (err?.body?.message) {
-        setErrorMsg(err.body.message);
+      } else if (payload?.message) {
+        setErrorMsg(payload.message);
+      } else if (err?.message) {
+        setErrorMsg(err.message);
       } else {
-        setErrorMsg(err.message || "Error al crear la orden");
+        setErrorMsg("Error al crear la orden");
       }
     } finally {
       setPlacing(false);

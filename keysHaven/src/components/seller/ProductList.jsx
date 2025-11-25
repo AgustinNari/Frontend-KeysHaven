@@ -1,46 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { getSellerProductsPaginated, getProductDetail, updateProduct } from '../../services/sellerService';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
 import { deriveAvailableStock } from '../../utils/stock';
 
-import { useAppSelector } from '../../redux/hooks';
+import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { selectUser } from '../../redux/slices/authSlice';
+
+import {
+  fetchSellerProductsPaginated,
+  updateProduct as updateProductThunk,
+  getProductKeys as getProductKeysThunk
+} from '../../redux/slices/sellerPanelSlice';
+
+import { upsertProductInList } from '../../redux/slices/productsSlice';
+import { fetchProductDetail, upsertProductDetail } from '../../redux/slices/productDetailSlice';
+import { fetchSellerStats } from '../../redux/slices/sellerPanelSlice';
 
 export default function ProductList({ onEditProduct }) {
   const user = useAppSelector(selectUser);
   const sellerId = user?.id;
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [confirm, setConfirm] = useState({ show:false, title:'', message:'', onConfirm:null });
+  const sellerProductsPaginated = useAppSelector(state => state.sellerPanel.productsPaginated);
+  const loading = useAppSelector(state => state.sellerPanel.loading);
+  const [statusFilter, setStatusFilter] = React.useState('all');
+  const [confirm, setConfirm] = React.useState({ show:false, title:'', message:'', onConfirm:null });
 
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [total, setTotal] = useState(0);
+  const [page, setPage] = React.useState(1);
+  const pageSize = 10;
 
   useEffect(() => { loadProducts(); }, [sellerId, page, statusFilter]);
 
   const loadProducts = async () => {
-    setLoading(true); setError('');
-    try {
-      if (!sellerId) { setProducts([]); setLoading(false); return; }
-      const resp = await getSellerProductsPaginated(sellerId, Math.max(0, page - 1), pageSize);
-      let items = resp.items || [];
-      if (statusFilter === 'active') items = items.filter(p => p.active);
-      if (statusFilter === 'inactive') items = items.filter(p => !p.active);
-      setProducts(items);
-      setTotal(resp.total || (items.length));
-    } catch (err) {
-      console.error(err);
-      setError('Error cargando productos');
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
+    if (!sellerId) return;
+    await dispatch(fetchSellerProductsPaginated({ sellerId, page: Math.max(0, page - 1), size: pageSize }));
   };
 
   const closeConfirm = () => setConfirm({ show:false, title:'', message:'', onConfirm:null });
@@ -59,44 +54,36 @@ export default function ProductList({ onEditProduct }) {
   };
 
   const handleToggleConfirmed = async (product) => {
-    setLoading(true);
     try {
-      await updateProduct(product.id, { active: !product.active });
+      const payload = { productId: product.id, productData: { active: !product.active } };
+      const updated = await dispatch(updateProductThunk(payload)).unwrap();
+      dispatch(upsertProductInList(updated));
+      dispatch(upsertProductDetail(updated));
+      dispatch(fetchSellerStats(sellerId));
       await loadProducts();
     } catch (err) {
       console.error(err);
-      setError('Error actualizando producto');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleEditClick = async (prod) => {
-    setLoading(true);
-    setError('');
     try {
-      const detail = await getProductDetail(prod.id);
-      if (!detail) {
-        setError('No se pudo obtener el detalle del producto');
-        setLoading(false);
-        return;
-      }
-      onEditProduct(detail);
+      await dispatch(fetchProductDetail(prod.id)).unwrap();
     } catch (err) {
-      console.error("Error fetching product detail:", err);
-      setError('Error cargando detalle del producto');
-    } finally {
-      setLoading(false);
+      console.warn('fetchProductDetail falló (se abrirá editor con datos del listado):', err);
     }
+    onEditProduct(prod);
   };
+
+  const products = sellerProductsPaginated.items || [];
+  const total = sellerProductsPaginated.total || products.length;
+  const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize));
 
   const getStockStatus = (stock) => stock > 10 ? { class:'bg-success', text:'En stock' } : stock > 0 ? { class:'bg-warning', text:'Stock bajo' } : { class:'bg-danger', text:'Sin stock' };
 
   if (loading) {
     return <div className="text-center text-muted py-5"><div className="spinner-border" role="status"></div><div className="mt-2">Cargando productos...</div></div>;
   }
-
-  const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize));
 
   return (
     <div className="card bg-primary-dark border-0">
@@ -113,8 +100,6 @@ export default function ProductList({ onEditProduct }) {
       </div>
 
       <div className="card-body">
-        {error && <div className="alert alert-danger">{error}</div>}
-
         <div className="table-responsive">
           <table className="table table-dark table-borderless mb-0">
             <thead>

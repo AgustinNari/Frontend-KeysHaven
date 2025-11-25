@@ -212,15 +212,6 @@ export const updateProduct = async (productId, productData) => {
   }
 };
 
-export const toggleProductActivity = async (productId, isActive) => {
-  try {
-    return await apiClient.apiFetch(`/products/${productId}/active?active=${isActive}`, { method: "PATCH" });
-  } catch (err) {
-    console.error("toggleProductActivity error:", err);
-    throw err;
-  }
-};
-
 export const addProductImage = async (productId, { name, dataUrl, contentType, isPrimary = false }) => {
   const form = new FormData();
   form.append("productId", String(productId));
@@ -478,21 +469,6 @@ export const getSellerStats = async (sellerId) => {
 };
 
 
-export const getAllSellers = async () => {
-  try {
-    const res = await apiClient.apiFetch('/sellers', { method: "GET" });
-    if (!res) return [];
-    
-    // Manejar diferentes formatos de respuesta
-    if (Array.isArray(res)) return res;
-    return res.content || res.items || [];
-  } catch (err) {
-    console.error("getAllSellers error:", err);
-    return [];
-  }
-};
-
-
 export const getCategories = async () => {
   try {
     const qs = buildQueryString({ page: 0, size: 2147483647 });
@@ -524,5 +500,29 @@ export const getUserById = async (userId) => {
     console.error("getUserById error:", err);
     throw err;
   }
+};
+
+
+export default {
+  getSellerActiveProductsForDetail,
+  deleteProductImage,
+  setPrimaryImage,
+  updateDiscount,
+  updateProduct,
+  addProductImage,
+  updateProductImage,
+  getSellerDiscounts,
+  addBulkDigitalKeys,
+  createDiscount,
+  createProduct,
+  getSellerActiveProducts,
+  getProductKeys,
+  getSellerProductsPaginated,
+  getSellerProducts,
+  getSellerOrders,
+  getSellerStats,
+  getCategories,
+  updateUser,
+  getUserById
 };
 

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateUser, getUserById } from '../../services/sellerService';
-
 import ProductList from './ProductList';
 import ProductForm from './ProductForm';
 import KeyManagement from './KeyManagement';
@@ -11,6 +9,8 @@ import ErrorBoundary from '../common/ErrorBoundary';
 
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { selectUser, selectIsAuthenticated, selectAuthLoading, refreshProfile, setUser } from '../../redux/slices/authSlice';
+import { updateMyUser } from '../../redux/slices/profileSlice';
+import { upsertSellerDetail } from '../../redux/slices/sellersSlice';
 
 export default function SellerDashboard() {
   const user = useAppSelector(selectUser);
@@ -62,41 +62,12 @@ export default function SellerDashboard() {
     setDescriptionLoading(true);
     setDescriptionError('');
     try {
-      await updateUser(user.id, { sellerDescription: sellerData.sellerDescription });
+      const dto = { sellerDescription: sellerData.sellerDescription };
+      const result = await dispatch(updateMyUser({ userId: user.id, dto })).unwrap();
 
-      try {
-        if (typeof dispatch === 'function') {
-          await dispatch(refreshProfile());
-          const updated = (await getUserById(user.id)) || null;
-          if (updated) {
-            dispatch(setUser(updated));
-            setSellerData(prev => ({ ...prev, sellerDescription: updated.sellerDescription ?? sellerData.sellerDescription }));
-          } else {
-            setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
-          }
-        } else {
-          const byId = await getUserById(user.id);
-          if (byId) {
-            setSellerData(prev => ({ ...prev, sellerDescription: byId.sellerDescription ?? sellerData.sellerDescription }));
-          } else {
-            setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
-          }
-        }
-      } catch (ctxErr) {
-        console.warn("No se pudo refrescar el usuario tras actualizar descripción:", ctxErr);
-        try {
-          const byId = await getUserById(user.id);
-          if (byId) {
-            if (typeof dispatch === 'function') dispatch(setUser(byId));
-            setSellerData(prev => ({ ...prev, sellerDescription: byId.sellerDescription ?? sellerData.sellerDescription }));
-          } else {
-            setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
-          }
-        } catch (byIdErr) {
-          console.warn("getUserById failed:", byIdErr);
-          setSellerData(prev => ({ ...prev, sellerDescription: sellerData.sellerDescription }));
-        }
-      }
+      dispatch(upsertSellerDetail({ sellerDescription: result.sellerDescription, id: result.id }));
+
+      try { await dispatch(refreshProfile()); } catch (e) { }
 
       setIsEditingDescription(false);
     } catch (err) {

@@ -39,3 +39,11 @@ export function deleteAvatar(userId) {
     method: "DELETE",
   });
 }
+
+export default {
+  getMyProfile,
+  updateUser,
+  uploadAvatar,
+  replaceAvatar,
+  deleteAvatar,
+};

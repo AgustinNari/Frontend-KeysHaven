@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
-import * as discountsApi from "../../services/discountsService";
 import PaginationBar from "../catalog/PaginationBar";
-
 import productsService from "../../services/productsService";
-import categoriesService from "../../services/categories.js";
+import categoriesService from "../../services/categories";
 import sellersService from "../../services/sellers";
+import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { fetchMyCoupons } from "../../redux/slices/profileSlice";
 
 export default function ProfileCoupons({ profile }) {
+  const dispatch = useAppDispatch();
+  const reduxCoupons = useAppSelector(state => state.profile.coupons ?? []);
   const [page, setPage] = useState(0);
   const [size] = useState(9);
   const [loading, setLoading] = useState(false);
@@ -18,24 +20,22 @@ export default function ProfileCoupons({ profile }) {
     loadCoupons(page);
   }, [page]);
 
-  const loadCoupons = async (p = 0) => {
+  async function loadCoupons(p = 0) {
     setLoading(true);
     setError("");
     try {
-      const resp = await discountsApi.getActiveCouponsByBuyer(p, size);
-      const items = resp?.content ?? resp?.items ?? resp ?? [];
-      const totalPages = Number(resp?.totalPages ?? resp?.totalPages ?? resp?.total ?? (Array.isArray(items) ? Math.ceil(items.length / size) : 1)) || 1;
-      const totalElements = Number(resp?.totalElements ?? resp?.total ?? (Array.isArray(items) ? items.length : (items?.length ?? 0))) || (Array.isArray(items) ? items.length : 0);
+      const payload = await dispatch(fetchMyCoupons()).unwrap();
+      const itemsArr = payload?.content ?? payload ?? [];
+      const totalElements = Array.isArray(itemsArr) ? itemsArr.length : (itemsArr?.totalElements ?? 0);
+      const totalPages = Math.max(1, Math.ceil(totalElements / size));
 
-      const itemsArr = Array.isArray(items) ? items : [];
-
-      const productIds = [...new Set(itemsArr.map(c => c.targetProductId).filter(Boolean))];
-      const sellerIds = [...new Set(itemsArr.map(c => c.targetSellerId).filter(Boolean))];
-      const categoryIds = [...new Set(itemsArr.map(c => c.targetCategoryId).filter(Boolean))];
+      const productIds = [...new Set((itemsArr || []).map(c => c.targetProductId).filter(Boolean))];
+      const sellerIds = [...new Set((itemsArr || []).map(c => c.targetSellerId).filter(Boolean))];
+      const categoryIds = [...new Set((itemsArr || []).map(c => c.targetCategoryId).filter(Boolean))];
 
       let categoryMap = {};
       try {
-        const cats = await categoriesService.getAllCategoriesAlt();
+        const cats = await categoriesService.getAllCategories();
         if (Array.isArray(cats)) {
           categoryMap = cats.reduce((acc, cat) => {
             if (cat?.id != null) acc[String(cat.id)] = cat;
@@ -50,35 +50,25 @@ export default function ProfileCoupons({ profile }) {
       await Promise.all(productIds.map(async (pid) => {
         try {
           const prod = await productsService.getProductById(pid);
-          if (prod && prod.id != null) {
-            productMap[String(prod.id)] = prod;
-          }
-        } catch (err) {
-          console.warn("Error cargando producto", pid, err);
-        }
+          if (prod && prod.id != null) productMap[String(prod.id)] = prod;
+        } catch (err) { console.warn("Error cargando producto", pid, err); }
       }));
 
       const sellerMap = {};
       await Promise.all(sellerIds.map(async (sid) => {
         try {
           const seller = await sellersService.getSellerDetail(sid);
-          if (seller && seller.id != null) {
-            sellerMap[String(seller.id)] = seller;
-          }
-        } catch (err) {
-          console.warn("Error cargando seller", sid, err);
-        }
+          if (seller && seller.id != null) sellerMap[String(seller.id)] = seller;
+        } catch (err) { console.warn("Error cargando seller", sid, err); }
       }));
 
-      const enhancedItems = itemsArr.map(c => {
+      const enhancedItems = (itemsArr || []).map(c => {
         const prod = c?.targetProductId ? productMap[String(c.targetProductId)] : null;
         const sellerFromProduct = prod?.sellerDisplayName || prod?.sellerId || null;
         const sellerObj = c?.targetSellerId ? sellerMap[String(c.targetSellerId)] : null;
-
         const sellerName = prod?.sellerDisplayName ?? sellerObj?.displayName ?? null;
         const productTitle = prod?.title ?? null;
         const categoryDesc = c?.targetCategoryId ? (categoryMap[String(c.targetCategoryId)]?.description ?? null) : null;
-
         return {
           ...c,
           _productTitle: productTitle,
@@ -87,11 +77,10 @@ export default function ProfileCoupons({ profile }) {
         };
       });
 
-      setCouponsPage({
-        items: enhancedItems,
-        totalPages,
-        totalElements
-      });
+      const start = p * size;
+      const pageItems = enhancedItems.slice(start, start + size);
+
+      setCouponsPage({ items: pageItems, totalPages, totalElements });
     } catch (err) {
       console.error("Error cargando cupones:", err);
       setError("No se pudieron cargar los cupones. Intenta más tarde.");
@@ -99,7 +88,7 @@ export default function ProfileCoupons({ profile }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const fixedCoupons = (couponsPage.items ?? []).filter(c => String(c.type ?? "").toUpperCase() === "FIXED");
 
@@ -123,134 +112,135 @@ export default function ProfileCoupons({ profile }) {
       console.warn("Clipboard failed", err);
     }
   };
-return (
-  <div className="card bg-primary-dark border-0">
-    <div className="card-header p-3 d-flex justify-content-between align-items-center" style={{ color: "var(--muted)" }}>
-      <h5 className="mb-0">Mis Cupones</h5>
-      <small style={{ color: "var(--muted)" }}>{couponsPage.totalElements ?? 0} disponibles</small>
-    </div>
 
-    <div className="card-body">
-      <div className="mb-4 card bg-primary-mid border-0 border-secondary p-3">
-        <div className="d-flex justify-content-between align-items-center mb-2">
-          <div>
-            <small style={{ color: "var(--muted)" }}>Saldo acumulado</small>
-            <div className="text-primary-light fw-bold" style={{ fontSize: 20 }}>{formatMoney(buyerBalance)}</div>
-          </div>
-          <div className="text-end">
-            <small style={{ color: "var(--muted)" }}>Faltan</small>
-            <div className="text-primary-light fw-bold" style={{ fontSize: 16 }}>
-              {displayRemaining === 0 ? "¡Has alcanzado un tramo!" : `${formatMoney(displayRemaining)}`}
-            </div>
-          </div>
-        </div>
-
-        <div className="progress rounded-pill" style={{ height: 12, background: "rgba(255,255,255,0.04)" }}>
-          <div
-            className="progress-bar rounded-pill"
-            role="progressbar"
-            style={{
-              width: `${progressPercent}%`,
-              minWidth: 8,
-              background: "linear-gradient(90deg,#7a5cff,#4fd1c5)"
-            }}
-            aria-valuenow={progressPercent}
-            aria-valuemin="0"
-            aria-valuemax="100"
-          />
-        </div>
-        <div className="small mt-2" style={{ color: "var(--muted)" }}>
-          <strong className="text-primary-light">{progressPercent}%</strong> hacia el próximo cupón (cada $100).
-          {displayRemaining === 0 ? " Ya alcanzado." : ` Faltan ${formatMoney(displayRemaining)}.`}
-        </div>
+  return (
+    <div className="card bg-primary-dark border-0">
+      <div className="card-header p-3 d-flex justify-content-between align-items-center" style={{ color: "var(--muted)" }}>
+        <h5 className="mb-0">Mis Cupones</h5>
+        <small style={{ color: "var(--muted)" }}>{couponsPage.totalElements ?? 0} disponibles</small>
       </div>
 
-      <div className="row g-3">
-        {loading && (
-          <div className="col-12 text-center py-4" style={{ color: "var(--muted)" }}>Cargando cupones...</div>
-        )}
+      <div className="card-body">
+        <div className="mb-4 card bg-primary-mid border-0 border-secondary p-3">
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <small style={{ color: "var(--muted)" }}>Saldo acumulado</small>
+              <div className="text-primary-light fw-bold" style={{ fontSize: 20 }}>{formatMoney(buyerBalance)}</div>
+            </div>
+            <div className="text-end">
+              <small style={{ color: "var(--muted)" }}>Faltan</small>
+              <div className="text-primary-light fw-bold" style={{ fontSize: 16 }}>
+                {displayRemaining === 0 ? "¡Has alcanzado un tramo!" : `${formatMoney(displayRemaining)}`}
+              </div>
+            </div>
+          </div>
 
-        {!loading && fixedCoupons.length === 0 && (
-          <div className="col-12 text-center py-4" style={{ color: "var(--muted)" }}>No hay cupones asignados.</div>
-        )}
+          <div className="progress rounded-pill" style={{ height: 12, background: "rgba(255,255,255,0.04)" }}>
+            <div
+              className="progress-bar rounded-pill"
+              role="progressbar"
+              style={{
+                width: `${progressPercent}%`,
+                minWidth: 8,
+                background: "linear-gradient(90deg,#7a5cff,#4fd1c5)"
+              }}
+              aria-valuenow={progressPercent}
+              aria-valuemin="0"
+              aria-valuemax="100"
+            />
+          </div>
+          <div className="small mt-2" style={{ color: "var(--muted)" }}>
+            <strong className="text-primary-light">{progressPercent}%</strong> hacia el próximo cupón (cada $100).
+            {displayRemaining === 0 ? " Ya alcanzado." : ` Faltan ${formatMoney(displayRemaining)}.`}
+          </div>
+        </div>
 
-        {!loading && fixedCoupons.map(c => (
-          <div key={c.id} className="col-12 col-sm-6 col-lg-4">
-            <div className="card h-100 border-secondary" style={{ background: "linear-gradient(180deg, rgba(122,92,255,0.06), rgba(79,209,197,0.03))" }}>
-              <div className="card-body d-flex flex-column">
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <div className="small" style={{ color: "var(--muted)" }}>Código</div>
-                    <div className="font-monospace fw-bold" style={{ color: "var(--accent)", letterSpacing: 1.2, fontSize: 18 }}>{c.code ?? "-"}</div>
-                  </div>
-                  <div className="text-end">
-                    <div className="small" style={{ color: "var(--muted)" }}>Valor</div>
-                    <div className="fw-bold" style={{ fontSize: 16 }}>{formatMoney(c.value)}</div>
-                  </div>
-                </div>
+        <div className="row g-3">
+          {loading && (
+            <div className="col-12 text-center py-4" style={{ color: "var(--muted)" }}>Cargando cupones...</div>
+          )}
 
-                {(c._categoryDesc || c._productTitle || c._sellerName) && (
-                  <div className="mb-2" style={{ flexGrow: 1 }}>
-                    <div className="small" style={{ color: "var(--muted)" }}>Aplica a</div>
-                    <div className="small" style={{ color: "#a85ef1ff" }}>
-                      {c._categoryDesc && <span className="me-2">Categoría: <strong>{c._categoryDesc}</strong></span>}
-                      {c._productTitle && (
-                        <div>Producto: <strong>{c._productTitle}</strong></div>
-                      )}
-                      {c._productTitle && c._sellerName && (
-                        <div>Vendido por: <strong>{c._sellerName}</strong></div>
-                      )}
-                      {c._sellerName && !c._productTitle && (
-                        <div>Vendedor: <strong>{c._sellerName}</strong></div>
-                      )}
+          {!loading && fixedCoupons.length === 0 && (
+            <div className="col-12 text-center py-4" style={{ color: "var(--muted)" }}>No hay cupones asignados.</div>
+          )}
+
+          {!loading && fixedCoupons.map(c => (
+            <div key={c.id} className="col-12 col-sm-6 col-lg-4">
+              <div className="card h-100 border-secondary" style={{ background: "linear-gradient(180deg, rgba(122,92,255,0.06), rgba(79,209,197,0.03))" }}>
+                <div className="card-body d-flex flex-column">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <div className="small" style={{ color: "var(--muted)" }}>Código</div>
+                      <div className="font-monospace fw-bold" style={{ color: "var(--accent)", letterSpacing: 1.2, fontSize: 18 }}>{c.code ?? "-"}</div>
+                    </div>
+                    <div className="text-end">
+                      <div className="small" style={{ color: "var(--muted)" }}>Valor</div>
+                      <div className="fw-bold" style={{ fontSize: 16 }}>{formatMoney(c.value)}</div>
                     </div>
                   </div>
-                )}
 
-                <div className="mb-2" style={{ marginTop: "auto" }}>
-                  <div className="small" style={{ color: "var(--muted)" }}>Válido hasta</div>
-                  <div className="text-primary-light">{c.endsAt ? new Date(c.endsAt).toLocaleDateString() : "Sin límite"}</div>
-                </div>
+                  {(c._categoryDesc || c._productTitle || c._sellerName) && (
+                    <div className="mb-2" style={{ flexGrow: 1 }}>
+                      <div className="small" style={{ color: "var(--muted)" }}>Aplica a</div>
+                      <div className="small" style={{ color: "#a85ef1ff" }}>
+                        {c._categoryDesc && <span className="me-2">Categoría: <strong>{c._categoryDesc}</strong></span>}
+                        {c._productTitle && (
+                          <div>Producto: <strong>{c._productTitle}</strong></div>
+                        )}
+                        {c._productTitle && c._sellerName && (
+                          <div>Vendido por: <strong>{c._sellerName}</strong></div>
+                        )}
+                        {c._sellerName && !c._productTitle && (
+                          <div>Vendedor: <strong>{c._sellerName}</strong></div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
-                <div className="d-flex justify-content-between align-items-center mt-auto">
-                  <div>
-                    <div className="small" style={{ color: "var(--muted)" }}>Rango válido</div>
-                    <div className="small" style={{ color: "#a85ef1ff" }}>{c.minPrice ? formatMoney(c.minPrice) : "-"} / {c.maxPrice ? formatMoney(c.maxPrice) : "-"}</div>
+                  <div className="mb-2" style={{ marginTop: "auto" }}>
+                    <div className="small" style={{ color: "var(--muted)" }}>Válido hasta</div>
+                    <div className="text-primary-light">{c.endsAt ? new Date(c.endsAt).toLocaleDateString() : "Sin límite"}</div>
                   </div>
 
-                  <div className="text-end">
-                    <div className="mb-2">
-                      <span className={`badge ${c.active ? 'bg-success' : 'bg-danger'}`}>{c.active ? 'Activo' : 'Inactivo'}</span>
+                  <div className="d-flex justify-content-between align-items-center mt-auto">
+                    <div>
+                      <div className="small" style={{ color: "var(--muted)" }}>Rango válido</div>
+                      <div className="small" style={{ color: "#a85ef1ff" }}>{c.minPrice ? formatMoney(c.minPrice) : "-"} / {c.maxPrice ? formatMoney(c.maxPrice) : "-"}</div>
                     </div>
 
-                    <div className="d-flex gap-2">
-                      <button className="btn btn-sm btn-outline-light" onClick={() => copyToClipboard(c.code)}>
-                        {copiedCode === c.code ? "Copiado ✓" : "Copiar"}
-                      </button>
+                    <div className="text-end">
+                      <div className="mb-2">
+                        <span className={`badge ${c.active ? 'bg-success' : 'bg-danger'}`}>{c.active ? 'Activo' : 'Inactivo'}</span>
+                      </div>
+
+                      <div className="d-flex gap-2">
+                        <button className="btn btn-sm btn-outline-light" onClick={() => copyToClipboard(c.code)}>
+                          {copiedCode === c.code ? "Copiado ✓" : "Copiar"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="d-flex justify-content-center mt-4">
-        <div>
-          <PaginationBar
-            page={Math.min(Math.max(1, page + 1), couponsPage.totalPages || 1)}
-            setPage={(p1) => {
-              const newPage = Math.max(1, Math.min(p1, couponsPage.totalPages || 1)) - 1;
-              setPage(newPage);
-            }}
-            totalPages={couponsPage.totalPages || 1}
-          />
+          ))}
         </div>
-      </div>
 
-      {error && <div className="alert alert-danger mt-3">{error}</div>}
+        <div className="d-flex justify-content-center mt-4">
+          <div>
+            <PaginationBar
+              page={Math.min(Math.max(1, page + 1), couponsPage.totalPages || 1)}
+              setPage={(p1) => {
+                const newPage = Math.max(1, Math.min(p1, couponsPage.totalPages || 1)) - 1;
+                setPage(newPage);
+              }}
+              totalPages={couponsPage.totalPages || 1}
+            />
+          </div>
+        </div>
+
+        {error && <div className="alert alert-danger mt-3">{error}</div>}
+      </div>
     </div>
-  </div>
-);
+  );
 }

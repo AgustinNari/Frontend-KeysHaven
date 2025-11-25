@@ -1,138 +1,111 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-
+import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import SellerCard from "../components/product/SellerCard";
 import ProductGrid from "../components/catalog/ProductGrid";
 import PaginationBar from "../components/catalog/PaginationBar";
 import Rating from "../components/catalog/Rating";
-
 import "../components/estilos/Fondos.css";
 import "../components/estilos/product.css";
-
-import { getSellerStats, getSellerActiveProductsForDetail } from "../services/sellerService";
-import useApiError from "../hooks/useApiError";
 import ApiErrorAlert from "../components/common/ApiErrorAlert";
+import useApiError from "../hooks/useApiError";
+
+import { fetchSellerDetail, selectSellerDetail, selectSellerDetailProducts, fetchSellerActiveProductsForDetail } from "../redux/slices/sellersSlice";
+import {
+  fetchSellerStats,
+} from "../redux/slices/sellerPanelSlice";
 
 export default function SellerDetail() {
   const { sellerId } = useParams();
+  const dispatch = useAppDispatch();
 
-  const [seller, setSeller] = useState(null);
-  const [allProducts, setAllProducts] = useState([]);
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
   const [loading, setLoading] = useState(true);
-  
   const { apiError, setFrom, clear, hasError } = useApiError();
 
+  const sellerPublic = useAppSelector((s) => s.sellers.detail);
+  const sellerStats = useAppSelector((s) => s.sellerPanel.stats);
+  const activeProducts = useAppSelector(selectSellerDetailProducts);
+  const sellersNeedsRefresh = useAppSelector((s) => s.sellers.needsRefresh);
+
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  const seller = useMemo(() => {
+    const stats = sellerStats || {};
+    const pub = sellerPublic || {};
+    return {
+      id: pub.id ?? stats.id ?? sellerId,
+      displayName: pub.displayName ?? stats.displayName ?? `Vendedor #${sellerId}`,
+      sellerDescription: pub.sellerDescription ?? stats.sellerDescription ?? "",
+      avatarDataUrl: pub.avatarDataUrl ?? stats.avatarDataUrl ?? null,
+      firstName: pub.firstName ?? stats.firstName ?? "",
+      lastName: pub.lastName ?? stats.lastName ?? "",
+      email: pub.email ?? stats.email ?? "",
+      phone: pub.phone ?? stats.phone ?? "",
+      country: pub.country ?? stats.country ?? "",
+      avgRating: pub.avgRating ?? stats.avgRating ?? 0,
+      ratingCount: pub.ratingCount ?? stats.ratingCount ?? 0,
+      soldKeys: pub.soldKeys ?? stats.soldKeys ?? stats.amountSold ?? 0,
+      amountSold: stats.amountSold ?? pub.amountSold ?? 0,
+      totalSales: stats.totalSales ?? 0,
+      totalRevenue: stats.totalRevenue ?? 0,
+      activeProducts: stats.activeProducts ?? 0,
+      totalProducts: stats.totalProducts ?? (activeProducts?.length ?? 0)
+    };
+  }, [sellerPublic, sellerStats, sellerId, activeProducts]);
+
   useEffect(() => {
-    const loadSellerData = async () => {
+    if (!sellerId) return;
+    let mounted = true;
+    const load = async () => {
       try {
         setLoading(true);
-        clear(); 
+        clear();
 
-        console.log("🔍 Cargando datos para sellerId:", sellerId);
 
-        
-        const stats = await getSellerStats(sellerId);
-        console.log("📊 Stats recibidas:", stats);
-        
-        if (!stats) {
-          setFrom(new Error("Vendedor no encontrado"));
-          return;
-        }
+        const p1 = dispatch(fetchSellerDetail(Number(sellerId)));
+        const p2 = dispatch(fetchSellerStats(Number(sellerId)));
 
-        // Devuelve los productos activos del vendedor
-        const activeProducts = await getSellerActiveProductsForDetail(sellerId);
-        console.log("🎮 Productos activos recibidos:", activeProducts);
+        const p3 = dispatch(fetchSellerActiveProductsForDetail(Number(sellerId)));
 
-        // Objeto Seller
-        const sellerData = {
-          id: sellerId,
-          displayName: stats.displayName || `Vendedor #${sellerId}`,
-          sellerDescription: stats.sellerDescription || "Vendedor de productos digitales",
-          avatarDataUrl: stats.avatarDataUrl || null,
-          firstName: stats.firstName || "",
-          lastName: stats.lastName || "",
-          email: stats.email || "",
-          phone: stats.phone || "",
-          country: stats.country || "",
-          
-          // Estadísticas
-          avgRating: stats.avgRating || 0,
-          ratingCount: stats.ratingCount || 0,
-          soldKeys: stats.soldKeys || 0,
-          amountSold: stats.amountSold || 0,
-          totalSales: stats.totalSales || 0,
-          totalRevenue: stats.totalRevenue || 0,
-          activeProducts: stats.activeProducts || 0,
-          totalProducts: stats.totalProducts || 0
-        };
 
-        console.log("🛠️ Seller data construido:", sellerData);
-
-        setSeller(sellerData);
-        setAllProducts(activeProducts || []);
-        setPage(1);
-
+        await Promise.allSettled([p1, p2, p3]);
       } catch (err) {
-        console.error("❌ Error cargando datos del seller:", err);
-        setFrom(err); // Usar setFrom en lugar de setError
+        console.error("Error cargando seller detail:", err);
+        setFrom(err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
-    if (sellerId) {
-      loadSellerData();
-    }
-  }, [sellerId]);
+    load();
+    return () => { mounted = false; };
+  }, [sellerId, dispatch, clear, setFrom]);
 
-  // Función para reintentar la carga
-  const handleRetry = () => {
-    if (sellerId) {
-      const loadSellerData = async () => {
-        try {
-          setLoading(true);
-          clear();
-          // ... (misma lógica de carga)
-          const stats = await getSellerStats(sellerId);
-          if (!stats) {
-            setFrom(new Error("Vendedor no encontrado"));
-            return;
-          }
-          const activeProducts = await getSellerActiveProductsForDetail(sellerId);
-          const sellerData = {
-            // ... (misma construcción de datos)
-            id: sellerId,
-            displayName: stats.displayName || `Vendedor #${sellerId}`,
-            sellerDescription: stats.sellerDescription || "Vendedor de productos digitales",
-            avatarDataUrl: stats.avatarDataUrl || null,
-            firstName: stats.firstName || "",
-            lastName: stats.lastName || "",
-            email: stats.email || "",
-            phone: stats.phone || "",
-            country: stats.country || "",
-            avgRating: stats.avgRating || 0,
-            ratingCount: stats.ratingCount || 0,
-            soldKeys: stats.soldKeys || 0,
-            amountSold: stats.amountSold || 0,
-            totalSales: stats.totalSales || 0,
-            totalRevenue: stats.totalRevenue || 0,
-            activeProducts: stats.activeProducts || 0,
-            totalProducts: stats.totalProducts || 0
-          };
-          setSeller(sellerData);
-          setAllProducts(activeProducts || []);
-          setPage(1);
-        } catch (err) {
-          setFrom(err);
-        } finally {
-          setLoading(false);
-        }
-      };
-      loadSellerData();
+
+  useEffect(() => {
+    if (!sellerId) return;
+    if (sellersNeedsRefresh) {
+      dispatch(fetchSellerDetail(Number(sellerId)));
+      dispatch(fetchSellerStats(Number(sellerId)));
+
+      dispatch(fetchSellerActiveProductsForDetail(Number(sellerId)));
     }
+  }, [sellersNeedsRefresh, sellerId, dispatch]);
+
+
+  const handleRetry = () => {
+    if (!sellerId) return;
+    setLoading(true);
+    clear();
+
+    Promise.allSettled([
+      dispatch(fetchSellerDetail(Number(sellerId))),
+      dispatch(fetchSellerStats(Number(sellerId))),
+      dispatch(fetchSellerActiveProductsForDetail(Number(sellerId)))
+    ]).finally(() => setLoading(false));
   };
+
 
   if (loading) {
     return (
@@ -143,37 +116,30 @@ export default function SellerDetail() {
     );
   }
 
-  if (hasError && !seller) {
+  if (hasError && !sellerPublic && !sellerStats) {
     return (
       <div className="container mt-4">
-        <ApiErrorAlert 
-          error={apiError} 
-          onRetry={handleRetry}
-          onClose={clear}
-        />
+        <ApiErrorAlert error={apiError} onRetry={handleRetry} onClose={clear} />
       </div>
     );
   }
 
-  if (!seller) {
+  if (!sellerPublic && !sellerStats) {
     return (
       <div className="container mt-4">
-        <div className="alert alert-warning" role="alert">
-          Vendedor no encontrado
-        </div>
+        <div className="alert alert-warning" role="alert">Vendedor no encontrado</div>
       </div>
     );
   }
 
-  // Cálculos de paginación
-  const totalItems = allProducts.length;
+
+  const totalItems = (activeProducts || []).length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const safePage = Math.min(Math.max(1, page), totalPages);
   const startIndex = (safePage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const pageItems = allProducts.slice(startIndex, endIndex);
+  const pageItems = (activeProducts || []).slice(startIndex, endIndex);
 
-  // Datos para mostrar
   const displayName = seller.displayName || `${seller.firstName || ""} ${seller.lastName || ""}`.trim() || `Vendedor #${sellerId}`;
   const avatar = seller.avatarDataUrl || "/src/assets/react.svg";
   const description = seller.sellerDescription || "-";
@@ -185,29 +151,24 @@ export default function SellerDetail() {
     <div className="product-page">
       {hasError && (
         <div className="container mt-3">
-          <ApiErrorAlert 
-            error={apiError} 
-            onRetry={handleRetry}
-            onClose={clear}
-          />
+          <ApiErrorAlert error={apiError} onRetry={handleRetry} onClose={clear} />
         </div>
       )}
-      
+
       <div className="product-layout">
         <div className="product-left">
-          {/* Tarjeta principal del seller */}
           <div className="card shadow-sm p-3 mb-3">
             <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-              <img 
-                src={avatar} 
-                alt={displayName} 
-                style={{ 
-                  width: 96, 
-                  height: 96, 
-                  borderRadius: 12, 
+              <img
+                src={avatar}
+                alt={displayName}
+                style={{
+                  width: 96,
+                  height: 96,
+                  borderRadius: 12,
                   objectFit: "cover",
                   backgroundColor: seller.avatarDataUrl ? "transparent" : "#f8f9fa"
-                }} 
+                }}
               />
               <div style={{ flex: 1 }}>
                 <h2 style={{ margin: 0, color: "var(--text)" }}>{displayName}</h2>
@@ -226,7 +187,6 @@ export default function SellerDetail() {
             </div>
           </div>
 
-          {/* Productos del seller */}
           <div className="card shadow-sm p-3 mb-4">
             <h5 className="text-primary">Productos publicados</h5>
 
@@ -250,7 +210,6 @@ export default function SellerDetail() {
           </div>
         </div>
 
-        {/* Sidebar con información adicional */}
         <aside className="product-right">
           <div className="card shadow-sm p-3 mb-3">
             <h6 style={{ color: "var(--text)" }}>Resumen del vendedor</h6>
@@ -261,7 +220,7 @@ export default function SellerDetail() {
             </div>
           </div>
 
-          <div className="card shadow-sm p-3">
+          <div className="card shadow-sm p-3 mb-3">
             <h6 style={{ color: "var(--text)" }}>Información de contacto</h6>
             <div className="meta mt-2">
               {seller.email && <div>Email: <strong style={{ color: "var(--text)" }}>{seller.email}</strong></div>}

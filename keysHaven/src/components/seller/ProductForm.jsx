@@ -1,21 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import {
-  createProduct,
-  updateProduct,
-  getCategories,
-  addProductImage,
-  updateProductImage,
-  deleteProductImage,
-  setPrimaryImage
-} from '../../services/sellerService';
+  createProduct as createProductThunk,
+  updateProduct as updateProductThunk,
+  addProductImage as addProductImageThunk,
+  updateProductImage as updateProductImageThunk,
+  deleteProductImage as deleteProductImageThunk,
+  setPrimaryImage as setPrimaryImageThunk,
+} from '../../redux/slices/sellerPanelSlice';
+
+import { upsertProductInList } from '../../redux/slices/productsSlice';
+import { upsertProductDetail, fetchProductDetail, selectProduct } from '../../redux/slices/productDetailSlice';
+import { fetchSellerStats } from '../../redux/slices/sellerPanelSlice';
+import { fetchFilterExtras } from '../../redux/slices/productsSlice';
+
 import ConfirmModal from '../profile/ConfirmModal';
+import { getCategories } from '../../services/sellerService';
 
 export default function ProductForm({ product, onSuccess }) {
+  const dispatch = useAppDispatch();
+  const user = useAppSelector(state => state.auth.user);
+  const sellerId = user?.id;
+
+  const productDetail = useAppSelector(selectProduct);
+
   const [formData, setFormData] = useState({
     title: '', description: '', price:'', currency:'USD',
     categoryIds: new Set(), platform:'PC – Steam', region:'GLOBAL',
-    releaseDate:'',
-    developer:'', publisher:'', metacriticScore:'', images: []
+    releaseDate:'', developer:'', publisher:'', metacriticScore:'', images: []
   });
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -27,28 +39,89 @@ export default function ProductForm({ product, onSuccess }) {
   const newFileRef = useRef(null);
   const replaceFileRefs = useRef({});
 
-  useEffect(()=>{ (async ()=>{ try{ const cats = await getCategories(); setCategories(cats || []);}catch{} })(); }, []);
+  useEffect(()=>{ (async ()=>{ try{ const cats = await getCategories(); setCategories(cats || []);}catch(err){ console.warn(err);} })(); }, []);
+
 
   useEffect(()=> {
-    if (product) {
-      setFormData({
-        title: product.title || '',
-        description: product.description || '',
-        price: product.price?.toString() || '',
-        currency: product.currency || 'USD',
-        categoryIds: new Set((product.categories||[]).map(c => String(c.id))),
-        platform: product.platform || 'PC – Steam',
-        region: product.region || 'GLOBAL',
-        releaseDate: product.releaseDate || '',
-        developer: product.developer || '',
-        publisher: product.publisher || '',
-        metacriticScore: product.metacriticScore?.toString() || '',
-        images: (product.images || []).map(i => ({ id: i.id, name: i.name || '', dataUrl: i.dataUrl || '', isPrimary: !!i.isPrimary, contentType: i.contentType || null }))
-      });
-    } else {
-      setFormData(prev => ({ ...prev, title:'', description:'', price:'', images: [] }));
+    async function ensureDetail() {
+      if (!product) {
+        setFormData(prev => ({ ...prev, title:'', description:'', price:'', images: [] }));
+        return;
+      }
+      const propHasFields = Boolean(product.title || product.description || (product.images && product.images.length > 0));
+      if (propHasFields) {
+        const p = product;
+        setFormData({
+          title: p.title || '',
+          description: p.description || '',
+          price: p.price?.toString() || '',
+          currency: p.currency || 'USD',
+          categoryIds: new Set((p.categories||[]).map(c => String(c.id))),
+          platform: p.platform || 'PC – Steam',
+          region: p.region || 'GLOBAL',
+          releaseDate: p.releaseDate || '',
+          developer: p.developer || '',
+          publisher: p.publisher || '',
+          metacriticScore: p.metacriticScore?.toString() || '',
+          images: (p.images || []).map(i => ({ id: i.id, name: i.name || '', dataUrl: i.dataUrl || i.url || '', isPrimary: !!i.isPrimary, contentType: i.contentType || null }))
+        });
+        return;
+      }
+
+      const propId = product?.id;
+      if (propId) {
+        if (!productDetail || Number(productDetail.id) !== Number(propId)) {
+          try {
+            await dispatch(fetchProductDetail(propId)).unwrap();
+          } catch (err) {
+            console.warn('fetchProductDetail failed in ProductForm (will prefill with minimal product):', err);
+            setFormData(prev => ({ ...prev, title: product.title || '', description: product.description || '', price: product.price?.toString() || '' }));
+          }
+        } else {
+          const p = productDetail;
+          setFormData({
+            title: p.title || '',
+            description: p.description || '',
+            price: p.price?.toString() || '',
+            currency: p.currency || 'USD',
+            categoryIds: new Set((p.categories||[]).map(c => String(c.id))),
+            platform: p.platform || 'PC – Steam',
+            region: p.region || 'GLOBAL',
+            releaseDate: p.releaseDate || '',
+            developer: p.developer || '',
+            publisher: p.publisher || '',
+            metacriticScore: p.metacriticScore?.toString() || '',
+            images: (p.images || []).map(i => ({ id: i.id, name: i.name || '', dataUrl: i.dataUrl || i.url || '', isPrimary: !!i.isPrimary, contentType: i.contentType || null }))
+          });
+        }
+      } else {
+        setFormData(prev => ({ ...prev, title:'', description:'', price:'', images: [] }));
+      }
     }
+
+    ensureDetail();
   }, [product]);
+
+  useEffect(() => {
+    if (!product) return;
+    if (!productDetail) return;
+    if (Number(productDetail.id) !== Number(product.id)) return;
+    const p = productDetail;
+    setFormData({
+      title: p.title || '',
+      description: p.description || '',
+      price: p.price?.toString() || '',
+      currency: p.currency || 'USD',
+      categoryIds: new Set((p.categories||[]).map(c => String(c.id))),
+      platform: p.platform || 'PC – Steam',
+      region: p.region || 'GLOBAL',
+      releaseDate: p.releaseDate || '',
+      developer: p.developer || '',
+      publisher: p.publisher || '',
+      metacriticScore: p.metacriticScore?.toString() || '',
+      images: (p.images || []).map(i => ({ id: i.id, name: i.name || '', dataUrl: i.dataUrl || i.url || '', isPrimary: !!i.isPrimary, contentType: i.contentType || null }))
+    });
+  }, [productDetail]);
 
   const closeConfirm = () => setConfirm({ show:false, title:'', message:'', onConfirm:null });
 
@@ -58,8 +131,6 @@ export default function ProductForm({ product, onSuccess }) {
     reader.onerror = rej;
     reader.readAsDataURL(file);
   });
-
-
 
   const addImage = async () => {
     setError('');
@@ -75,18 +146,11 @@ export default function ProductForm({ product, onSuccess }) {
       }
 
       if (product && product.id) {
-
-        const added = await addProductImage(product.id, { name: newImg.name.trim(), dataUrl, contentType, isPrimary: false });
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, { id: added.id, name: added.name, dataUrl: added.dataUrl, isPrimary: added.isPrimary, contentType: added.contentType }]
-        }));
+        const addedResp = await dispatch(addProductImageThunk({ productId: product.id, fileOrData: { name: newImg.name.trim(), dataUrl, contentType, isPrimary: false } })).unwrap();
+        await dispatch(fetchProductDetail(product.id)).unwrap();
       } else {
         const tmpId = 't'+Math.random().toString(36).slice(2,9);
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, { id: tmpId, name: newImg.name.trim(), dataUrl, isPrimary: prev.images.length===0, contentType }]
-        }));
+        setFormData(prev => ({ ...prev, images: [...prev.images, { id: tmpId, name: newImg.name.trim(), dataUrl, isPrimary: prev.images.length===0, contentType }] }));
       }
 
       setNewImg({ name:'', file:null, url:'' });
@@ -105,8 +169,8 @@ export default function ProductForm({ product, onSuccess }) {
     setError('');
     try {
       if (product && product.id && String(img.id).startsWith('t') === false) {
-        await setPrimaryImage(img.id);
-        setFormData(prev => ({ ...prev, images: prev.images.map(i => ({ ...i, isPrimary: i.id === img.id })) }));
+        await dispatch(setPrimaryImageThunk(img.id)).unwrap();
+        await dispatch(fetchProductDetail(product.id)).unwrap();
       } else {
         setFormData(prev => ({ ...prev, images: prev.images.map(i => ({ ...i, isPrimary: i.id === img.id })) }));
       }
@@ -122,15 +186,15 @@ export default function ProductForm({ product, onSuccess }) {
     setError('');
     try {
       const r = await fileToDataUrl(file);
-
       const current = formData.images.find(i => i.id === imgId);
       if (!current) throw new Error('Imagen no encontrada');
 
       if (product && product.id && String(imgId).startsWith('t') === false) {
-
-        await updateProductImage(imgId, { dataUrl: r.dataUrl, contentType: r.contentType, isPrimary: !!current.isPrimary, name: current.name || '' });
+        await dispatch(updateProductImageThunk({ imageId: imgId, payload: { dataUrl: r.dataUrl, contentType: r.contentType, isPrimary: !!current.isPrimary, name: current.name || '' } })).unwrap();
+        await dispatch(fetchProductDetail(product.id)).unwrap();
+      } else {
+        setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === imgId ? { ...i, dataUrl: r.dataUrl, contentType: r.contentType } : i) }));
       }
-      setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === imgId ? { ...i, dataUrl: r.dataUrl, contentType: r.contentType } : i) }));
       if (replaceFileRefs.current[imgId]) replaceFileRefs.current[imgId].value = '';
     } catch (err) {
       console.error(err);
@@ -141,12 +205,11 @@ export default function ProductForm({ product, onSuccess }) {
   const renameImage = async (imgId, newName) => {
     setError('');
     setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === imgId ? { ...i, name: newName } : i) }));
-
     try {
       const current = formData.images.find(i => i.id === imgId) || {};
       if (product && product.id && String(imgId).startsWith('t') === false) {
-
-        await updateProductImage(imgId, { name: newName, isPrimary: !!current.isPrimary });
+        await dispatch(updateProductImageThunk({ imageId: imgId, payload: { name: newName, isPrimary: !!current.isPrimary } })).unwrap();
+        await dispatch(fetchProductDetail(product.id)).unwrap();
       }
     } catch (err) {
       console.error('Error guardando nombre', err);
@@ -165,10 +228,9 @@ export default function ProductForm({ product, onSuccess }) {
         setError('');
         try {
           if (product && product.id && String(img.id).startsWith('t') === false) {
-            await deleteProductImage(img.id);
-            setFormData(prev => ({ ...prev, images: prev.images.filter(i => i.id !== img.id) }));
+            await dispatch(deleteProductImageThunk(img.id)).unwrap();
+            await dispatch(fetchProductDetail(product.id));
           } else {
-
             setFormData(prev => ({ ...prev, images: prev.images.filter(i => i.id !== img.id) }));
           }
         } catch (err) {
@@ -178,8 +240,6 @@ export default function ProductForm({ product, onSuccess }) {
       }
     });
   };
-
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -204,23 +264,31 @@ export default function ProductForm({ product, onSuccess }) {
       };
 
       if (product && product.id) {
-        await updateProduct(product.id, payload);
+        const updated = await dispatch(updateProductThunk({ productId: product.id, productData: payload })).unwrap();
+
         const tempImages = formData.images.filter(i => String(i.id).startsWith('t'));
         tempImages.sort((a,b) => (b.isPrimary === true ? 1 : 0) - (a.isPrimary === true ? 1 : 0));
         for (const ti of tempImages) {
-          const added = await addProductImage(product.id, { name: ti.name, dataUrl: ti.dataUrl, contentType: ti.contentType, isPrimary: !!ti.isPrimary });
-          setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === ti.id ? { id: added.id, name: added.name, dataUrl: added.dataUrl, isPrimary: added.isPrimary, contentType: added.contentType } : i) }));
+          await dispatch(addProductImageThunk({ productId: product.id, fileOrData: { name: ti.name, dataUrl: ti.dataUrl, contentType: ti.contentType, isPrimary: !!ti.isPrimary } })).unwrap();
         }
+
+        dispatch(upsertProductInList(updated));
+        dispatch(upsertProductDetail(updated));
+        await dispatch(fetchProductDetail(product.id)).unwrap();
       } else {
-        const created = await createProduct(payload);
+        const created = await dispatch(createProductThunk(payload)).unwrap();
         const createdProductId = created.id;
         if (!createdProductId) throw new Error('No se recibió id del producto creado');
         const imagesSorted = [...formData.images].sort((a,b) => (b.isPrimary === true ? 1 : 0) - (a.isPrimary === true ? 1 : 0));
         for (const img of imagesSorted) {
-          const added = await addProductImage(createdProductId, { name: img.name, dataUrl: img.dataUrl, contentType: img.contentType, isPrimary: !!img.isPrimary });
-          setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === img.id ? { id: added.id, name: added.name, dataUrl: added.dataUrl, isPrimary: added.isPrimary, contentType: added.contentType } : i) }));
+          await dispatch(addProductImageThunk({ productId: createdProductId, fileOrData: { name: img.name, dataUrl: img.dataUrl, contentType: img.contentType, isPrimary: !!img.isPrimary } })).unwrap();
         }
+        dispatch(upsertProductInList(created));
+        await dispatch(fetchProductDetail(createdProductId)).unwrap();
       }
+
+      if (sellerId) dispatch(fetchSellerStats(sellerId));
+      dispatch(fetchFilterExtras());
 
       onSuccess();
     } catch (err) {

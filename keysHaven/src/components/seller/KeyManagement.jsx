@@ -1,36 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { getSellerActiveProducts, addBulkDigitalKeys, getProductKeys } from '../../services/sellerService';
-import PaginationBar from '../catalog/PaginationBar';
-import { useAppSelector } from '../../redux/hooks';
+import React, { useEffect } from 'react';
+import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { selectUser } from '../../redux/slices/authSlice';
-
-
+import { fetchSellerActiveProducts, addBulkDigitalKeys as addBulkDigitalKeysThunk, getProductKeys as getProductKeysThunk, fetchSellerProductsPaginated } from '../../redux/slices/sellerPanelSlice';
+import PaginationBar from '../catalog/PaginationBar';
+import { fetchProductDetail } from '../../redux/slices/productDetailSlice';
 
 export default function KeyManagement() {
   const user = useAppSelector(selectUser);
   const sellerId = user?.id;
+  const dispatch = useAppDispatch();
 
-  const [selectedProduct, setSelectedProduct] = useState('');
-  const [keysPage, setKeysPage] = useState(1);
-  const [keysPageSize] = useState(20);
-  const [keysItems, setKeysItems] = useState([]);
-  const [keysTotal, setKeysTotal] = useState(0);
 
-  const [bulkKeys, setBulkKeys] = useState('');
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingProducts, setLoadingProducts] = useState(false);
-  const [error, setError] = useState('');
+  const productsFromState = useAppSelector(state => state.sellerPanel.activeProducts);
+  const keysByProduct = useAppSelector(state => state.sellerPanel.keysByProduct);
+
+  const EMPTY_ARRAY = React.useMemo(() => [], []);
+
+  const products = productsFromState ?? EMPTY_ARRAY;
+
+  const [selectedProduct, setSelectedProduct] = React.useState('');
+  const [keysPage, setKeysPage] = React.useState(1);
+  const keysPageSize = 20;
+
+  const selectedNum = Number(selectedProduct);
+  const selectedKeysObj = (selectedProduct ? (keysByProduct && keysByProduct[selectedNum]) : undefined);
+  const keysItems = selectedKeysObj?.items ?? EMPTY_ARRAY;
+  const keysTotal = selectedKeysObj?.total ?? 0;
+
+  const [bulkKeys, setBulkKeys] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [loadingProducts, setLoadingProducts] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  useEffect(() => { fetchProducts(); }, [sellerId]);
 
   const fetchProducts = async () => {
     setLoadingProducts(true);
     setError('');
     try {
-      const prods = await getSellerActiveProducts(sellerId);
-      setProducts(Array.isArray(prods) ? prods : []);
+      if (!sellerId) return;
+      await dispatch(fetchSellerActiveProducts({ sellerId })).unwrap();
     } catch (err) {
       console.error('Error cargando productos:', err);
-      setProducts([]);
       setError('No se pudieron cargar los productos');
     } finally {
       setLoadingProducts(false);
@@ -38,30 +49,17 @@ export default function KeyManagement() {
   };
 
   useEffect(() => {
-    if (sellerId) fetchProducts();
-    else setProducts([]);
-  }, [sellerId]);
-
-  useEffect(() => {
     if (selectedProduct) loadProductKeys(parseInt(selectedProduct, 10), keysPage);
-    else {
-      setKeysItems([]); setKeysTotal(0);
-    }
   }, [selectedProduct, keysPage]);
 
   const loadProductKeys = async (productId, page = 1) => {
     setLoading(true);
     setError('');
     try {
-      const resp = await getProductKeys(productId, Math.max(0, page - 1), keysPageSize);
-      const items = resp.items || [];
-      setKeysItems(items);
-      setKeysTotal(resp.total || items.length);
+      await dispatch(getProductKeysThunk({ productId, page: Math.max(0, page - 1), size: keysPageSize })).unwrap();
     } catch (err) {
       console.error('Error cargando claves:', err);
       setError('Error al cargar claves');
-      setKeysItems([]);
-      setKeysTotal(0);
     } finally {
       setLoading(false);
     }
@@ -74,10 +72,12 @@ export default function KeyManagement() {
     try {
       const keyList = bulkKeys.split('\n').map(k => k.trim()).filter(k => k.length > 0);
       const payload = { productId: parseInt(selectedProduct, 10), keyCodes: keyList };
-      await addBulkDigitalKeys(payload);
+      await dispatch(addBulkDigitalKeysThunk(payload)).unwrap();
+
       setBulkKeys('');
-      await loadProductKeys(parseInt(selectedProduct, 10), keysPage);
-      await fetchProducts();
+      await dispatch(getProductKeysThunk({ productId: parseInt(selectedProduct, 10), page: Math.max(0, keysPage - 1), size: keysPageSize })).unwrap();
+      await dispatch(fetchProductDetail(parseInt(selectedProduct, 10))).unwrap();
+      if (sellerId) await dispatch(fetchSellerProductsPaginated({ sellerId, page: 0, size: 10 })).unwrap();
     } catch (err) {
       console.error('Error agregando claves en lote:', err);
       setError(err?.message || 'Error al agregar claves');
@@ -156,8 +156,8 @@ export default function KeyManagement() {
                   <tr><th>Clave</th><th>Estado</th><th>Fecha de Creación</th><th>Fecha de Uso</th></tr>
                 </thead>
                 <tbody>
-                  {keysItems.map(key => (
-                    <tr key={key.id ?? key.keyMask ?? Math.random()}>
+                  {keysItems.map((key, idx) => (
+                    <tr key={key.id ?? key.keyMask ?? idx}>
                       <td className="font-monospace" style={{fontSize:'0.9em'}}>{key.keyCode ?? key.keyMask ?? '—'}</td>
                       <td>
                         <span className={`badge ${(key.status === 'SOLD' || key.used) ? 'bg-secondary' : 'bg-success'}`}>
@@ -171,7 +171,7 @@ export default function KeyManagement() {
                 </tbody>
               </table>
 
-              {(!keysItems || keysItems.length === 0) && (<div className="text-center text-muted py-4">No hay claves en esta página para el producto seleccionado</div>)}
+              {(keysItems.length === 0) && (<div className="text-center text-muted py-4">No hay claves en esta página para el producto seleccionado</div>)}
             </div>
 
             <div className="d-flex justify-content-center mt-3">

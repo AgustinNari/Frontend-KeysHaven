@@ -23,3 +23,9 @@ export function changePassword(body) {
     body: JSON.stringify(body),
   });
 }
+
+export default {
+  register,
+  authenticate,
+  changePassword,
+};

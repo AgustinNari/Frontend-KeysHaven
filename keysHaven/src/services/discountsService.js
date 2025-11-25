@@ -13,16 +13,8 @@ export async function validateCouponForOrderItem(code, item) {
   return apiClient.apiFetch(`/discounts/validate`, { method: "POST", body: JSON.stringify(body) });
 }
 
-export async function validateCouponForOrderItems(code, items) {
-  const body = {
-    code,
-    items
-  };
-  return apiClient.apiFetch(`/discounts/validate/bulk`, { method: "POST", body: JSON.stringify(body) });
-}
 
 export default {
   getActiveCouponsByBuyer,
-  validateCouponForOrderItem,
-  validateCouponForOrderItems
+  validateCouponForOrderItem
 };

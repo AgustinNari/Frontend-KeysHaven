@@ -1,44 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { getProductsPage, updateProduct } from '../../services/adminService';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
 
+import {
+  fetchProductsPage,
+  adminUpdateProduct,
+  fetchAdminStats
+} from '../../redux/slices/adminPanelSlice';
+import { upsertProductInList } from '../../redux/slices/productsSlice';
+import { upsertProductDetail } from '../../redux/slices/productDetailSlice';
+import { selectAdminPanel } from '../../redux/slices/adminPanelSlice';
+
 export default function ProductManagement() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+  const admin = useSelector(selectAdminPanel);
+  const productsPage = admin?.productsPage ?? null;
+  const products = productsPage?.content ?? [];
+
+  const [loadingLocal, setLoadingLocal] = useState(false);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [actionLoading, setActionLoading] = useState(null);
 
-  const [confirm, setConfirm] = useState({
-    show: false,
-    title: '',
-    message: '',
-    onConfirm: null
-  });
+  const [confirm, setConfirm] = useState({ show: false, title: '', message: '', onConfirm: null });
 
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const [totalPages, setTotalPages] = useState(1);
+  const totalPages = Math.max(1, productsPage?.totalPages ?? 1);
 
-  useEffect(() => {
-    loadProducts();
-  }, [page]);
+  useEffect(() => { loadProducts(); }, [page]);
 
   const loadProducts = async () => {
-    setLoading(true);
+    setLoadingLocal(true);
     try {
-      const resp = await getProductsPage(page, pageSize);
-      if (resp && resp.content && Array.isArray(resp.content)) {
-        setProducts(resp.content);
-        setTotalPages(resp.totalPages ?? 1);
-      } else {
-        setProducts(Array.isArray(resp) ? resp : []);
-        setTotalPages(1);
-      }
+      await dispatch(fetchProductsPage({ page, size: pageSize })).unwrap();
     } catch (err) {
-      console.error('Error cargando productos:', err);
+    console.error('Error cargando productos:', err);
       if (err && err.status === 401) {
         setError('No autorizado. Iniciá sesión.');
       } else if (err && err.status === 403) {
@@ -47,7 +46,7 @@ export default function ProductManagement() {
         setError('Error al cargar productos (revisá que el API_BASE sea correcto)');
       }
     } finally {
-      setLoading(false);
+      setLoadingLocal(false);
     }
   };
 
@@ -69,15 +68,11 @@ export default function ProductManagement() {
   const handleDeactivateConfirmed = async (productId) => {
     setActionLoading(`status-${productId}`);
     try {
-      await updateProduct(productId, { active: false });
-
-      setProducts(prevProducts =>
-        prevProducts.map(p =>
-          p.id === productId ? { ...p, active: false } : p
-        )
-      );
-
-      console.log(`Producto ${productId} desactivado`);
+      const result = await dispatch(adminUpdateProduct({ productId, productData: { active: false } })).unwrap();
+      dispatch(upsertProductInList(result));
+      dispatch(upsertProductDetail(result));
+      await dispatch(fetchProductsPage({ page, size: pageSize })).unwrap();
+      dispatch(fetchAdminStats());
     } catch (err) {
       console.error('Error desactivando producto:', err);
       setError('Error al desactivar producto');
@@ -90,15 +85,11 @@ export default function ProductManagement() {
   const handleActivate = async (productId) => {
     setActionLoading(`status-${productId}`);
     try {
-      await updateProduct(productId, { active: true });
-
-      setProducts(prevProducts =>
-        prevProducts.map(p =>
-          p.id === productId ? { ...p, active: true } : p
-        )
-      );
-
-      console.log(`Producto ${productId} activado`);
+      const result = await dispatch(adminUpdateProduct({ productId, productData: { active: true } })).unwrap();
+      dispatch(upsertProductInList(result));
+      dispatch(upsertProductDetail(result));
+      await dispatch(fetchProductsPage({ page, size: pageSize })).unwrap();
+      dispatch(fetchAdminStats());
     } catch (err) {
       console.error('Error activando producto:', err);
       setError('Error al activar producto');
@@ -110,26 +101,15 @@ export default function ProductManagement() {
   const handleToggleFeatured = async (product) => {
     setActionLoading(`featured-${product.id}`);
     const originalFeatured = product.featured;
-
-    setProducts(prevProducts =>
-      prevProducts.map(p =>
-        p.id === product.id ? { ...p, featured: !p.featured } : p
-      )
-    );
-
     try {
-      await updateProduct(product.id, { featured: !originalFeatured });
-
-      console.log(`Producto ${product.id} - Destacado actualizado: ${!originalFeatured}`);
+      const result = await dispatch(adminUpdateProduct({ productId: product.id, productData: { featured: !originalFeatured } })).unwrap();
+      dispatch(upsertProductInList(result));
+      dispatch(upsertProductDetail(result));
+      await dispatch(fetchProductsPage({ page, size: pageSize })).unwrap();
+      dispatch(fetchAdminStats());
     } catch (err) {
       console.error('Error actualizando producto:', err);
       setError('Error al actualizar producto');
-
-      setProducts(prevProducts =>
-        prevProducts.map(p =>
-          p.id === product.id ? { ...p, featured: originalFeatured } : p
-        )
-      );
     } finally {
       setActionLoading(null);
     }
@@ -137,29 +117,11 @@ export default function ProductManagement() {
 
   const deriveAvailableStock = (product) => {
     if (!product) return 0;
-
-    const candidates = [
-      product.availableStock,
-      product.available_stock,
-      product.available_stock_count,
-      product.available,
-      product.stock,
-      product.availableQuantity,
-      product.available_quantity,
-      product.availableQty,
-      product.available_qty,
-      product.quantity,
-      product.qty
-    ];
-
+    const candidates = [product.availableStock, product.available_stock, product.available_stock_count, product.available, product.stock, product.availableQuantity, product.available_quantity, product.availableQty, product.available_qty, product.quantity, product.qty];
     for (const c of candidates) {
       if (typeof c === 'number' && !Number.isNaN(c)) return c;
-
-      if (typeof c === 'string' && c.trim() !== '' && !Number.isNaN(Number(c))) {
-        return Number(c);
-      }
+      if (typeof c === 'string' && c.trim() !== '' && !Number.isNaN(Number(c))) return Number(c);
     }
-
     try {
       if (product.inventory && typeof product.inventory === 'object') {
         const inv = product.inventory;
@@ -170,7 +132,6 @@ export default function ProductManagement() {
         }
       }
     } catch (e) {}
-
     return 0;
   };
 
@@ -187,13 +148,9 @@ export default function ProductManagement() {
     return null;
   };
 
-  // Filtrar productos
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sellerDisplayName?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' ||
-      (statusFilter === 'active' ? product.active : !product.active);
-
+    const matchesSearch = (product.title?.toLowerCase().includes(searchTerm.toLowerCase()) || product.sellerDisplayName?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? product.active : !product.active);
     return matchesSearch && matchesStatus;
   });
 
@@ -206,63 +163,32 @@ export default function ProductManagement() {
   return (
     <div className="card bg-primary-dark border-0">
       <div className="card-header bg-primary-mid">
-        <h5 className="text-primary-light mb-0">
-          <i className="fas fa-gamepad me-2"></i>
-          Gestión Global de Productos
-        </h5>
+        <h5 className="text-primary-light mb-0"><i className="fas fa-gamepad me-2"></i> Gestión Global de Productos</h5>
       </div>
       <div className="card-body">
-        {error && (
-          <div className="alert alert-danger" role="alert">
-            {error}
-          </div>
-        )}
+        {error && <div className="alert alert-danger">{error}</div>}
 
         {/* Filtros y Búsqueda */}
         <div className="row mb-4">
           <div className="col-md-6">
-            <label className="form-label text-primary-light">
-              <i className="fas fa-search me-1"></i>
-              Buscar
-            </label>
-            <input
-              type="text"
-              className="form-control bg-dark border-secondary text-white"
-              placeholder="Nombre del producto o vendedor..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <label className="form-label text-primary-light"><i className="fas fa-search me-1"></i> Buscar</label>
+            <input type="text" className="form-control bg-dark border-secondary text-white" placeholder="Nombre del producto o vendedor..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
           <div className="col-md-4">
-            <label className="form-label text-primary-light">
-              <i className="fas fa-filter me-1"></i>
-              Estado
-            </label>
-            <select
-              className="form-select bg-dark border-secondary text-white"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
+            <label className="form-label text-primary-light"><i className="fas fa-filter me-1"></i> Estado</label>
+            <select className="form-select bg-dark border-secondary text-white" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">Todos</option>
               <option value="active">Activos</option>
               <option value="inactive">Inactivos</option>
             </select>
           </div>
           <div className="col-md-2 d-flex align-items-end">
-            <button
-              className="btn btn-outline-secondary w-100"
-              onClick={() => {
-                setSearchTerm('');
-                setStatusFilter('all');
-              }}
-            >
-              <i className="fas fa-eraser me-1"></i>
-              Limpiar
+            <button className="btn btn-outline-secondary w-100" onClick={() => { setSearchTerm(''); setStatusFilter('all'); }}>
+              <i className="fas fa-eraser me-1"></i> Limpiar
             </button>
           </div>
         </div>
 
-        {/* Tabla de Productos */}
         <div className="table-responsive">
           <table className="table table-dark table-borderless">
             <thead>
@@ -277,13 +203,8 @@ export default function ProductManagement() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="7" className="text-center text-muted py-4">
-                    <div className="spinner-border spinner-border-sm me-2" role="status"></div>
-                    Cargando productos...
-                  </td>
-                </tr>
+              {loadingLocal ? (
+                <tr><td colSpan="7" className="text-center text-muted py-4"><div className="spinner-border spinner-border-sm me-2" role="status"></div> Cargando productos...</td></tr>
               ) : filteredProducts.map(product => {
                 const availableStock = deriveAvailableStock(product);
                 const stockStatus = getStockStatus(availableStock);
@@ -295,78 +216,19 @@ export default function ProductManagement() {
                   <tr key={product.id}>
                     <td>
                       <div className="d-flex align-items-center">
-                        {thumb && (
-                          <img
-                            src={thumb}
-                            alt={product.title}
-                            className="rounded me-3"
-                            style={{ width: '50px', height: '50px', objectFit: 'cover' }}
-                            onError={(e) => {
-                              e.target.src = 'https://via.placeholder.com/50x50/333/666?text=Imagen';
-                            }}
-                            loading="lazy"
-                          />
-                        )}
-                        <div>
-                          <div className="text-primary-light fw-bold">{product.title}</div>
-                          <small className="text-muted">{product.platform} • {product.region}</small>
-                        </div>
+                        {thumb && <img src={thumb} alt={product.title} className="rounded me-3" style={{ width: '50px', height: '50px', objectFit: 'cover' }} loading="lazy" onError={(e)=>{e.target.src='https://via.placeholder.com/50x50/333/666?text=Imagen'}} />}
+                        <div><div className="text-primary-light fw-bold">{product.title}</div><small className="text-muted">{product.platform} • {product.region}</small></div>
                       </div>
                     </td>
-                    <td>
-                      <div className="text-white">{product.sellerDisplayName}</div>
-                      <small className="text-muted">ID: {product.sellerId}</small>
-                    </td>
-                    <td>
-                      <div className="text-primary-light fw-bold">
-                        USD {product.price}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${stockStatus.class}`}>
-                        {availableStock} - {stockStatus.text}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge ${product.active ? 'bg-success' : 'bg-danger'}`}>
-                        {product.active ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge ${product.featured ? 'bg-warning' : 'bg-secondary'}`}>
-                        {product.featured ? 'Sí' : 'No'}
-                      </span>
-                    </td>
+                    <td><div className="text-white">{product.sellerDisplayName}</div><small className="text-muted">ID: {product.sellerId}</small></td>
+                    <td><div className="text-primary-light fw-bold">USD {product.price}</div></td>
+                    <td><span className={`badge ${stockStatus.class}`}>{availableStock} - {stockStatus.text}</span></td>
+                    <td><span className={`badge ${product.active ? 'bg-success' : 'bg-danger'}`}>{product.active ? 'Activo' : 'Inactivo'}</span></td>
+                    <td><span className={`badge ${product.featured ? 'bg-warning' : 'bg-secondary'}`}>{product.featured ? 'Sí' : 'No'}</span></td>
                     <td>
                       <div className="btn-group btn-group-sm">
-                        <button
-                          className="btn btn-outline-warning"
-                          onClick={() => handleToggleFeatured(product)}
-                          title={product.featured ? 'Quitar destacado' : 'Destacar'}
-                          disabled={isFeaturedLoading}
-                        >
-                          {isFeaturedLoading ? (
-                            <div className="spinner-border spinner-border-sm" role="status">
-                              <span className="visually-hidden">Cargando...</span>
-                            </div>
-                          ) : (
-                            <i className={`fas fa-star ${product.featured ? 'text-warning' : ''}`}></i>
-                          )}
-                        </button>
-                        <button
-                          className="btn btn-outline-secondary"
-                          onClick={() => handleToggleRequest(product)}
-                          title={product.active ? 'Desactivar' : 'Activar'}
-                          disabled={isStatusLoading}
-                        >
-                          {isStatusLoading ? (
-                            <div className="spinner-border spinner-border-sm" role="status">
-                              <span className="visually-hidden">Cargando...</span>
-                            </div>
-                          ) : (
-                            <i className={`fas ${product.active ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                          )}
-                        </button>
+                        <button className="btn btn-outline-warning" onClick={() => handleToggleFeatured(product)} title={product.featured ? 'Quitar destacado' : 'Destacar'} disabled={isFeaturedLoading}>{isFeaturedLoading ? <div className="spinner-border spinner-border-sm" role="status" /> : <i className={`fas fa-star ${product.featured ? 'text-warning' : ''}`}></i>}</button>
+                        <button className="btn btn-outline-secondary" onClick={() => handleToggleRequest(product)} title={product.active ? 'Desactivar' : 'Activar'} disabled={isStatusLoading}>{isStatusLoading ? <div className="spinner-border spinner-border-sm" role="status" /> : <i className={`fas ${product.active ? 'fa-eye-slash' : 'fa-eye'}`}></i>}</button>
                       </div>
                     </td>
                   </tr>
@@ -374,69 +236,19 @@ export default function ProductManagement() {
               })}
             </tbody>
           </table>
-          {!loading && filteredProducts.length === 0 && (
-            <div className="text-center text-muted py-4">
-              <i className="fas fa-search fa-2x mb-3"></i>
-              <p>No se encontraron productos que coincidan con los filtros</p>
-            </div>
-          )}
+          {!loadingLocal && filteredProducts.length === 0 && <div className="text-center text-muted py-4"><i className="fas fa-search fa-2x mb-3"></i><p>No se encontraron productos que coincidan con los filtros</p></div>}
         </div>
 
-        <div className="d-flex justify-content-center mt-3">
-          <PaginationBar page={page} setPage={setPage} totalPages={Math.max(1, totalPages)} />
-        </div>
+        <div className="d-flex justify-content-center mt-3"><PaginationBar page={page} setPage={setPage} totalPages={totalPages} /></div>
 
-        {/* Estadísticas */}
         <div className="row mt-4">
-          <div className="col-md-3">
-            <div className="card bg-primary-mid border-0">
-              <div className="card-body text-center py-3">
-                <h4 className="text-primary-light mb-1">{products.length}</h4>
-                <p className="text-muted mb-0 small">Total Productos (página)</p>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card bg-primary-mid border-0">
-              <div className="card-body text-center py-3">
-                <h4 className="text-primary-light mb-1">
-                  {products.filter(p => p.active).length}
-                </h4>
-                <p className="text-muted mb-0 small">Productos Activos (página)</p>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card bg-primary-mid border-0">
-              <div className="card-body text-center py-3">
-                <h4 className="text-primary-light mb-1">
-                  {products.filter(p => p.featured).length}
-                </h4>
-                <p className="text-muted mb-0 small">Destacados (página)</p>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card bg-primary-mid border-0">
-              <div className="card-body text-center py-3">
-                <h4 className="text-primary-light mb-1">
-                  {new Set(products.map(p => p.sellerId)).size}
-                </h4>
-                <p className="text-muted mb-0 small">Vendedores Únicos (página)</p>
-              </div>
-            </div>
-          </div>
+          <div className="col-md-3"><div className="card bg-primary-mid border-0"><div className="card-body text-center py-3"><h4 className="text-primary-light mb-1">{products.length}</h4><p className="text-muted mb-0 small">Total Productos (página)</p></div></div></div>
+          <div className="col-md-3"><div className="card bg-primary-mid border-0"><div className="card-body text-center py-3"><h4 className="text-primary-light mb-1">{products.filter(p => p.active).length}</h4><p className="text-muted mb-0 small">Productos Activos (página)</p></div></div></div>
+          <div className="col-md-3"><div className="card bg-primary-mid border-0"><div className="card-body text-center py-3"><h4 className="text-primary-light mb-1">{products.filter(p => p.featured).length}</h4><p className="text-muted mb-0 small">Destacados (página)</p></div></div></div>
+          <div className="col-md-3"><div className="card bg-primary-mid border-0"><div className="card-body text-center py-3"><h4 className="text-primary-light mb-1">{new Set(products.map(p => p.sellerId)).size}</h4><p className="text-muted mb-0 small">Vendedores Únicos (página)</p></div></div></div>
         </div>
 
-        <ConfirmModal
-          show={confirm.show}
-          title={confirm.title}
-          message={confirm.message}
-          onConfirm={() => { confirm.onConfirm && confirm.onConfirm(); }}
-          onCancel={closeConfirm}
-          confirmText="Desactivar"
-          cancelText="Cancelar"
-        />
+        <ConfirmModal show={confirm.show} title={confirm.title} message={confirm.message} onConfirm={() => { confirm.onConfirm && confirm.onConfirm(); }} onCancel={closeConfirm} confirmText="Desactivar" cancelText="Cancelar" />
       </div>
     </div>
   );

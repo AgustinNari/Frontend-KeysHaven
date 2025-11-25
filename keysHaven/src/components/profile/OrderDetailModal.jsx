@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from "react";
 import ReviewForm from "./ReviewForm";
 import ConfirmModal from "./ConfirmModal";
-import * as ordersApi from "../../services/orders";
-import * as reviewsApi from "../../services/reviews";
 
-export default function OrderDetailModal({ show, order, userReviews = [], onClose, onSaveReview, onDeleteReview }) {
+import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { getKeysByOrderItemId } from "../../redux/slices/ordersSlice";
+import { fetchReviewByOrderItem, createReview, updateReview, deleteReview } from "../../redux/slices/reviewsSlice";
+
+export default function OrderDetailModal({ show, order, onClose, onSaveReview, onDeleteReview }) {
+  const dispatch = useAppDispatch();
+
+  const reviewByOrderItem = useAppSelector(state => state.reviews.reviewByOrderItem ?? {});
+
   const [activeItem, setActiveItem] = useState(null);
   const [editingReviewForItem, setEditingReviewForItem] = useState(null);
   const [showConfirmDeleteReview, setShowConfirmDeleteReview] = useState(false);
@@ -17,6 +23,8 @@ export default function OrderDetailModal({ show, order, userReviews = [], onClos
 
   const [copiedKey, setCopiedKey] = useState(null);
 
+  const [reviewError, setReviewError] = useState(null);
+
   useEffect(() => {
     if (!show) {
       setActiveItem(null);
@@ -25,24 +33,24 @@ export default function OrderDetailModal({ show, order, userReviews = [], onClos
       setShowConfirmDeleteReview(false);
       setReviewToDelete(null);
       setCopiedKey(null);
+      setReviewError(null);
     }
   }, [show, order]);
 
   if (!show || !order) return null;
 
-  const getOrderItemId = (item) => item?.id ?? item?.orderItemId ?? item?.order_item_id;
-
-  const findUserReview = (orderItemId) => {
-    return userReviews.find(r =>
-      String(r.orderItemId) === String(orderItemId) ||
-      String(r.order_item_id) === String(orderItemId)
-    );
+  const getOrderItemId = (item) => {
+    const maybe = item?.id ?? item?.orderItemId ?? item?.order_item_id;
+    if (maybe == null) return null;
+    const n = Number(maybe);
+    return Number.isNaN(n) ? maybe : n;
   };
 
   async function openKeysForItem(item) {
     setActiveItem(item);
     setEditingReviewForItem(null);
     setViewMode("keys");
+    setReviewError(null);
 
     const id = getOrderItemId(item);
     if (!id) return;
@@ -51,7 +59,8 @@ export default function OrderDetailModal({ show, order, userReviews = [], onClos
 
     setLoadingKeysByItemId(m => ({ ...m, [id]: true }));
     try {
-      const resp = await ordersApi.getKeysByOrderItemId(id);
+      const action = await dispatch(getKeysByOrderItemId(id));
+      const resp = action.payload?.resp ?? action.payload ?? [];
       const keys = Array.isArray(resp) ? resp : (resp?.items ?? resp?.content ?? resp ?? []);
       setKeysByItemId(m => ({ ...m, [id]: keys }));
     } catch (err) {
@@ -65,6 +74,7 @@ export default function OrderDetailModal({ show, order, userReviews = [], onClos
   async function openReviewForItem(item) {
     setActiveItem(item);
     setViewMode("review");
+    setReviewError(null);
 
     const id = getOrderItemId(item);
     if (!id) {
@@ -72,62 +82,110 @@ export default function OrderDetailModal({ show, order, userReviews = [], onClos
       return;
     }
 
-    const found = findUserReview(id);
-    if (found) {
-      setEditingReviewForItem(found);
+    const key = String(id);
+    if (Object.prototype.hasOwnProperty.call(reviewByOrderItem, key)) {
+      setEditingReviewForItem(reviewByOrderItem[key] ?? null);
       return;
     }
 
     setLoadingReviewByItemId(m => ({ ...m, [id]: true }));
     try {
-      const fetched = await reviewsApi.getReviewByOrderItem(id);
+      const { resp } = await dispatch(fetchReviewByOrderItem(id)).unwrap();
       let review = null;
-      if (!fetched) review = null;
-      else if (Array.isArray(fetched)) review = fetched[0] ?? null;
-      else review = fetched;
-
+      if (!resp) review = null;
+      else if (Array.isArray(resp)) review = resp[0] ?? null;
+      else review = resp;
       setEditingReviewForItem(review ?? null);
     } catch (err) {
-      console.warn("No se pudo obtener reseña por orderItem:", err);
+      console.warn("No se pudo obtener reseña por orderItem:", err?.message ?? err);
       setEditingReviewForItem(null);
     } finally {
       setLoadingReviewByItemId(m => ({ ...m, [id]: false }));
     }
   }
 
-  function handleCloseModal() {
-    setActiveItem(null);
-    setEditingReviewForItem(null);
-    setViewMode(null);
-    onClose && onClose();
-  }
-
   async function handleSaveReviewLocal(data) {
     if (!activeItem) return;
     const orderItemId = getOrderItemId(activeItem);
     const existing = editingReviewForItem;
+    let succeeded = false;
+    setReviewError(null);
     try {
-      await onSaveReview(order.id, orderItemId, data, existing ?? null);
+      if (existing && (existing.id || existing.reviewId || existing._id)) {
+        const rid = existing.id ?? existing.reviewId ?? existing._id;
+        if (rid == null) {
+          const productId = data.productId ?? activeItem.productId ?? activeItem.product?.id ?? null;
+          const payload = { productId, rating: data.rating, title: data.title, comment: data.comment, orderItemId };
+          await dispatch(createReview(payload)).unwrap();
+        } else {
+          const dto = { rating: data.rating, title: data.title, comment: data.comment };
+          await dispatch(updateReview({ reviewId: rid, dto })).unwrap();
+        }
+      } else {
+        const productId = data.productId ?? activeItem.productId ?? activeItem.product?.id ?? null;
+        const payload = { productId, rating: data.rating, title: data.title, comment: data.comment, orderItemId };
+        await dispatch(createReview(payload)).unwrap();
+      }
+
+      try {
+        await dispatch(fetchReviewByOrderItem(orderItemId)).unwrap();
+      } catch (e) {
+      }
+
+      const key = String(orderItemId);
+      const updated = (reviewByOrderItem && reviewByOrderItem[key]) ? reviewByOrderItem[key] : null;
+      setEditingReviewForItem(updated ?? null);
+      onSaveReview && onSaveReview(order?.id, orderItemId, data, existing ?? null);
+      succeeded = true;
       setActiveItem(null);
       setEditingReviewForItem(null);
       setViewMode(null);
+      setReviewError(null);
     } catch (err) {
-      console.error("Error en onSaveReview desde modal:", err);
+      const msg = err?.message ?? String(err) ?? "Error guardando reseña.";
+      console.error("Error en onSaveReview desde modal:", msg);
+      setReviewError(msg);
     }
+    return succeeded;
   }
 
   async function handleDeleteReviewLocal() {
-    if (!reviewToDelete && !editingReviewForItem) return;
     const rev = reviewToDelete ?? editingReviewForItem;
+    if (!rev) return;
+
+    const possibleId = rev?.id ?? rev?.reviewId ?? rev?._id ?? null;
+    let idToDelete = possibleId;
+    const orderItemId = getOrderItemId(activeItem);
+
+    if (!idToDelete && orderItemId != null) {
+      const stored = reviewByOrderItem[String(orderItemId)];
+      idToDelete = stored?.id ?? stored?.reviewId ?? stored?._id ?? null;
+    }
+
+    if (!idToDelete) {
+      console.warn("No se encontró id de reseña para eliminar.");
+      setShowConfirmDeleteReview(false);
+      setReviewToDelete(null);
+      return;
+    }
+
+    setReviewError(null);
     try {
-      await onDeleteReview(rev.id);
+      await dispatch(deleteReview(idToDelete)).unwrap();
+      if (orderItemId != null) {
+        try { await dispatch(fetchReviewByOrderItem(orderItemId)).unwrap(); } catch (e) {}
+      }
+      onDeleteReview && onDeleteReview(idToDelete);
       setShowConfirmDeleteReview(false);
       setReviewToDelete(null);
       setActiveItem(null);
       setEditingReviewForItem(null);
       setViewMode(null);
+      setReviewError(null);
     } catch (err) {
-      console.error("Error eliminando reseña desde modal:", err);
+      const msg = err?.message ?? String(err) ?? "Error eliminando reseña.";
+      console.error("Error eliminando reseña desde modal:", msg);
+      setReviewError(msg);
     }
   }
 
@@ -152,100 +210,24 @@ export default function OrderDetailModal({ show, order, userReviews = [], onClos
     }
   };
 
-  const backdropStyle = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-    position: "fixed",
-    inset: 0,
-    overflowY: "auto",
-    zIndex: 1400
-  };
-
-  const modalStyle = {
-    width: "100%",
-    maxWidth: 980,
-    maxHeight: "86vh",
-    overflowY: "auto",
-    borderRadius: 10,
-    padding: 18,
-    boxSizing: "border-box"
-  };
-
-  const overlayStyle = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-    position: "fixed",
-    inset: 0,
-    overflowY: "auto",
-    zIndex: 1600
-  };
-
-  const overlayInnerStyle = {
-    width: "100%",
-    maxWidth: 820,
-    maxHeight: "80vh",
-    borderRadius: 10,
-    padding: 18,
-    boxSizing: "border-box",
-    display: "flex",
-    flexDirection: "column"
-  };
-
-  const overlayInnerBodyStyle = {
-    flex: 1,
-    overflowY: "auto",
-    paddingTop: 8,
-    paddingBottom: 8
-  };
-
-  const itemCardStyle = {
-    display: "flex",
-    gap: 12,
-    alignItems: "flex-start",
-    flexDirection: "row",
-    flex: "0 1 auto",
-    flexShrink: 0,
-    minWidth: 0
-  };
-
-  const itemLeftStyle = {
-    flex: 1,
-    minWidth: 0
-  };
-
-  const itemRightStyle = {
-    flex: "0 0 auto",
-    textAlign: "right",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-end",
-    gap: 8
-  };
-
-  const reviewBoxStyle = {
-    marginTop: 8,
-    padding: 8,
-    border: "1px dashed rgba(255,255,255,0.03)",
-    background: "transparent"
-  };
-
-  const itemWrapperStyle = {
-    display: "block",
-    height: "auto",
-    boxSizing: "border-box"
-  };
+  const backdropStyle = { display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "fixed", inset: 0, overflowY: "auto", zIndex: 1400 };
+  const modalStyle = { width: "100%", maxWidth: 980, maxHeight: "86vh", overflowY: "auto", borderRadius: 10, padding: 18, boxSizing: "border-box" };
+  const overlayStyle = { display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "fixed", inset: 0, overflowY: "auto", zIndex: 1600 };
+  const overlayInnerStyle = { width: "100%", maxWidth: 820, maxHeight: "80vh", borderRadius: 10, padding: 18, boxSizing: "border-box", display: "flex", flexDirection: "column" };
+  const overlayInnerBodyStyle = { flex: 1, overflowY: "auto", paddingTop: 8, paddingBottom: 8 };
+  const itemCardStyle = { display: "flex", gap: 12, alignItems: "flex-start", flexDirection: "row", flex: "0 1 auto", flexShrink: 0, minWidth: 0 };
+  const itemLeftStyle = { flex: 1, minWidth: 0 };
+  const itemRightStyle = { flex: "0 0 auto", textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 };
+  const reviewBoxStyle = { marginTop: 8, padding: 8, border: "1px dashed rgba(255,255,255,0.03)", background: "transparent" };
+  const itemWrapperStyle = { display: "block", height: "auto", boxSizing: "border-box" };
 
   return (
-    <div className="modal-backdrop-fixed" style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) handleCloseModal(); }} role="presentation">
+    <div className="modal-backdrop-fixed" style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose && onClose(); }} role="presentation">
       <div className="confirm-modal card" style={modalStyle} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="d-flex justify-content-between align-items-center mb-2">
           <h4 style={{ margin: 0 }}>Orden #{order.id}</h4>
           <div>
-            <button className="btn btn-outline-secondary me-2" onClick={() => { handleCloseModal(); }}>Cerrar</button>
+            <button className="btn btn-outline-secondary me-2" onClick={() => { onClose && onClose(); }}>Cerrar</button>
           </div>
         </div>
 
@@ -259,35 +241,30 @@ export default function OrderDetailModal({ show, order, userReviews = [], onClos
             const orderItemId = getOrderItemId(item);
             const productTitle = item.productTitle ?? item.title ?? item.product?.title ?? item.product_title ?? `#${item.productId ?? item.product?.id ?? '-'}`;
             const { qty, unitPrice, lineSubtotal, lineTotal, discountAmount } = normalizeLine(item);
-            const foundReview = findUserReview(orderItemId);
+
+            const reviewFromStore = orderItemId != null ? reviewByOrderItem[String(orderItemId)] : null;
 
             return (
-              <div
-                key={orderItemId ?? Math.random()}
-                className="card p-2 mb-2"
-                style={{ border: "1px solid rgba(255,255,255,0.03)", ...itemWrapperStyle }}
-              >
+              <div key={orderItemId ?? Math.random()} className="card p-2 mb-2" style={{ border: "1px solid rgba(255,255,255,0.03)", ...itemWrapperStyle }}>
                 <div style={itemCardStyle}>
                   <div style={itemLeftStyle}>
                     <strong style={{ color: "#e6dbff" }}>{productTitle}</strong>
                     <div style={{ color: "#e6dbff" }}>Cantidad: {qty}</div>
                     <div className="small">Precio unitario: ${Number(unitPrice).toFixed(2)}</div>
-                    {Number(discountAmount) > 0 && (
-                      <div className="small text-danger">Descuento en este ítem: −${Number(discountAmount).toFixed(2)}</div>
-                    )}
+                    {Number(discountAmount) > 0 && (<div className="small text-danger">Descuento en este ítem: −${Number(discountAmount).toFixed(2)}</div>)}
 
                     <div>
-                      {userReviews && userReviews.filter(r => String(r.orderItemId) === String(orderItemId)).map(r => (
-                        <div key={r.id} className="review-box" style={reviewBoxStyle}>
-                          <div><strong style={{ color: "#7f13ec" }}>{r.title}</strong> — <span style={{ color: "#7f13ec" }}>{r.rating}/10</span></div>
-                          <div style={{ color: "#7f13ec" }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : (r.created_at ? new Date(r.created_at).toLocaleDateString() : '')}</div>
-                          <div style={{ color: "#e6dbff" }}>{r.comment}</div>
+                      {reviewFromStore && (
+                        <div className="review-box" style={reviewBoxStyle}>
+                          <div><strong style={{ color: "#7f13ec" }}>{reviewFromStore.title}</strong> — <span style={{ color: "#7f13ec" }}>{reviewFromStore.rating}/10</span></div>
+                          <div style={{ color: "#7f13ec" }}>{reviewFromStore.createdAt ? new Date(reviewFromStore.createdAt).toLocaleDateString() : (reviewFromStore.created_at ? new Date(reviewFromStore.created_at).toLocaleDateString() : '')}</div>
+                          <div style={{ color: "#e6dbff" }}>{reviewFromStore.comment}</div>
                           <div className="mt-2 d-flex gap-2 justify-content-end">
-                            <button className="btn btn-sm btn-outline-secondary" onClick={() => { setActiveItem(item); setEditingReviewForItem(r); setViewMode("review"); }}>Editar</button>
-                            <button className="btn btn-sm btn-danger" onClick={() => { setReviewToDelete(r); setShowConfirmDeleteReview(true); }}>Eliminar</button>
+                            <button className="btn btn-sm btn-outline-secondary" onClick={() => { setActiveItem(item); setEditingReviewForItem(reviewFromStore); setViewMode("review"); }}>Editar</button>
+                            <button className="btn btn-sm btn-danger" onClick={() => { setReviewToDelete(reviewFromStore); setShowConfirmDeleteReview(true); }}>Eliminar</button>
                           </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
 
@@ -310,7 +287,6 @@ export default function OrderDetailModal({ show, order, userReviews = [], onClos
               <div>
                 <h6 style={{ marginTop: 0 }}>Claves para: {activeItem.productTitle ?? activeItem.title ?? activeItem.product?.title}</h6>
               </div>
-
 
               <div style={overlayInnerBodyStyle}>
                 {loadingKeysByItemId[getOrderItemId(activeItem)] && <div className="text-muted">Cargando claves...</div>}
@@ -359,10 +335,16 @@ export default function OrderDetailModal({ show, order, userReviews = [], onClos
                   <div className="text-muted">Cargando reseña...</div>
                 ) : (
                   <div style={{ minWidth: 0 }}>
+                    {reviewError && (
+                      <div className="alert alert-danger" style={{ marginBottom: 12 }}>
+                        {reviewError}
+                      </div>
+                    )}
+
                     <ReviewForm
                       initial={editingReviewForItem}
                       onSave={(data) => handleSaveReviewLocal(data)}
-                      onCancel={() => { setActiveItem(null); setEditingReviewForItem(null); setViewMode(null); }}
+                      onCancel={() => { setActiveItem(null); setEditingReviewForItem(null); setViewMode(null); setReviewError(null); }}
                       onDelete={() => { setReviewToDelete(editingReviewForItem); setShowConfirmDeleteReview(true); }}
                     />
                   </div>

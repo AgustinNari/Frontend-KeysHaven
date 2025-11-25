@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import UserManagement from './UserManagement';
 import ProductManagement from './ProductManagement';
@@ -40,19 +40,13 @@ export default function AdminPanel() {
 
   const renderContent = () => {
     switch (activeSection) {
-      case 'users':
-        return <UserManagement />;
-      case 'products':
-        return <ProductManagement />;
-      case 'categories':
-        return <CategoryManagement />;
-      case 'coupons':
-        return <CouponManagement />;
-      case 'reviews':
-        return <ReviewsManagement />;
+      case 'users': return <UserManagement />;
+      case 'products': return <ProductManagement />;
+      case 'categories': return <CategoryManagement />;
+      case 'coupons': return <CouponManagement />;
+      case 'reviews': return <ReviewsManagement />;
       case 'dashboard':
-      default:
-        return <AdminDashboard />;
+      default: return <AdminDashboard />;
     }
   };
 
@@ -77,8 +71,7 @@ export default function AdminPanel() {
             <div className="card bg-primary-dark border-0" style={{top: '86px'}}>
               <div className="card-body">
                 <div className="text-center mb-4">
-                  <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center"
-                       style={{width: '60px', height: '60px'}}>
+                  <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" style={{width: '60px', height: '60px'}}>
                     <span className="fw-bold">A</span>
                   </div>
                   <h6 className="text-primary-light mt-2 mb-1">Panel Administrador</h6>
@@ -96,9 +89,7 @@ export default function AdminPanel() {
                   ].map(item => (
                     <button
                       key={item.id}
-                      className={`nav-link text-start btn btn-link text-decoration-none p-2 mb-1 ${
-                        activeSection === item.id ? 'bg-primary-mid text-primary' : 'text-primary-light'
-                      }`}
+                      className={`nav-link text-start btn btn-link text-decoration-none p-2 mb-1 ${ activeSection === item.id ? 'bg-primary-mid text-primary' : 'text-primary-light' }`}
                       onClick={() => setActiveSection(item.id)}
                     >
                       <i className={`${item.icon} me-2`}></i>

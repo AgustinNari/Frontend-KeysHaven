@@ -1,44 +1,27 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { getSellerStats, getSellerOrders } from '../../services/sellerService';
+import React, { useEffect, useMemo } from 'react';
+import { useAppSelector, useAppDispatch } from '../../redux/hooks';
+import { fetchSellerStats, fetchSellerOrders } from '../../redux/slices/sellerPanelSlice';
 import PaginationBar from '../catalog/PaginationBar';
 
 export default function SalesAnalytics({ sellerId }) {
-  const [stats, setStats] = useState({
-    totalSales: 0, totalRevenue: 0, activeProducts: 0, totalProducts: 0, avgRating: 0, pendingOrders: 0
-  });
-  const [recentOrders, setRecentOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const stats = useAppSelector(state => state.sellerPanel.stats) ?? { totalSales:0, totalRevenue:0, activeProducts:0, totalProducts:0, avgRating:0, pendingOrders:0 };
+  const ordersState = useAppSelector(state => state.sellerPanel.orders) ?? { items: [], total: 0 };
+  const loading = useAppSelector(state => state.sellerPanel.loading);
 
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [totalOrders, setTotalOrders] = useState(0);
-
-  const [sortBy, setSortBy] = useState('date_desc');
+  const [page, setPage] = React.useState(1);
+  const pageSize = 10;
+  const [sortBy, setSortBy] = React.useState('date_desc');
 
   useEffect(() => {
-    loadDashboardData();
-  }, [sellerId, page]);
-
-  const loadDashboardData = async () => {
-    if (!sellerId) return;
-    setLoading(true);
-    try {
-      const statsData = await getSellerStats(sellerId);
-      setStats(statsData || {});
-
-      const ordersResp = await getSellerOrders({ sellerId, page: Math.max(0, page - 1), size: pageSize, status: 'COMPLETED' });
-      const items = ordersResp.items || [];
-      const total = ordersResp.total ?? (Array.isArray(items) ? items.length : 0);
-
-      setRecentOrders(items);
-      setTotalOrders(total);
-
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-    } finally {
-      setLoading(false);
+    if (sellerId) {
+      dispatch(fetchSellerStats(sellerId));
+      dispatch(fetchSellerOrders({ sellerId, page: Math.max(0, page - 1), size: pageSize, status: 'COMPLETED' }));
     }
-  };
+  }, [sellerId, page, dispatch]);
+
+  const recentOrders = ordersState.items || [];
+  const totalOrders = ordersState.total ?? (recentOrders.length);
 
   const computeOrderAmount = (order) => {
     if (!order || !Array.isArray(order.items)) return 0;

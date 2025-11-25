@@ -47,10 +47,6 @@ export const updateUser = async (userId, userData) => {
   return tryEndpoints(candidatesDefault(`/users/${userId}`), { method: "PUT", body: JSON.stringify(userData) });
 };
 
-export const deleteUser = async (userId) => {
-  return updateUser(userId, { active: false });
-};
-
 export const getAllProducts = async () => {
   const qs = `?page=0&size=2147483647`;
   const resp = await tryEndpoints(candidatesPreferApiV1(`/products/filtered/all${qs}`), { method: "GET" });
@@ -73,14 +69,6 @@ export const updateProduct = async (productId, productData) => {
   return tryEndpoints(candidatesDefault(`/products/${productId}`), { method: "PUT", body: JSON.stringify(productData) });
 };
 
-export const deleteProduct = async (productId) => {
-  return tryEndpoints(candidatesDefault(`/products/${productId}/active?active=false`), { method: "PATCH" });
-};
-
-export const getCategories = async () => {
-  const resp = await tryEndpoints(candidatesDefault(`/categories?page=0&size=2147483647`), { method: "GET" });
-  return extractContentIfPage(resp);
-};
 
 export const createCategory = async (categoryData) => {
   return tryEndpoints(candidatesDefault(`/categories`), { method: "POST", body: JSON.stringify(categoryData) });
@@ -93,14 +81,6 @@ export const updateCategory = async (categoryId, categoryData) => {
   return tryEndpoints(candidatesDefault(`/categories/${categoryId}`), { method: "PUT", body: JSON.stringify(categoryData) });
 };
 
-export const deleteCategory = async (categoryId) => {
-  return tryEndpoints(candidatesDefault(`/categories/${categoryId}`), { method: "DELETE" });
-};
-
-export const getDiscounts = async () => {
-  const resp = await tryEndpoints(candidatesDefault(`/discounts/admin/categories?page=0&size=2147483647`), { method: "GET" });
-  return extractContentIfPage(resp);
-};
 
 export const createDiscount = async (discountData) => {
   return tryEndpoints(candidatesDefault(`/discounts`), { method: "POST", body: JSON.stringify(discountData) });
@@ -110,9 +90,6 @@ export const updateDiscount = async (discountId, discountData) => {
   return tryEndpoints(candidatesDefault(`/discounts/${discountId}`), { method: "PUT", body: JSON.stringify(discountData) });
 };
 
-export const deleteDiscount = async (discountId) => {
-  return updateDiscount(discountId, { active: false });
-};
 
 
 export const getAllReviews = async () => {
@@ -296,4 +273,26 @@ export const getDiscountsPage = async (page = 1, size = 10) => {
 export const getReviewsPage = async (page = 1, size = 10) => {
   const resp = await tryEndpoints(candidatesDefault(`/reviews?page=${Math.max(0, page-1)}&size=${size}`), { method: "GET" });
   return resp;
+};
+
+
+export default {
+  getAllProducts,
+  getActiveProducts,
+  updateProduct,
+  createCategory,
+  updateCategory,
+  createDiscount,
+  updateDiscount,
+  getUsers,
+  getUsersPage,
+  updateUser,
+  getRecentActivity,
+  getAdminStats,
+  getPlatformMetrics,
+  getProductsPage,
+  getCategoriesPage,
+  getDiscountsPage,
+  getReviewsPage,
+  toggleReviewVisibility
 };

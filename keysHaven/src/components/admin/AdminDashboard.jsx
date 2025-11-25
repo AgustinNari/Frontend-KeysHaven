@@ -1,31 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { getAdminStats, getPlatformMetrics, getRecentActivity } from '../../services/adminService';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchAdminStats, fetchPlatformMetrics, fetchRecentActivity, fetchProductsPage, fetchUsersPage } from '../../redux/slices/adminPanelSlice';
+import { selectAdminPanel } from '../../redux/slices/adminPanelSlice';
 import PaginationBar from '../catalog/PaginationBar';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalProducts: 0,
-    totalActiveProducts: 0,
-    totalOrders: 0,
-    ordersToday: 0,
-    totalReviews: 0,
-    totalRevenue: 0,
-    activeSellers: 0
-  });
+  const dispatch = useDispatch();
+  const admin = useSelector(selectAdminPanel);
 
-  const [platformMetrics, setPlatformMetrics] = useState({
-    uptime: 0,
-    responseTime: 0,
-    dailyVisits: 0,
-    platformRating: 0,
-    activeSupport: 0,
-    incidents: 0
-  });
+  const stats = admin.stats ?? {
+    totalUsers: 0, totalProducts: 0, totalActiveProducts: 0,
+    totalOrders: 0, ordersToday: 0, totalReviews: 0, totalRevenue: 0, activeSellers: 0
+  };
 
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const platformMetrics = admin.platformMetrics ?? { uptime: 0, responseTime: 0, dailyVisits: 0, platformRating: 0, activeSupport: 0, incidents: 0 };
+  const recentActivity = admin.recentActivity ?? [];
 
+  const [loadingLocal, setLoadingLocal] = useState(false);
   const [activityPage, setActivityPage] = useState(1);
   const activityPageSize = 6;
   const totalActivityPages = Math.max(1, Math.ceil(recentActivity.length / activityPageSize));
@@ -34,30 +25,26 @@ export default function AdminDashboard() {
     loadDashboardData();
   }, []);
 
+  const loadDashboardData = async () => {
+    setLoadingLocal(true);
+    try {
+      await Promise.all([
+        dispatch(fetchAdminStats()).unwrap(),
+        dispatch(fetchPlatformMetrics()).unwrap(),
+        dispatch(fetchRecentActivity()).unwrap()
+      ]);
+    } catch (err) {
+      console.error('Error loading admin dashboard:', err);
+    } finally {
+      setLoadingLocal(false);
+    }
+  };
+
   useEffect(() => {
     if (activityPage > totalActivityPages) setActivityPage(totalActivityPages);
   }, [recentActivity, totalActivityPages, activityPage]);
 
-  const loadDashboardData = async () => {
-    setLoading(true);
-    try {
-      const [statsData, metricsData, activityData] = await Promise.all([
-        getAdminStats(),
-        getPlatformMetrics(),
-        getRecentActivity()
-      ]);
-
-      setStats(prev => ({ ...prev, ...(statsData || {}) }));
-      setPlatformMetrics(metricsData || {});
-      setRecentActivity(activityData || []);
-    } catch (error) {
-      console.error('Error loading admin dashboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (loadingLocal) {
     return (
       <div className="text-center text-muted py-5">
         <div className="spinner-border" role="status">
@@ -77,9 +64,7 @@ export default function AdminDashboard() {
       <div className="col-md-3 mb-4">
         <div className="card bg-primary-dark border-0 h-100">
           <div className="card-body text-center">
-            <div className="text-primary mb-2">
-              <i className="fas fa-users fa-2x"></i>
-            </div>
+            <div className="text-primary mb-2"><i className="fas fa-users fa-2x"></i></div>
             <h3 className="text-primary-light">{stats.totalUsers}</h3>
             <p className="text-muted mb-0">Usuarios Totales</p>
           </div>
@@ -88,9 +73,7 @@ export default function AdminDashboard() {
       <div className="col-md-3 mb-4">
         <div className="card bg-primary-dark border-0 h-100">
           <div className="card-body text-center">
-            <div className="text-primary mb-2">
-              <i className="fas fa-box fa-2x"></i>
-            </div>
+            <div className="text-primary mb-2"><i className="fas fa-box fa-2x"></i></div>
             <h3 className="text-primary-light">{stats.totalProducts}</h3>
             <p className="text-muted mb-0">Productos Totales</p>
           </div>
@@ -99,9 +82,7 @@ export default function AdminDashboard() {
       <div className="col-md-3 mb-4">
         <div className="card bg-primary-dark border-0 h-100">
           <div className="card-body text-center">
-            <div className="text-primary mb-2">
-              <i className="fas fa-shopping-cart fa-2x"></i>
-            </div>
+            <div className="text-primary mb-2"><i className="fas fa-shopping-cart fa-2x"></i></div>
             <h3 className="text-primary-light">{stats.totalOrders}</h3>
             <p className="text-muted mb-0">Órdenes Totales</p>
           </div>
@@ -110,21 +91,16 @@ export default function AdminDashboard() {
       <div className="col-md-3 mb-4">
         <div className="card bg-primary-dark border-0 h-100">
           <div className="card-body text-center">
-            <div className="text-primary mb-2">
-              <i className="fas fa-dollar-sign fa-2x"></i>
-            </div>
+            <div className="text-primary mb-2"><i className="fas fa-dollar-sign fa-2x"></i></div>
             <h3 className="text-primary-light">${Number(stats.totalRevenue || 0).toLocaleString()}</h3>
             <p className="text-muted mb-0">Ingresos Totales</p>
           </div>
         </div>
       </div>
 
-      {/* Estadísticas Secundarias */}
       <div className="col-md-4 mb-4">
         <div className="card bg-primary-dark border-0">
-          <div className="card-header bg-primary-mid">
-            <h6 className="text-primary-light mb-0">Resumen de Plataforma</h6>
-          </div>
+          <div className="card-header bg-primary-mid"><h6 className="text-primary-light mb-0">Resumen de Plataforma</h6></div>
           <div className="card-body">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <span className="text-primary-light">Vendedores Activos</span>
@@ -148,34 +124,18 @@ export default function AdminDashboard() {
 
       <div className="col-md-8 mb-4">
         <div className="card bg-primary-dark border-0">
-          <div className="card-header bg-primary-mid">
-            <h6 className="text-primary-light mb-0">Actividad Reciente</h6>
-          </div>
+          <div className="card-header bg-primary-mid"><h6 className="text-primary-light mb-0">Actividad Reciente</h6></div>
           <div className="card-body">
             {activityPageItems.map(activity => {
               let bgClass = 'bg-info';
               let icon = 'fa-box';
               if (activity.type === 'user') {
-                if ((activity.role || '').toUpperCase() === 'SELLER') {
-                  bgClass = 'bg-warning';
-                  icon = 'fa-store';
-                } else if ((activity.role || '').toUpperCase() === 'ADMIN') {
-                  bgClass = 'bg-danger';
-                  icon = 'fa-user-shield';
-                } else {
-                  bgClass = 'bg-success';
-                  icon = 'fa-user';
-                }
-              } else if (activity.type === 'order') {
-                bgClass = 'bg-primary';
-                icon = 'fa-shopping-cart';
-              } else if (activity.type === 'review') {
-                bgClass = 'bg-secondary';
-                icon = 'fa-comments';
-              } else if (activity.type === 'product') {
-                bgClass = 'bg-info';
-                icon = activity.action && activity.action.toLowerCase().includes('desactiv') ? 'fa-box-open' : 'fa-box';
-              }
+                if ((activity.role || '').toUpperCase() === 'SELLER') { bgClass = 'bg-warning'; icon = 'fa-store'; }
+                else if ((activity.role || '').toUpperCase() === 'ADMIN') { bgClass = 'bg-danger'; icon = 'fa-user-shield'; }
+                else { bgClass = 'bg-success'; icon = 'fa-user'; }
+              } else if (activity.type === 'order') { bgClass = 'bg-primary'; icon = 'fa-shopping-cart'; }
+              else if (activity.type === 'review') { bgClass = 'bg-secondary'; icon = 'fa-comments'; }
+              else if (activity.type === 'product') { bgClass = 'bg-info'; icon = activity.action && activity.action.toLowerCase().includes('desactiv') ? 'fa-box-open' : 'fa-box'; }
 
               return (
                 <div key={activity.id} className="d-flex align-items-start mb-3 pb-2 border-bottom border-secondary">
@@ -199,44 +159,23 @@ export default function AdminDashboard() {
             })}
 
             <div className="d-flex justify-content-center mt-3">
-              <PaginationBar page={activityPage} setPage={setActivityPage} totalPages={Math.max(1, totalActivityPages)} />
+              <PaginationBar page={activityPage} setPage={setActivityPage} totalPages={totalActivityPages} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Métricas Rápidas */}
       <div className="col-12">
         <div className="card bg-primary-dark border-0">
-          <div className="card-header bg-primary-mid">
-            <h6 className="text-primary-light mb-0">Métricas de la Plataforma</h6>
-          </div>
+          <div className="card-header bg-primary-mid"><h6 className="text-primary-light mb-0">Métricas de la Plataforma</h6></div>
           <div className="card-body">
             <div className="row text-center">
-              <div className="col-md-2">
-                <div className="text-primary-light h4 mb-1">{platformMetrics.uptime}%</div>
-                <small className="text-muted">Uptime</small>
-              </div>
-              <div className="col-md-2">
-                <div className="text-primary-light h4 mb-1">{platformMetrics.responseTime}s</div>
-                <small className="text-muted">Tiempo Respuesta</small>
-              </div>
-              <div className="col-md-2">
-                <div className="text-primary-light h4 mb-1">{platformMetrics.dailyVisits}</div>
-                <small className="text-muted">Visitas Hoy</small>
-              </div>
-              <div className="col-md-2">
-                <div className="text-primary-light h4 mb-1">{platformMetrics.platformRating}</div>
-                <small className="text-muted">Rating Plataforma</small>
-              </div>
-              <div className="col-md-2">
-                <div className="text-primary-light h4 mb-1">{platformMetrics.activeSupport}</div>
-                <small className="text-muted">Soporte Activo</small>
-              </div>
-              <div className="col-md-2">
-                <div className="text-primary-light h4 mb-1">{platformMetrics.incidents}</div>
-                <small className="text-muted">Incidentes</small>
-              </div>
+              <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.uptime}%</div><small className="text-muted">Uptime</small></div>
+              <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.responseTime}s</div><small className="text-muted">Tiempo Respuesta</small></div>
+              <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.dailyVisits}</div><small className="text-muted">Visitas Hoy</small></div>
+              <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.platformRating}</div><small className="text-muted">Rating Plataforma</small></div>
+              <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.activeSupport}</div><small className="text-muted">Soporte Activo</small></div>
+              <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.incidents}</div><small className="text-muted">Incidentes</small></div>
             </div>
           </div>
         </div>

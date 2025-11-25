@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import PaginationBar from "../catalog/PaginationBar";
 import OrderDetailModal from "./OrderDetailModal";
 
-export default function OrdersTab({ ordersPage, onPageChange, userReviews, onSaveReview, onDeleteReview }) {
+export default function OrdersTab({ ordersPage, onPageChange, onSaveReview, onDeleteReview }) {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const pageNumber = Number(ordersPage?.number ?? 0);
@@ -50,7 +50,6 @@ export default function OrdersTab({ ordersPage, onPageChange, userReviews, onSav
       <OrderDetailModal
         show={!!selectedOrder}
         order={selectedOrder}
-        userReviews={userReviews}
         onClose={() => setSelectedOrder(null)}
         onSaveReview={onSaveReview}
         onDeleteReview={onDeleteReview}

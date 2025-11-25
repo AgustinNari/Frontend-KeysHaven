@@ -1,43 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import { createDiscount, getSellerDiscounts, updateDiscount, getSellerProducts } from '../../services/sellerService';
-import ConfirmModal from '../profile/ConfirmModal';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PaginationBar from '../catalog/PaginationBar';
-
-import { useAppSelector } from '../../redux/hooks';
+import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { selectUser } from '../../redux/slices/authSlice';
+import { fetchSellerDiscounts } from '../../redux/slices/discountsSlice';
+import { fetchSellerProducts, createSellerDiscount, updateSellerDiscount } from '../../redux/slices/sellerPanelSlice';
+import { fetchProductDetail } from '../../redux/slices/productDetailSlice';
+import PaginationBar from '../catalog/PaginationBar';
+import ConfirmModal from '../profile/ConfirmModal';
 
 export default function SellerCoupons() {
   const user = useAppSelector(selectUser);
   const sellerId = user?.id;
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const [coupons, setCoupons] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const discountsState = useAppSelector(state => state.discounts.sellerDiscounts);
+  const products = useAppSelector(state => state.sellerPanel.activeProducts) || [];
 
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [total, setTotal] = useState(0);
-
-  const emptyForm = {
-    code: '',
-    type: 'PERCENT',
-    value: '',
-    scope: 'PRODUCT',
-    targetProductId: '',
-    startsAt: '',
-    endsAt: '',
-    minQuantity: '',
-    maxQuantity: '',
-    minPrice: '',
-    maxPrice: ''
-  };
-  const [formData, setFormData] = useState(emptyForm);
-  const [confirm, setConfirm] = useState({ show:false, title:'', message:'', onConfirm:null });
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [showForm, setShowForm] = React.useState(false);
+  const [editingId, setEditingId] = React.useState(null);
+  const [formData, setFormData] = React.useState({
+    code: '', type: 'PERCENT', value: '', scope: 'PRODUCT', targetProductId: '', startsAt: '', endsAt: '',
+    minQuantity: '', maxQuantity: '', minPrice: '', maxPrice: ''
+  });
+  const [page, setPage] = React.useState(1);
+  const pageSize = 10;
+  const total = discountsState.total || 0;
 
   useEffect(() => { loadData(); }, [sellerId, page]);
 
@@ -45,20 +35,10 @@ export default function SellerCoupons() {
     setLoading(true);
     try {
       if (!sellerId) return;
-      const [productsData, couponsData] = await Promise.all([
-        getSellerProducts(sellerId),
-        getSellerDiscounts(Math.max(0, page - 1), pageSize)
-      ]);
-      const prods = Array.isArray(productsData) ? productsData : (productsData.content || []);
-      setProducts(prods || []);
-      setCoupons(couponsData.items || []);
-      setTotal(couponsData.total || (Array.isArray(couponsData.items) ? couponsData.items.length : 0));
+      await dispatch(fetchSellerDiscounts({ page: Math.max(0, page - 1), size: pageSize })).unwrap();
+      await dispatch(fetchSellerProducts({ sellerId })).unwrap();
     } catch (err) {
       console.error(err);
-      if (err && err.status === 401) {
-        navigate('/login', { replace: true });
-        return;
-      }
       setError('Error cargando datos');
     } finally {
       setLoading(false);
@@ -66,7 +46,7 @@ export default function SellerCoupons() {
   };
 
   const handleOpenCreate = () => {
-    setFormData(emptyForm);
+    setFormData({ code:'', type:'PERCENT', value:'', scope:'PRODUCT', targetProductId:'', startsAt:'', endsAt:'', minQuantity:'', maxQuantity:'', minPrice:'', maxPrice:'' });
     setEditingId(null);
     setShowForm(true);
   };
@@ -89,7 +69,7 @@ export default function SellerCoupons() {
     setShowForm(true);
   };
 
-  const handleGenerateCode = () => {
+    const handleGenerateCode = () => {
     const c = 'CPN' + Math.random().toString(36).substring(2,8).toUpperCase();
     setFormData(d => ({ ...d, code: c }));
   };
@@ -131,7 +111,6 @@ export default function SellerCoupons() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
     setLoading(true);
     setError('');
     try {
@@ -142,7 +121,6 @@ export default function SellerCoupons() {
         scope: formData.scope,
         targetProductId: formData.scope === 'PRODUCT' ? (formData.targetProductId ? parseInt(formData.targetProductId) : null) : null,
         targetSellerId: formData.scope === 'SELLER' ? sellerId : null,
-        targetBuyerId: formData.targetBuyerId ? parseInt(formData.targetBuyerId) : null,
         minQuantity: formData.minQuantity ? parseInt(formData.minQuantity) : null,
         maxQuantity: formData.maxQuantity ? parseInt(formData.maxQuantity) : null,
         startsAt: new Date(formData.startsAt).toISOString(),
@@ -152,12 +130,19 @@ export default function SellerCoupons() {
       };
 
       if (editingId) {
-        await updateDiscount(editingId, payload);
+        await dispatch(updateSellerDiscount({ discountId: editingId, discountData: payload })).unwrap();
       } else {
-        await createDiscount(payload);
+        await dispatch(createSellerDiscount(payload)).unwrap();
       }
 
-      await loadData();
+      await dispatch(fetchSellerDiscounts({ page: Math.max(0, page - 1), size: pageSize })).unwrap();
+
+      if (payload.targetProductId) {
+        await dispatch(fetchProductDetail(payload.targetProductId)).unwrap();
+      } else {
+        await dispatch(fetchSellerProducts({ sellerId })).unwrap();
+      }
+
       setShowForm(false);
       setEditingId(null);
     } catch (err) {
@@ -186,11 +171,13 @@ export default function SellerCoupons() {
     }
   };
 
+  const [confirm, setConfirm] = React.useState({ show:false, title:'', message:'', onConfirm:null });
+
   const handleDeactivateConfirmed = async (discountId) => {
     setLoading(true);
     try {
-      await updateDiscount(discountId, { active: false });
-      await loadData();
+      await dispatch(updateSellerDiscount({ discountId, discountData: { active: false } })).unwrap();
+      await dispatch(fetchSellerDiscounts({ page: Math.max(0, page - 1), size: pageSize })).unwrap();
     } catch (err) {
       console.error(err);
       setError('Error desactivando descuento');
@@ -203,8 +190,8 @@ export default function SellerCoupons() {
   const handleActivate = async (discountId) => {
     setLoading(true);
     try {
-      await updateDiscount(discountId, { active: true });
-      await loadData();
+      await dispatch(updateSellerDiscount({ discountId, discountData: { active: true } })).unwrap();
+      await dispatch(fetchSellerDiscounts({ page: Math.max(0, page - 1), size: pageSize })).unwrap();
     } catch (err) {
       console.error(err);
       setError('Error activando descuento');
@@ -316,7 +303,7 @@ export default function SellerCoupons() {
             <tbody>
               {loading ? (
                 <tr><td colSpan="8" className="text-center py-4 text-muted">Cargando...</td></tr>
-              ) : (coupons || []).map(d => (
+              ) : (discountsState.items || []).map(d => (
                 <tr key={d.id}>
                   <td className="font-monospace">{d.code || '-'}</td>
                   <td>{d.type}</td>
@@ -335,7 +322,7 @@ export default function SellerCoupons() {
               ))}
             </tbody>
           </table>
-          {!loading && (coupons || []).length === 0 && <div className="text-center text-muted py-4">No hay descuentos/cupones creados.</div>}
+          {!loading && (discountsState.items || []).length === 0 && <div className="text-center text-muted py-4">No hay descuentos/cupones creados.</div>}
         </div>
 
         <div className="d-flex justify-content-center mt-3">
