@@ -23,7 +23,6 @@ export default function Footer() {
           <div className="col-md-2">
             <h6 className="fw-bold">Soporte</h6>
             <ul className="list-unstyled small">
-              {/* Más adelante pueden ir a una vista específica de activación */}
               <li>
                 <Link
                   to="/faq"
@@ -33,10 +32,19 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link 
+                <Link
+                  to="/refund-policy"
                   className="text-light text-decoration-none"
-                  to="/contactdetails">
-                  Contacto
+                >
+                  Política de reembolsos
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/help-center"
+                  className="text-light text-decoration-none"
+                >
+                  Centro de ayuda
                 </Link>
               </li>
             </ul>
@@ -45,6 +53,14 @@ export default function Footer() {
           <div className="col-md-2">
             <h6 className="fw-bold">Compañía</h6>
             <ul className="list-unstyled small">
+              <li>
+                <Link
+                  className="text-light text-decoration-none"
+                  to="/about"
+                >
+                  Sobre KeysHaven
+                </Link>
+              </li>
               <li>
                 <Link
                   className="text-light text-decoration-none"
