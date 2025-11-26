@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
@@ -12,14 +12,18 @@ import RelatedProducts from "../components/product/RelatedProducts";
 import ReviewList from "../components/product/ReviewList";
 import Rating from "../components/catalog/Rating";
 
-
 import {
   fetchProductDetail,
   fetchRelatedProducts,
   fetchProductReviews,
-  clearProductDetail,
-  upsertProductDetail
+  upsertProductDetail,
+  setReviewsFromCache,
+  setRelatedFromCache,
+  selectProductReviewsPages,
+  selectProductCache,
+  selectRelatedCache
 } from "../redux/slices/productDetailSlice";
+
 import {
   fetchSellerDetail,
   selectSellerDetail,
@@ -40,7 +44,6 @@ export default function ProductDetail() {
   const { add } = useCart();
   const user = useAppSelector(selectUser);
 
-
   const product = useAppSelector((s) => s.productDetail.product);
   const productLoading = useAppSelector((s) => s.productDetail.loading);
   const related = useAppSelector((s) => s.productDetail.related || []);
@@ -49,6 +52,22 @@ export default function ProductDetail() {
   const sellerDetailProducts = useAppSelector(selectSellerDetailProducts);
   const sellersNeedsRefresh = useAppSelector((s) => s.sellers.needsRefresh);
 
+  const productCacheEntry = useAppSelector(s => s.productDetail?.productCache?.[String(id)]);
+  const reviewsPages = useAppSelector(selectProductReviewsPages);
+  const relatedCache = useAppSelector(selectRelatedCache);
+
+  const sellerCacheEntry = useAppSelector(s => s.sellers?.detailCache?.[String(product?.sellerId)]);
+  const sellerProductsCacheEntry = useAppSelector(s => s.sellers?.detailProductsCache?.[String(product?.sellerId)]);
+
+  const requestedRef = useRef({
+    productId: null,
+    reviewsKeys: new Set(),
+    relatedKeys: new Set()
+  });
+
+  useEffect(() => {
+    requestedRef.current = { productId: null, reviewsKeys: new Set(), relatedKeys: new Set() };
+  }, [id]);
 
   const [productImages, setProductImages] = useState([]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -57,15 +76,32 @@ export default function ProductDetail() {
   const reviewsPageSize = 5;
   const [toast, setToast] = useState(null);
 
-
   useEffect(() => {
     if (!id) return;
     let mounted = true;
 
     const load = async () => {
       try {
-        await dispatch(fetchProductDetail(Number(id))).unwrap();
-        await dispatch(fetchProductReviews({ productId: Number(id), page: 0, size: reviewsPageSize })).unwrap();
+        if (productCacheEntry && !sellersNeedsRefresh) {
+          if (!product || Number(product.id) !== Number(id)) {
+            dispatch(upsertProductDetail(productCacheEntry));
+          }
+        } else {
+          if (String(requestedRef.current.productId) !== String(id)) {
+            requestedRef.current.productId = id;
+            await dispatch(fetchProductDetail({ productId: Number(id) })).unwrap();
+          }
+        }
+
+        const initialReviewsKey = `${String(id)}_0_${reviewsPageSize}`;
+        if (reviewsPages && reviewsPages[initialReviewsKey]) {
+          dispatch(setReviewsFromCache(initialReviewsKey));
+        } else {
+          if (!requestedRef.current.reviewsKeys.has(initialReviewsKey)) {
+            requestedRef.current.reviewsKeys.add(initialReviewsKey);
+            await dispatch(fetchProductReviews({ productId: Number(id), page: 0, size: reviewsPageSize })).unwrap();
+          }
+        }
       } catch (err) {
         console.error("ProductDetail load error:", err);
       } finally {
@@ -77,9 +113,8 @@ export default function ProductDetail() {
 
     return () => {
       mounted = false;
-      dispatch(clearProductDetail());
     };
-  }, [id, dispatch]);
+  }, [id, dispatch, productCacheEntry, reviewsPages, sellersNeedsRefresh]);
 
   useEffect(() => {
     if (!product) {
@@ -97,24 +132,57 @@ export default function ProductDetail() {
 
     const categoryIds = (product.categories || []).map(c => (c?.id ?? null)).filter(Boolean);
     if (categoryIds.length > 0) {
-      dispatch(fetchRelatedProducts({ categoryIds, excludeProductId: product.id, size: 6 }));
+      const relatedKey = `${String(product.id ?? 'none')}_${categoryIds.join(',')}_6`;
+      if (relatedCache && relatedCache[relatedKey]) {
+        dispatch(setRelatedFromCache(relatedKey));
+      } else {
+        if (!requestedRef.current.relatedKeys.has(relatedKey)) {
+          requestedRef.current.relatedKeys.add(relatedKey);
+          dispatch(fetchRelatedProducts({ categoryIds, excludeProductId: product.id, size: 6 }));
+        }
+      }
     }
 
     if (product.sellerId) {
-      dispatch(fetchSellerDetail(product.sellerId));
-
-      dispatch(fetchSellerActiveProductsForDetail(product.sellerId));
+      if (!sellerCacheEntry || sellersNeedsRefresh) {
+        dispatch(fetchSellerDetail({ sellerId: product.sellerId }));
+      }
+      if (!sellerProductsCacheEntry || sellersNeedsRefresh) {
+        dispatch(fetchSellerActiveProductsForDetail({ sellerId: product.sellerId }));
+      }
     }
-  }, [product, dispatch]);
+  }, [product, dispatch, sellersNeedsRefresh, sellerCacheEntry, sellerProductsCacheEntry, relatedCache]);
 
   useEffect(() => {
     if (!product) return;
     if (sellersNeedsRefresh && product.sellerId) {
-      dispatch(fetchSellerDetail(product.sellerId));
-      dispatch(fetchProductDetail(product.id));
-      dispatch(fetchSellerActiveProductsForDetail(product.sellerId));
+      dispatch(fetchSellerDetail({ sellerId: product.sellerId, force: true }));
+      dispatch(fetchProductDetail({ productId: product.id, force: true }));
+      dispatch(fetchSellerActiveProductsForDetail({ sellerId: product.sellerId, force: true }));
+      requestedRef.current = { productId: null, reviewsKeys: new Set(), relatedKeys: new Set() };
     }
   }, [sellersNeedsRefresh, product, dispatch]);
+
+  useEffect(() => {
+    if (!product) return;
+    const page = Math.max(0, reviewsPageNumber - 1);
+    const key = `${String(product.id)}_${page}_${reviewsPageSize}`;
+    const loadPage = async () => {
+      try {
+        if (reviewsPages && reviewsPages[key]) {
+          dispatch(setReviewsFromCache(key));
+        } else {
+          if (!requestedRef.current.reviewsKeys.has(key)) {
+            requestedRef.current.reviewsKeys.add(key);
+            await dispatch(fetchProductReviews({ productId: product.id, page, size: reviewsPageSize })).unwrap();
+          }
+        }
+      } catch (err) {
+        console.error("Error loading reviews page:", err);
+      }
+    };
+    loadPage();
+  }, [reviewsPageNumber, product, dispatch, reviewsPages, reviewsPageSize]);
 
   const sellerPanelProducts = useAppSelector((s) => s.sellerPanel.products || []);
   useEffect(() => {
@@ -124,18 +192,6 @@ export default function ProductDetail() {
       dispatch(upsertProductDetail(found));
     }
   }, [sellerPanelProducts, product, dispatch]);
-
-  useEffect(() => {
-    if (!product) return;
-    const loadPage = async () => {
-      try {
-        await dispatch(fetchProductReviews({ productId: product.id, page: Math.max(0, reviewsPageNumber - 1), size: reviewsPageSize })).unwrap();
-      } catch (err) {
-        console.error("Error loading reviews page:", err);
-      }
-    };
-    loadPage();
-  }, [reviewsPageNumber, product, dispatch]);
 
   const showToast = (text, type = "warn", duration = 2600) => {
     setToast({ text, type });
@@ -170,7 +226,7 @@ export default function ProductDetail() {
 
   const handleAddToCart = async () => {
     if (blockedPurchase) {
-      showToast(product?.sellerId && user?.role === "SELLER" ? "No se pueden comprar productos propios" : "El administrador no puede comprar productos", "warn");
+      showToast(product?.sellerId && user?.role === "SELLER" ? "No se pueden comprar productos propios" : "El administrador no puede comprar", "warn");
       return;
     }
     const res = await add(buildAddPayload(), 1);
@@ -180,7 +236,7 @@ export default function ProductDetail() {
 
   const handleBuyNow = async () => {
     if (blockedPurchase) {
-      showToast(product?.sellerId && user?.role === "SELLER" ? "No se pueden comprar productos propios" : "El administrador no puede comprar productos", "warn");
+      showToast(product?.sellerId && user?.role === "SELLER" ? "No se pueden comprar productos propios" : "El administrador no puede comprar", "warn");
       return;
     }
     const res = await add(buildAddPayload(), 1);
@@ -302,7 +358,7 @@ export default function ProductDetail() {
                               <div className="p-2">
                                 <div style={{ color: "var(--text)", fontWeight: 700 }}>{sp.title}</div>
                                 <div className="meta">{sp.platform}</div>
-                                <div style={{ marginTop: 6, color: "var(--accent)", fontWeight: 700 }}>${sp.price}</div>
+                                <div style={{ marginTop: 6, color: "var(--accent)", fontWeight: 700 }}>${sp.price - (sp.bestDiscountPercentage* sp.price * 0.01)}</div>
                               </div>
                             </div>
                           </Link>

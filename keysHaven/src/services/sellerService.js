@@ -150,6 +150,14 @@ export const getSellerActiveProducts = async (sellerId) => {
   }
 };
 
+function normalizeDiscountValueToFraction(raw) {
+  if (raw == null) return null;
+  const n = Number(raw);
+  if (Number.isNaN(n)) return null;
+  if (n > 1) return n / 100;
+  return n;
+}
+
 export const getSellerActiveProductsForDetail = async (sellerId) => {
   try {
     const sId = sellerId ? (Number.isNaN(Number(sellerId)) ? sellerId : Number(sellerId)) : undefined;
@@ -165,6 +173,34 @@ export const getSellerActiveProductsForDetail = async (sellerId) => {
     if (Array.isArray(normalized)) {
       normalized = normalized.map(ensurePrimaryImage);
     }
+
+    normalized = normalized.map(p => {
+      let bestDiscountFrac = null;
+      let discountedPrice = null;
+
+      if (p.bestDiscount != null) {
+        const rawVal = p.bestDiscount.value;
+        bestDiscountFrac = normalizeDiscountValueToFraction(rawVal);
+
+        if (p.bestDiscount.type === "PERCENT" || p.bestDiscount.type === "PERCENT") {
+          const basePrice = Number(p.price ?? 0);
+          if (bestDiscountFrac != null && !Number.isNaN(basePrice)) {
+            discountedPrice = Math.max(0, Math.round((basePrice * (1 - bestDiscountFrac)) * 100) / 100);
+          }
+        } else if (p.bestDiscount.type === "FIXED") {
+          const fixedVal = Number(rawVal ?? 0);
+          const basePrice = Number(p.price ?? 0);
+          if (!Number.isNaN(basePrice)) {
+            discountedPrice = Math.max(0, Math.round((basePrice - fixedVal) * 100) / 100);
+          }
+        }
+      }
+
+      return {
+        ...p,
+        discountedPrice,
+      };
+    });
 
     if ((!normalized || normalized.length === 0) && sId) {
       try {
@@ -183,6 +219,7 @@ export const getSellerActiveProductsForDetail = async (sellerId) => {
     return [];
   }
 };
+
 
 export const getProductDetail = async (productId) => {
   try {

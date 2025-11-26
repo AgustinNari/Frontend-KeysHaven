@@ -11,19 +11,38 @@ export default function ProductCard({ product }) {
   const user = useAppSelector(selectUser);
   const [toast, setToast] = useState(null);
 
-  const hasDiscount =
-    (product.bestDiscountFrac != null && Number(product.bestDiscountFrac) > 0) ||
-    (product.bestDiscountPercentage != null && Number(product.bestDiscountPercentage) > 0);
-  const discountFrac =
-    product.bestDiscountFrac ??
-    (product.bestDiscountPercentage != null ? Number(product.bestDiscountPercentage) / 100 : null);
-  const discountPct = hasDiscount && discountFrac != null ? Math.round(discountFrac * 100) : 0;
-
   const baseOriginalPrice = Number(product.price ?? 0);
-  const displayPrice = (hasDiscount && product.discountedPrice != null) ? Number(product.discountedPrice) : baseOriginalPrice;
+
+  const discountFracFromFrac =
+    product.bestDiscountFrac != null ? Number(product.bestDiscountFrac) : null;
+  const discountFracFromPct =
+    product.bestDiscountPercentage != null
+      ? Number(product.bestDiscountPercentage) / 100
+      : null;
+  const discountFrac =
+    discountFracFromFrac != null
+      ? discountFracFromFrac
+      : discountFracFromPct != null
+      ? discountFracFromPct
+      : null;
+
+  const hasDiscount =
+    (discountFrac != null && Number(discountFrac) > 0) ||
+    product.discountedPrice != null;
+
+  const discountPct =
+    hasDiscount && discountFrac != null ? Math.round(discountFrac * 100) : 0;
+
+  let displayPrice = baseOriginalPrice;
+  if (product.discountedPrice != null) {
+    displayPrice = Number(product.discountedPrice);
+  } else if (discountFrac != null && Number(discountFrac) > 0) {
+    displayPrice = Math.max(0, baseOriginalPrice * (1 - Number(discountFrac)));
+  }
 
   const isAdmin = user?.role === "ADMIN";
-  const isSellerOwner = user?.role === "SELLER" && String(user?.id) === String(product?.sellerId);
+  const isSellerOwner =
+    user?.role === "SELLER" && String(user?.id) === String(product?.sellerId);
   const blockedPurchase = isAdmin || isSellerOwner;
 
   function showToast(text, type = "warn", duration = 2400) {
@@ -38,22 +57,30 @@ export default function ProductCard({ product }) {
       return;
     }
 
-    const res = await add({
-      id: product.id,
-      title: product.title,
-      price: baseOriginalPrice,
-      currency: product.currency ?? "USD",
-      imageUrl: product.primaryImageUrl ?? product.primaryImageDataUrl ?? null,
-      platform: product.platform ?? null,
-      region: product.region ?? null,
-      _raw: {
+    const res = await add(
+      {
         id: product.id,
+        title: product.title,
         price: baseOriginalPrice,
-        bestDiscount: product.bestDiscount ?? (product.bestDiscountPercentage != null ? { type: "PERCENT", value: product.bestDiscountPercentage } : null),
-        primaryImageDataUrl: product.primaryImageDataUrl ?? product.primaryImageUrl ?? null,
-        availableStock: product.availableStock ?? product.stock ?? null
-      }
-    }, 1);
+        currency: product.currency ?? "USD",
+        imageUrl: product.primaryImageUrl ?? product.primaryImageDataUrl ?? null,
+        platform: product.platform ?? null,
+        region: product.region ?? null,
+        _raw: {
+          id: product.id,
+          price: baseOriginalPrice,
+          bestDiscount:
+            product.bestDiscount ??
+            (product.bestDiscountPercentage != null
+              ? { type: "PERCENT", value: product.bestDiscountPercentage }
+              : null),
+          primaryImageDataUrl:
+            product.primaryImageDataUrl ?? product.primaryImageUrl ?? null,
+          availableStock: product.availableStock ?? product.stock ?? null,
+        },
+      },
+      1
+    );
 
     if (!res || !res.ok) {
       const reason = res?.reason ?? "No se pudo agregar al carrito";

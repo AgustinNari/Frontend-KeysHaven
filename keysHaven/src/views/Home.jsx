@@ -21,7 +21,9 @@ export default function Home() {
   const sellers = useAppSelector(selectTopSellers);
   const products = useAppSelector(selectTopSoldProducts);
 
-  const sellersNeedsRefresh = useAppSelector(state => state.sellers?.needsRefresh);
+  const sellersCount = useAppSelector(state => (state.sellers?.topSellers?.length ?? 0));
+  const sellersNeedsRefresh = useAppSelector(state => !!state.sellers?.needsRefresh);
+
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [categoriesError, setCategoriesError] = useState(null);
 
@@ -55,8 +57,8 @@ export default function Home() {
 
   useEffect(() => {
     let mounted = true;
-
     const loadCategories = async () => {
+      if (categories && categories.length > 0) return;
       try {
         setCategoriesError(null);
         setLoadingCategories(true);
@@ -66,18 +68,19 @@ export default function Home() {
         console.error("Failed to load top categories (redux)", err);
         setCategoriesError(err?.message || "Error cargando categorías");
       } finally {
+        setLoadingCategories(false);
         if (mounted) setLoadingCategories(false);
       }
     };
 
     loadCategories();
     return () => { mounted = false; };
-  }, [dispatch]);
+  }, [dispatch, categories]);
 
   useEffect(() => {
     let mounted = true;
-
     const loadSellers = async () => {
+      if (sellersCount > 0 && !sellersNeedsRefresh) return;
       try {
         setSellersError(null);
         setLoadingSellers(true);
@@ -87,18 +90,19 @@ export default function Home() {
         console.error("Failed to load top sellers (redux)", err);
         setSellersError(err?.message || "Error cargando vendedores");
       } finally {
+        setLoadingSellers(false)
         if (mounted) setLoadingSellers(false);
       }
     };
 
     loadSellers();
     return () => { mounted = false; };
-  }, [dispatch]);
+  }, [dispatch, sellersCount, sellersNeedsRefresh]);
 
   useEffect(() => {
     let mounted = true;
-
     const loadTopSold = async () => {
+      if (products && products.length > 0) return;
       try {
         setProductsError(null);
         setLoadingProducts(true);
@@ -108,19 +112,14 @@ export default function Home() {
         console.error("Failed to load top sold products (redux)", err);
         setProductsError(err?.message || "Error cargando productos");
       } finally {
+        setLoadingProducts(false)
         if (mounted) setLoadingProducts(false);
       }
     };
 
     loadTopSold();
     return () => { mounted = false; };
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (sellersNeedsRefresh) {
-      dispatch(fetchTopSellers(8)).catch(err => console.error("re-fetch sellers failed", err));
-    }
-  }, [sellersNeedsRefresh, dispatch]);
+  }, [dispatch, products]);
 
   useEffect(() => {
     if (searchMode && inputRef.current) inputRef.current.focus();
@@ -284,4 +283,3 @@ export default function Home() {
     </div>
   );
 }
-

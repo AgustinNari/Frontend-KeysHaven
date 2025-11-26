@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { selectUser } from '../../redux/slices/authSlice';
-import { fetchSellerDiscounts } from '../../redux/slices/discountsSlice';
+import { fetchSellerDiscounts, setSellerDiscountsFromCache } from '../../redux/slices/discountsSlice';
 import { fetchSellerProducts, createSellerDiscount, updateSellerDiscount } from '../../redux/slices/sellerPanelSlice';
 import { fetchProductDetail } from '../../redux/slices/productDetailSlice';
 import PaginationBar from '../catalog/PaginationBar';
@@ -15,6 +15,7 @@ export default function SellerCoupons() {
   const navigate = useNavigate();
 
   const discountsState = useAppSelector(state => state.discounts.sellerDiscounts);
+  const discountsPages = useAppSelector(state => state.discounts.sellerDiscountsPages);
   const products = useAppSelector(state => state.sellerPanel.activeProducts) || [];
 
   const [loading, setLoading] = React.useState(false);
@@ -29,14 +30,26 @@ export default function SellerCoupons() {
   const pageSize = 10;
   const total = discountsState.total || 0;
 
-  useEffect(() => { loadData(); }, [sellerId, page]);
+  useEffect(() => { loadData();}, [sellerId, page]);
 
   const loadData = async () => {
+    if (!sellerId) return;
     setLoading(true);
+    setError('');
     try {
-      if (!sellerId) return;
-      await dispatch(fetchSellerDiscounts({ page: Math.max(0, page - 1), size: pageSize })).unwrap();
-      await dispatch(fetchSellerProducts({ sellerId })).unwrap();
+      const pageIndex = Math.max(0, page - 1);
+      const key = `${pageIndex}_${pageSize}`;
+
+      if (discountsPages && discountsPages[key]) {
+        dispatch(setSellerDiscountsFromCache(key));
+      } else {
+        await dispatch(fetchSellerDiscounts({ page: pageIndex, size: pageSize })).unwrap();
+      }
+
+
+      if (!(Array.isArray(products) && products.length > 0)) {
+        await dispatch(fetchSellerProducts({ sellerId })).unwrap();
+      }
     } catch (err) {
       console.error(err);
       setError('Error cargando datos');
@@ -69,7 +82,7 @@ export default function SellerCoupons() {
     setShowForm(true);
   };
 
-    const handleGenerateCode = () => {
+  const handleGenerateCode = () => {
     const c = 'CPN' + Math.random().toString(36).substring(2,8).toUpperCase();
     setFormData(d => ({ ...d, code: c }));
   };
@@ -111,6 +124,7 @@ export default function SellerCoupons() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setLoading(true);
     setError('');
     try {
@@ -135,7 +149,8 @@ export default function SellerCoupons() {
         await dispatch(createSellerDiscount(payload)).unwrap();
       }
 
-      await dispatch(fetchSellerDiscounts({ page: Math.max(0, page - 1), size: pageSize })).unwrap();
+      const pageIndex = Math.max(0, page - 1);
+      await dispatch(fetchSellerDiscounts({ page: pageIndex, size: pageSize, force: true })).unwrap();
 
       if (payload.targetProductId) {
         await dispatch(fetchProductDetail(payload.targetProductId)).unwrap();
@@ -175,9 +190,11 @@ export default function SellerCoupons() {
 
   const handleDeactivateConfirmed = async (discountId) => {
     setLoading(true);
+    setError('');
     try {
       await dispatch(updateSellerDiscount({ discountId, discountData: { active: false } })).unwrap();
-      await dispatch(fetchSellerDiscounts({ page: Math.max(0, page - 1), size: pageSize })).unwrap();
+      const pageIndex = Math.max(0, page - 1);
+      await dispatch(fetchSellerDiscounts({ page: pageIndex, size: pageSize, force: true })).unwrap();
     } catch (err) {
       console.error(err);
       setError('Error desactivando descuento');
@@ -189,9 +206,11 @@ export default function SellerCoupons() {
 
   const handleActivate = async (discountId) => {
     setLoading(true);
+    setError('');
     try {
       await dispatch(updateSellerDiscount({ discountId, discountData: { active: true } })).unwrap();
-      await dispatch(fetchSellerDiscounts({ page: Math.max(0, page - 1), size: pageSize })).unwrap();
+      const pageIndex = Math.max(0, page - 1);
+      await dispatch(fetchSellerDiscounts({ page: pageIndex, size: pageSize, force: true })).unwrap();
     } catch (err) {
       console.error(err);
       setError('Error activando descuento');

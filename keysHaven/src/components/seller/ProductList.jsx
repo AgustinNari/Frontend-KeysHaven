@@ -10,7 +10,8 @@ import { selectUser } from '../../redux/slices/authSlice';
 import {
   fetchSellerProductsPaginated,
   updateProduct as updateProductThunk,
-  getProductKeys as getProductKeysThunk
+  getProductKeys as getProductKeysThunk,
+  setProductsPaginatedFromCache
 } from '../../redux/slices/sellerPanelSlice';
 
 import { upsertProductInList } from '../../redux/slices/productsSlice';
@@ -24,6 +25,7 @@ export default function ProductList({ onEditProduct }) {
   const navigate = useNavigate();
 
   const sellerProductsPaginated = useAppSelector(state => state.sellerPanel.productsPaginated);
+  const pagesCache = useAppSelector(state => state.sellerPanel.productsPaginatedPages);
   const loading = useAppSelector(state => state.sellerPanel.loading);
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [confirm, setConfirm] = React.useState({ show:false, title:'', message:'', onConfirm:null });
@@ -31,11 +33,26 @@ export default function ProductList({ onEditProduct }) {
   const [page, setPage] = React.useState(1);
   const pageSize = 10;
 
-  useEffect(() => { loadProducts(); }, [sellerId, page, statusFilter]);
+  const pageIndex = Math.max(0, (Number(page) || 1) - 1);
+  const pageKey = `${sellerId ?? 'anon'}_${pageIndex}_${pageSize}_${statusFilter ?? 'all'}`;
+
+  useEffect(() => {
+    loadProducts();
+  }, [sellerId, page, statusFilter]);
 
   const loadProducts = async () => {
     if (!sellerId) return;
-    await dispatch(fetchSellerProductsPaginated({ sellerId, page: Math.max(0, page - 1), size: pageSize }));
+    
+    if (pagesCache && pagesCache[pageKey]) {
+      dispatch(setProductsPaginatedFromCache({ key: pageKey }));
+      return;
+    }
+
+    try {
+      await dispatch(fetchSellerProductsPaginated({ sellerId, page: pageIndex, size: pageSize, status: statusFilter })).unwrap();
+    } catch (err) {
+      console.error('loadProducts error', err);
+    }
   };
 
   const closeConfirm = () => setConfirm({ show:false, title:'', message:'', onConfirm:null });
@@ -60,7 +77,7 @@ export default function ProductList({ onEditProduct }) {
       dispatch(upsertProductInList(updated));
       dispatch(upsertProductDetail(updated));
       dispatch(fetchSellerStats(sellerId));
-      await loadProducts();
+      await dispatch(fetchSellerProductsPaginated({ sellerId, page: pageIndex, size: pageSize, status: statusFilter, force: true })).unwrap();
     } catch (err) {
       console.error(err);
     }

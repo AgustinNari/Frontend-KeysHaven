@@ -1,7 +1,12 @@
 import React, { useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { selectUser } from '../../redux/slices/authSlice';
-import { fetchSellerActiveProducts, addBulkDigitalKeys as addBulkDigitalKeysThunk, getProductKeys as getProductKeysThunk, fetchSellerProductsPaginated } from '../../redux/slices/sellerPanelSlice';
+import {
+  fetchSellerActiveProducts,
+  addBulkDigitalKeys as addBulkDigitalKeysThunk,
+  getProductKeys as getProductKeysThunk,
+  fetchSellerProductsPaginated
+} from '../../redux/slices/sellerPanelSlice';
 import PaginationBar from '../catalog/PaginationBar';
 import { fetchProductDetail } from '../../redux/slices/productDetailSlice';
 
@@ -10,12 +15,10 @@ export default function KeyManagement() {
   const sellerId = user?.id;
   const dispatch = useAppDispatch();
 
-
   const productsFromState = useAppSelector(state => state.sellerPanel.activeProducts);
   const keysByProduct = useAppSelector(state => state.sellerPanel.keysByProduct);
 
   const EMPTY_ARRAY = React.useMemo(() => [], []);
-
   const products = productsFromState ?? EMPTY_ARRAY;
 
   const [selectedProduct, setSelectedProduct] = React.useState('');
@@ -23,40 +26,56 @@ export default function KeyManagement() {
   const keysPageSize = 20;
 
   const selectedNum = Number(selectedProduct);
-  const selectedKeysObj = (selectedProduct ? (keysByProduct && keysByProduct[selectedNum]) : undefined);
-  const keysItems = selectedKeysObj?.items ?? EMPTY_ARRAY;
-  const keysTotal = selectedKeysObj?.total ?? 0;
+
+
+  const zeroBasedPage = Math.max(0, keysPage - 1);
+
+
+  const selectedProductCache = selectedProduct ? keysByProduct?.[String(selectedNum)] : undefined;
+  const selectedKeysPageCache = selectedProductCache?.pages?.[String(zeroBasedPage)];
+  const keysItems = selectedKeysPageCache?.items ?? EMPTY_ARRAY;
+  const keysTotal = selectedProductCache?.total ?? selectedKeysPageCache?.total ?? 0;
 
   const [bulkKeys, setBulkKeys] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [loadingProducts, setLoadingProducts] = React.useState(false);
   const [error, setError] = React.useState('');
 
-  useEffect(() => { fetchProducts(); }, [sellerId]);
-
-  const fetchProducts = async () => {
-    setLoadingProducts(true);
-    setError('');
-    try {
-      if (!sellerId) return;
-      await dispatch(fetchSellerActiveProducts({ sellerId })).unwrap();
-    } catch (err) {
-      console.error('Error cargando productos:', err);
-      setError('No se pudieron cargar los productos');
-    } finally {
-      setLoadingProducts(false);
-    }
-  };
 
   useEffect(() => {
-    if (selectedProduct) loadProductKeys(parseInt(selectedProduct, 10), keysPage);
+    const fetchProducts = async () => {
+      if (!sellerId) return;
+      if (Array.isArray(productsFromState) && productsFromState.length > 0) return;
+      setLoadingProducts(true);
+      setError('');
+      try {
+        await dispatch(fetchSellerActiveProducts({ sellerId })).unwrap();
+      } catch (err) {
+        console.error('Error cargando productos:', err);
+        setError('No se pudieron cargar los productos');
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+
+    fetchProducts();
+  }, [sellerId, dispatch]);
+
+  useEffect(() => {
+    if (selectedProduct) loadProductKeys(parseInt(selectedProduct, 10), zeroBasedPage);
   }, [selectedProduct, keysPage]);
 
-  const loadProductKeys = async (productId, page = 1) => {
+  const loadProductKeys = async (productId, page = 0) => {
     setLoading(true);
     setError('');
     try {
-      await dispatch(getProductKeysThunk({ productId, page: Math.max(0, page - 1), size: keysPageSize })).unwrap();
+      const cachedForProduct = keysByProduct?.[String(productId)];
+      const cachedPage = cachedForProduct && cachedForProduct.pages && cachedForProduct.pages[String(page)];
+      if (cachedPage && Array.isArray(cachedPage.items) && cachedPage.items.length >= 0) {
+        setLoading(false);
+        return;
+      }
+      await dispatch(getProductKeysThunk({ productId, page, size: keysPageSize })).unwrap();
     } catch (err) {
       console.error('Error cargando claves:', err);
       setError('Error al cargar claves');
@@ -75,9 +94,11 @@ export default function KeyManagement() {
       await dispatch(addBulkDigitalKeysThunk(payload)).unwrap();
 
       setBulkKeys('');
-      await dispatch(getProductKeysThunk({ productId: parseInt(selectedProduct, 10), page: Math.max(0, keysPage - 1), size: keysPageSize })).unwrap();
+      await dispatch(getProductKeysThunk({ productId: parseInt(selectedProduct, 10), page: Math.max(0, keysPage - 1), size: keysPageSize, force: true })).unwrap();
+
       await dispatch(fetchProductDetail(parseInt(selectedProduct, 10))).unwrap();
-      if (sellerId) await dispatch(fetchSellerProductsPaginated({ sellerId, page: 0, size: 10 })).unwrap();
+
+      if (sellerId) await dispatch(fetchSellerProductsPaginated({ sellerId, page: 0, size: 10, force: true })).unwrap();
     } catch (err) {
       console.error('Error agregando claves en lote:', err);
       setError(err?.message || 'Error al agregar claves');
@@ -89,6 +110,7 @@ export default function KeyManagement() {
   const totalCount = keysTotal;
   const usedCount = (keysItems || []).filter(key => key.status === 'SOLD' || key.used).length;
   const availableCount = Math.max(0, (keysTotal - usedCount));
+
 
   return (
     <div className="card bg-primary-dark border-0">

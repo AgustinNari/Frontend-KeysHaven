@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchAdminStats, fetchPlatformMetrics, fetchRecentActivity, fetchProductsPage, fetchUsersPage } from '../../redux/slices/adminPanelSlice';
-import { selectAdminPanel } from '../../redux/slices/adminPanelSlice';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { fetchAdminStats, fetchPlatformMetrics, fetchRecentActivity } from '../../redux/slices/adminPanelSlice';
 import PaginationBar from '../catalog/PaginationBar';
 
 export default function AdminDashboard() {
-  const dispatch = useDispatch();
-  const admin = useSelector(selectAdminPanel);
+  const dispatch = useAppDispatch();
+  const admin = useAppSelector(state => state.adminPanel);
 
   const stats = admin.stats ?? {
     totalUsers: 0, totalProducts: 0, totalActiveProducts: 0,
@@ -22,17 +21,23 @@ export default function AdminDashboard() {
   const totalActivityPages = Math.max(1, Math.ceil(recentActivity.length / activityPageSize));
 
   useEffect(() => {
-    loadDashboardData();
+    const needsStats = !admin.stats;
+    const needsMetrics = !admin.platformMetrics;
+    const needsActivity = !admin.recentActivity || admin.recentActivity.length === 0;
+
+    if (needsStats || needsMetrics || needsActivity) {
+      loadDashboardData({ needsStats, needsMetrics, needsActivity });
+    }
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async ({ needsStats = true, needsMetrics = true, needsActivity = true } = {}) => {
     setLoadingLocal(true);
     try {
-      await Promise.all([
-        dispatch(fetchAdminStats()).unwrap(),
-        dispatch(fetchPlatformMetrics()).unwrap(),
-        dispatch(fetchRecentActivity()).unwrap()
-      ]);
+      const promises = [];
+      if (needsStats) promises.push(dispatch(fetchAdminStats()).unwrap());
+      if (needsMetrics) promises.push(dispatch(fetchPlatformMetrics()).unwrap());
+      if (needsActivity) promises.push(dispatch(fetchRecentActivity()).unwrap());
+      await Promise.all(promises);
     } catch (err) {
       console.error('Error loading admin dashboard:', err);
     } finally {
@@ -58,6 +63,7 @@ export default function AdminDashboard() {
   const activityStart = (activityPage - 1) * activityPageSize;
   const activityPageItems = recentActivity.slice(activityStart, activityStart + activityPageSize);
 
+  
   return (
     <div className="row">
       {/* Tarjetas Principales */}

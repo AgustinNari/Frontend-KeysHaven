@@ -41,7 +41,6 @@ export default function ProductForm({ product, onSuccess }) {
 
   useEffect(()=>{ (async ()=>{ try{ const cats = await getCategories(); setCategories(cats || []);}catch(err){ console.warn(err);} })(); }, []);
 
-
   useEffect(()=> {
     async function ensureDetail() {
       if (!product) {
@@ -121,7 +120,7 @@ export default function ProductForm({ product, onSuccess }) {
       metacriticScore: p.metacriticScore?.toString() || '',
       images: (p.images || []).map(i => ({ id: i.id, name: i.name || '', dataUrl: i.dataUrl || i.url || '', isPrimary: !!i.isPrimary, contentType: i.contentType || null }))
     });
-  }, [productDetail]);
+  }, [productDetail, product]);
 
   const closeConfirm = () => setConfirm({ show:false, title:'', message:'', onConfirm:null });
 
@@ -147,7 +146,17 @@ export default function ProductForm({ product, onSuccess }) {
 
       if (product && product.id) {
         const addedResp = await dispatch(addProductImageThunk({ productId: product.id, fileOrData: { name: newImg.name.trim(), dataUrl, contentType, isPrimary: false } })).unwrap();
-        await dispatch(fetchProductDetail(product.id)).unwrap();
+        if (addedResp) {
+          if (addedResp.id && addedResp.title) {
+            dispatch(upsertProductDetail(addedResp));
+          } else if (addedResp.productId && addedResp.product) {
+            dispatch(upsertProductDetail(addedResp.product));
+          } else {
+            await dispatch(fetchProductDetail(product.id)).unwrap();
+          }
+        } else {
+          await dispatch(fetchProductDetail(product.id)).unwrap();
+        }
       } else {
         const tmpId = 't'+Math.random().toString(36).slice(2,9);
         setFormData(prev => ({ ...prev, images: [...prev.images, { id: tmpId, name: newImg.name.trim(), dataUrl, isPrimary: prev.images.length===0, contentType }] }));
@@ -169,8 +178,12 @@ export default function ProductForm({ product, onSuccess }) {
     setError('');
     try {
       if (product && product.id && String(img.id).startsWith('t') === false) {
-        await dispatch(setPrimaryImageThunk(img.id)).unwrap();
-        await dispatch(fetchProductDetail(product.id)).unwrap();
+        const resp = await dispatch(setPrimaryImageThunk(img.id)).unwrap();
+        if (resp && resp.id && resp.title) {
+          dispatch(upsertProductDetail(resp));
+        } else {
+          await dispatch(fetchProductDetail(product.id)).unwrap();
+        }
       } else {
         setFormData(prev => ({ ...prev, images: prev.images.map(i => ({ ...i, isPrimary: i.id === img.id })) }));
       }
@@ -190,8 +203,12 @@ export default function ProductForm({ product, onSuccess }) {
       if (!current) throw new Error('Imagen no encontrada');
 
       if (product && product.id && String(imgId).startsWith('t') === false) {
-        await dispatch(updateProductImageThunk({ imageId: imgId, payload: { dataUrl: r.dataUrl, contentType: r.contentType, isPrimary: !!current.isPrimary, name: current.name || '' } })).unwrap();
-        await dispatch(fetchProductDetail(product.id)).unwrap();
+        const resp = await dispatch(updateProductImageThunk({ imageId: imgId, payload: { dataUrl: r.dataUrl, contentType: r.contentType, isPrimary: !!current.isPrimary, name: current.name || '' } })).unwrap();
+        if (resp && resp.id && resp.title) {
+          dispatch(upsertProductDetail(resp));
+        } else {
+          await dispatch(fetchProductDetail(product.id)).unwrap();
+        }
       } else {
         setFormData(prev => ({ ...prev, images: prev.images.map(i => i.id === imgId ? { ...i, dataUrl: r.dataUrl, contentType: r.contentType } : i) }));
       }
@@ -208,8 +225,12 @@ export default function ProductForm({ product, onSuccess }) {
     try {
       const current = formData.images.find(i => i.id === imgId) || {};
       if (product && product.id && String(imgId).startsWith('t') === false) {
-        await dispatch(updateProductImageThunk({ imageId: imgId, payload: { name: newName, isPrimary: !!current.isPrimary } })).unwrap();
-        await dispatch(fetchProductDetail(product.id)).unwrap();
+        const resp = await dispatch(updateProductImageThunk({ imageId: imgId, payload: { name: newName, isPrimary: !!current.isPrimary } })).unwrap();
+        if (resp && resp.id && resp.title) {
+          dispatch(upsertProductDetail(resp));
+        } else {
+          await dispatch(fetchProductDetail(product.id)).unwrap();
+        }
       }
     } catch (err) {
       console.error('Error guardando nombre', err);
@@ -228,8 +249,12 @@ export default function ProductForm({ product, onSuccess }) {
         setError('');
         try {
           if (product && product.id && String(img.id).startsWith('t') === false) {
-            await dispatch(deleteProductImageThunk(img.id)).unwrap();
-            await dispatch(fetchProductDetail(product.id));
+            const resp = await dispatch(deleteProductImageThunk(img.id)).unwrap();
+            if (resp && resp.id && resp.title) {
+              dispatch(upsertProductDetail(resp));
+            } else {
+              await dispatch(fetchProductDetail(product.id)).unwrap();
+            }
           } else {
             setFormData(prev => ({ ...prev, images: prev.images.filter(i => i.id !== img.id) }));
           }
@@ -269,7 +294,10 @@ export default function ProductForm({ product, onSuccess }) {
         const tempImages = formData.images.filter(i => String(i.id).startsWith('t'));
         tempImages.sort((a,b) => (b.isPrimary === true ? 1 : 0) - (a.isPrimary === true ? 1 : 0));
         for (const ti of tempImages) {
-          await dispatch(addProductImageThunk({ productId: product.id, fileOrData: { name: ti.name, dataUrl: ti.dataUrl, contentType: ti.contentType, isPrimary: !!ti.isPrimary } })).unwrap();
+          const addedResp = await dispatch(addProductImageThunk({ productId: product.id, fileOrData: { name: ti.name, dataUrl: ti.dataUrl, contentType: ti.contentType, isPrimary: !!ti.isPrimary } })).unwrap();
+          if (addedResp && addedResp.id && addedResp.title) {
+            dispatch(upsertProductDetail(addedResp));
+          }
         }
 
         dispatch(upsertProductInList(updated));
@@ -281,7 +309,10 @@ export default function ProductForm({ product, onSuccess }) {
         if (!createdProductId) throw new Error('No se recibió id del producto creado');
         const imagesSorted = [...formData.images].sort((a,b) => (b.isPrimary === true ? 1 : 0) - (a.isPrimary === true ? 1 : 0));
         for (const img of imagesSorted) {
-          await dispatch(addProductImageThunk({ productId: createdProductId, fileOrData: { name: img.name, dataUrl: img.dataUrl, contentType: img.contentType, isPrimary: !!img.isPrimary } })).unwrap();
+          const addedResp = await dispatch(addProductImageThunk({ productId: createdProductId, fileOrData: { name: img.name, dataUrl: img.dataUrl, contentType: img.contentType, isPrimary: !!img.isPrimary } })).unwrap();
+          if (addedResp && addedResp.id && addedResp.title) {
+            dispatch(upsertProductDetail(addedResp));
+          }
         }
         dispatch(upsertProductInList(created));
         await dispatch(fetchProductDetail(createdProductId)).unwrap();

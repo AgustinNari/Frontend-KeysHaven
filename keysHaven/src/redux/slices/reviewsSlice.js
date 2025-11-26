@@ -22,11 +22,16 @@ function normalizeError(err) {
   }
 }
 
-
 export const fetchReviewsByProduct = createAsyncThunk(
   'reviews/fetchByProduct',
-  async ({ productId, page = 0, size = 10 } = {}, { rejectWithValue }) => {
+  async ({ productId, page = 0, size = 10 } = {}, { rejectWithValue, getState }) => {
     try {
+      const state = getState();
+      const existing = state.reviews?.byProduct?.[productId];
+      if (existing && Array.isArray(existing.items) && existing.items.length > 0 && page === 0) {
+        const payload = { content: existing.items, totalElements: existing.meta?.totalElements ?? existing.items.length };
+        return { productId, resp: payload };
+      }
       const resp = await reviewsService.getReviewsByProduct(productId, page, size);
       return { productId, resp };
     } catch (err) {
@@ -35,11 +40,15 @@ export const fetchReviewsByProduct = createAsyncThunk(
   }
 );
 
-
 export const fetchReviewByOrderItem = createAsyncThunk(
   'reviews/fetchByOrderItem',
-  async (orderItemId, { rejectWithValue }) => {
+  async (orderItemId, { rejectWithValue, getState }) => {
     try {
+      const state = getState();
+      const cached = state.reviews?.reviewByOrderItem?.[String(orderItemId)];
+      if (typeof cached !== 'undefined') {
+        return { orderItemId, resp: cached };
+      }
       const resp = await reviewsService.getReviewByOrderItem(orderItemId);
       return { orderItemId, resp };
     } catch (err) {
@@ -95,7 +104,6 @@ export const fetchLatestReviews = createAsyncThunk(
     }
   }
 );
-
 
 const initialState = {
   byProduct: {},

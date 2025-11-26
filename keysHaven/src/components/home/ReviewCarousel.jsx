@@ -12,13 +12,16 @@ export default function ReviewCarousel() {
   const latestReviews = useAppSelector(selectLatestReviews) ?? [];
 
   const [reviewsWithCategories, setReviewsWithCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
+      if (latestReviews && latestReviews.length > 0) {
+        return;
+      }
       try {
         setError(null);
         setLoading(true);
@@ -27,12 +30,13 @@ export default function ReviewCarousel() {
         console.error("Failed to fetch latest reviews (redux)", err);
         if (mounted) setError(err?.message || "Error cargando reseñas");
       } finally {
+        setLoading(false);
         if (mounted) setLoading(false);
       }
     };
     load();
     return () => { mounted = false; };
-  }, [dispatch]);
+  }, [dispatch, latestReviews]);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +48,6 @@ export default function ReviewCarousel() {
       }
 
       try {
-
         const mapped = await Promise.all(
           reviews.map(async (review) => {
             try {
@@ -102,6 +105,7 @@ export default function ReviewCarousel() {
     setCurrentIndex(prev => (prev === 0 ? (reviewsWithCategories.length - 1) : prev - 1));
   };
   const goToReview = (index) => setCurrentIndex(index);
+
 
   if (loading) {
     return (

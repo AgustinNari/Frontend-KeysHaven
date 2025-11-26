@@ -1,20 +1,47 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import PaginationBar from "../catalog/PaginationBar";
 import productsService from "../../services/productsService";
 import categoriesService from "../../services/categories";
 import sellersService from "../../services/sellers";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
-import { fetchMyCoupons } from "../../redux/slices/profileSlice";
+import { fetchMyCoupons, selectProfileCoupons, selectProfileCouponsFetchedAt } from "../../redux/slices/profileSlice";
+import { selectAllCategories, fetchAllCategories } from "../../redux/slices/categoriesSlice";
+
+const DEFAULT_PAGE_SIZE = 9;
+const COUPONS_TTL_MS = 10 * 60 * 1000;
+
+function isStale(fetchedAt, ttl = COUPONS_TTL_MS) {
+  if (!fetchedAt) return true;
+  return (Date.now() - fetchedAt) > ttl;
+}
 
 export default function ProfileCoupons({ profile }) {
   const dispatch = useAppDispatch();
-  const reduxCoupons = useAppSelector(state => state.profile.coupons ?? []);
+  const reduxCoupons = useAppSelector(selectProfileCoupons);
+  const couponsFetchedAt = useAppSelector(selectProfileCouponsFetchedAt);
+  const storedCategories = useAppSelector(selectAllCategories);
+
   const [page, setPage] = useState(0);
-  const [size] = useState(9);
+  const [size] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(false);
   const [couponsPage, setCouponsPage] = useState({ items: [], totalPages: 1, totalElements: 0 });
   const [error, setError] = useState("");
   const [copiedCode, setCopiedCode] = useState(null);
+
+  const productMapRef = useRef({});
+  const sellerMapRef = useRef({});
+  const categoryMapRef = useRef({});
+
+  useEffect(() => {
+    if (!storedCategories || storedCategories.length === 0) {
+      dispatch(fetchAllCategories()).catch(() => {});
+    } else {
+      categoryMapRef.current = (storedCategories || []).reduce((acc, c) => {
+        if (c?.id != null) acc[String(c.id)] = c;
+        return acc;
+      }, {});
+    }
+  }, [dispatch, storedCategories]);
 
   useEffect(() => {
     loadCoupons(page);
@@ -24,8 +51,14 @@ export default function ProfileCoupons({ profile }) {
     setLoading(true);
     setError("");
     try {
-      const payload = await dispatch(fetchMyCoupons()).unwrap();
-      const itemsArr = payload?.content ?? payload ?? [];
+      let itemsArr;
+      if (Array.isArray(reduxCoupons) && reduxCoupons.length > 0 && !isStale(couponsFetchedAt)) {
+        itemsArr = reduxCoupons;
+      } else {
+        const payload = await dispatch(fetchMyCoupons()).unwrap();
+        itemsArr = payload?.content ?? payload ?? [];
+      }
+
       const totalElements = Array.isArray(itemsArr) ? itemsArr.length : (itemsArr?.totalElements ?? 0);
       const totalPages = Math.max(1, Math.ceil(totalElements / size));
 
@@ -33,42 +66,56 @@ export default function ProfileCoupons({ profile }) {
       const sellerIds = [...new Set((itemsArr || []).map(c => c.targetSellerId).filter(Boolean))];
       const categoryIds = [...new Set((itemsArr || []).map(c => c.targetCategoryId).filter(Boolean))];
 
-      let categoryMap = {};
-      try {
-        const cats = await categoriesService.getAllCategories();
-        if (Array.isArray(cats)) {
-          categoryMap = cats.reduce((acc, cat) => {
-            if (cat?.id != null) acc[String(cat.id)] = cat;
-            return acc;
-          }, {});
+      if ((!storedCategories || storedCategories.length === 0) && categoryIds.length > 0) {
+        try {
+          const cats = await categoriesService.getAllCategories();
+          if (Array.isArray(cats)) {
+            categoryMapRef.current = cats.reduce((acc, cat) => {
+              if (cat?.id != null) acc[String(cat.id)] = cat;
+              return acc;
+            }, {});
+          }
+        } catch (catErr) {
+          console.warn("No se pudieron cargar categorías:", catErr);
         }
-      } catch (catErr) {
-        console.warn("No se pudieron cargar categorías:", catErr);
+      } else if (storedCategories && storedCategories.length > 0) {
+        categoryMapRef.current = (storedCategories || []).reduce((acc, cat) => {
+          if (cat?.id != null) acc[String(cat.id)] = cat;
+          return acc;
+        }, {});
       }
 
-      const productMap = {};
       await Promise.all(productIds.map(async (pid) => {
+        const key = String(pid);
+        if (productMapRef.current[key]) return;
         try {
           const prod = await productsService.getProductById(pid);
-          if (prod && prod.id != null) productMap[String(prod.id)] = prod;
-        } catch (err) { console.warn("Error cargando producto", pid, err); }
+          if (prod && prod.id != null) productMapRef.current[key] = prod;
+        } catch (err) {
+          console.warn("Error cargando producto", pid, err);
+          productMapRef.current[key] = null;
+        }
       }));
 
-      const sellerMap = {};
       await Promise.all(sellerIds.map(async (sid) => {
+        const key = String(sid);
+        if (sellerMapRef.current[key]) return;
         try {
           const seller = await sellersService.getSellerDetail(sid);
-          if (seller && seller.id != null) sellerMap[String(seller.id)] = seller;
-        } catch (err) { console.warn("Error cargando seller", sid, err); }
+          if (seller && seller.id != null) sellerMapRef.current[key] = seller;
+        } catch (err) {
+          console.warn("Error cargando seller", sid, err);
+          sellerMapRef.current[key] = null;
+        }
       }));
 
       const enhancedItems = (itemsArr || []).map(c => {
-        const prod = c?.targetProductId ? productMap[String(c.targetProductId)] : null;
+        const prod = c?.targetProductId ? productMapRef.current[String(c.targetProductId)] : null;
         const sellerFromProduct = prod?.sellerDisplayName || prod?.sellerId || null;
-        const sellerObj = c?.targetSellerId ? sellerMap[String(c.targetSellerId)] : null;
+        const sellerObj = c?.targetSellerId ? sellerMapRef.current[String(c.targetSellerId)] : null;
         const sellerName = prod?.sellerDisplayName ?? sellerObj?.displayName ?? null;
         const productTitle = prod?.title ?? null;
-        const categoryDesc = c?.targetCategoryId ? (categoryMap[String(c.targetCategoryId)]?.description ?? null) : null;
+        const categoryDesc = c?.targetCategoryId ? (categoryMapRef.current[String(c.targetCategoryId)]?.description ?? null) : null;
         return {
           ...c,
           _productTitle: productTitle,

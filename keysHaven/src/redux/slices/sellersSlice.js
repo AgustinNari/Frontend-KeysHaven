@@ -6,8 +6,13 @@ import { createOrder } from './ordersSlice';
 
 export const fetchSellerActiveProductsForDetail = createAsyncThunk(
   'sellers/fetchActiveProductsForDetail',
-  async (sellerId, { rejectWithValue }) => {
+  async ({ sellerId, force = false } = {}, { rejectWithValue, getState }) => {
     try {
+      const state = getState();
+      const cached = state.sellers?.detailProductsCache?.[String(sellerId)];
+      if (!force && Array.isArray(cached) && cached.length > 0) {
+        return { sellerId, products: cached };
+      }
       const resp = await sellerService.getSellerActiveProductsForDetail(sellerId);
       return { sellerId, products: resp ?? [] };
     } catch (err) {
@@ -18,8 +23,13 @@ export const fetchSellerActiveProductsForDetail = createAsyncThunk(
 
 export const fetchSellerDetail = createAsyncThunk(
   'sellers/fetchDetail',
-  async (sellerId, { rejectWithValue }) => {
+  async ({ sellerId, force = false } = {}, { rejectWithValue, getState }) => {
     try {
+      const state = getState();
+      const cached = state.sellers?.detailCache?.[String(sellerId)];
+      if (!force && cached) {
+        return cached;
+      }
       const resp = await sellersService.getSellerDetail(sellerId);
       return resp;
     } catch (err) {
@@ -51,7 +61,9 @@ const initialState = {
   topSellers: [],
   loading: false,
   error: null,
-  needsRefresh: false
+  needsRefresh: false,
+  detailCache: {},
+  detailProductsCache: {}
 };
 
 const sellersSlice = createSlice({
@@ -65,27 +77,52 @@ const sellersSlice = createSlice({
       state.loading = false;
       state.error = null;
       state.needsRefresh = false;
+      state.detailCache = {};
+      state.detailProductsCache = {};
     },
     upsertSellerDetail(state, action) {
       state.detail = { ...(state.detail || {}), ...(action.payload || {}) };
+      if (state.detail && state.detail.id != null) {
+        state.detailCache[String(state.detail.id)] = state.detail;
+      }
     }
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchSellerDetail.pending, (s) => { s.loading = true; s.error = null; })
-      .addCase(fetchSellerDetail.fulfilled, (s, a) => { s.loading = false; s.detail = a.payload; s.needsRefresh = false; })
+      .addCase(fetchSellerDetail.fulfilled, (s, a) => {
+        s.loading = false;
+        s.detail = a.payload;
+        s.needsRefresh = false;
+        if (a.payload && a.payload.id != null) s.detailCache[String(a.payload.id)] = a.payload;
+      })
       .addCase(fetchSellerDetail.rejected, (s, a) => { s.loading = false; s.error = a.payload || a.error; })
 
       .addCase(fetchSellerActiveProductsForDetail.pending, (s) => { })
       .addCase(fetchSellerActiveProductsForDetail.fulfilled, (s, a) => {
         s.detailProducts = a.payload?.products ?? [];
+        const sid = String(a.payload?.sellerId);
+        if (sid) s.detailProductsCache[sid] = s.detailProducts;
       })
       .addCase(fetchSellerActiveProductsForDetail.rejected, (s, a) => {
         s.detailProducts = [];
         s.needsRefresh = true;
       })
 
-      .addCase(fetchTopSellers.fulfilled, (s, a) => { s.topSellers = a.payload?.content ?? a.payload ?? []; })
+      .addCase(fetchTopSellers.pending, (s) => {
+        s.loading = true;
+        s.error = null;
+      })
+      .addCase(fetchTopSellers.fulfilled, (s, a) => {
+        s.loading = false;
+        s.topSellers = a.payload?.content ?? a.payload ?? [];
+        s.needsRefresh = false;
+      })
+      .addCase(fetchTopSellers.rejected, (s, a) => {
+        s.loading = false;
+        s.error = a.payload || a.error;
+        s.needsRefresh = true;
+      })
 
       .addCase(createOrder.fulfilled, (s, a) => {
         const order = a.payload;
@@ -116,6 +153,8 @@ const sellersSlice = createSlice({
         s.loading = false;
         s.error = null;
         s.needsRefresh = false;
+        s.detailCache = {};
+        s.detailProductsCache = {};
       })
 
       .addMatcher(

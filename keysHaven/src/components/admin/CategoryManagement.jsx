@@ -1,21 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import PaginationBar from '../catalog/PaginationBar';
 import {
-  fetchCategoriesPage,
+  fetchCategoriesPage as fetchCategoriesPageThunk,
   adminCreateCategory,
   adminUpdateCategory,
-  fetchCategoriesPage as fetchCategoriesPageThunk,
-  fetchUsersPage
+  setCategoriesPageFromCache
 } from '../../redux/slices/adminPanelSlice';
-import { fetchFeaturedCategories, fetchAllCategories } from '../../redux/slices/categoriesSlice';
-import { selectAdminPanel } from '../../redux/slices/adminPanelSlice';
+import { fetchFeaturedCategories, fetchAllCategories, selectAllCategories } from '../../redux/slices/categoriesSlice';
 
 export default function CategoryManagement() {
-  const dispatch = useDispatch();
-  const admin = useSelector(selectAdminPanel);
+  const dispatch = useAppDispatch();
+  const admin = useAppSelector(state => state.adminPanel);
   const categoriesPage = admin?.categoriesPage ?? null;
   const categories = categoriesPage?.content ?? [];
+  const allCategories = useAppSelector(selectAllCategories);
 
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [error, setError] = useState('');
@@ -27,14 +26,33 @@ export default function CategoryManagement() {
   const pageSize = 10;
   const totalPages = Math.max(1, categoriesPage?.totalPages ?? 1);
 
-  useEffect(() => {
-    loadCategories();
-  }, [page]);
+  const pageKey = `${Math.max(1, Number(page) || 1)}_${pageSize}`;
 
-  const loadCategories = async () => {
+  useEffect(() => {
+
+    if (admin?.categoriesPageCache?.[pageKey]) {
+      dispatch(setCategoriesPageFromCache({ key: pageKey }));
+
+      if (!Array.isArray(allCategories) || allCategories.length === 0) {
+        dispatch(fetchAllCategories()).catch(() => {});
+      }
+      return;
+    }
+
+    loadCategories(page);
+
+    if (!Array.isArray(allCategories) || allCategories.length === 0) {
+      dispatch(fetchAllCategories()).catch(() => {});
+    }
+  }, [page, dispatch, pageKey]);
+
+  const loadCategories = async (p = 1) => {
     setLoadingLocal(true);
+    setError('');
     try {
-      await dispatch(fetchCategoriesPage({ page, size: pageSize })).unwrap();
+      await dispatch(fetchCategoriesPageThunk({ page: p, size: pageSize })).unwrap();
+
+      dispatch(fetchFeaturedCategories({ page: 0, size: 5 })).catch(()=>{});
     } catch (err) {
       console.error('Error cargando categorías:', err);
       setError('Error al cargar categorías');
@@ -53,10 +71,6 @@ export default function CategoryManagement() {
       } else {
         await dispatch(adminCreateCategory(formData)).unwrap();
       }
-
-      await dispatch(fetchCategoriesPage({ page, size: pageSize })).unwrap();
-      dispatch(fetchFeaturedCategories());
-      dispatch(fetchAllCategories());
       setShowForm(false);
       setEditingCategory(null);
       setFormData({ description: '' });
@@ -70,7 +84,7 @@ export default function CategoryManagement() {
 
   const handleEdit = (category) => {
     setEditingCategory(category);
-    setFormData({ description: category.description });
+    setFormData({ description: category.description ?? '' });
     setShowForm(true);
   };
 
@@ -78,8 +92,7 @@ export default function CategoryManagement() {
     setLoadingLocal(true);
     try {
       await dispatch(adminUpdateCategory({ categoryId, categoryData: { featured: !currentFeatured } })).unwrap();
-      await dispatch(fetchCategoriesPage({ page, size: pageSize })).unwrap();
-      dispatch(fetchFeaturedCategories());
+      dispatch(fetchFeaturedCategories({ page: 0, size: 5 })).catch(()=>{});
     } catch (err) {
       console.error('Error actualizando categoría:', err);
       setError('Error al actualizar categoría');

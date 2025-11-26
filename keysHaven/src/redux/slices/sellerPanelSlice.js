@@ -3,10 +3,30 @@ import sellerService from '../../services/sellerService';
 import { logout } from './authSlice';
 
 
+function normalizeArg(arg) {
+  if (typeof arg === 'object' && arg !== null && !Array.isArray(arg)) return arg;
+  return { sellerId: arg };
+}
+
+function makePageKey({ sellerId, page = 0, size = 10, status }) {
+  return `${sellerId ?? 'anon'}_${page}_${size}_${status ?? 'all'}`;
+}
+
+
 export const fetchSellerProducts = createAsyncThunk(
   'sellerPanel/fetchProducts',
-  async ({ sellerId } = {}, { rejectWithValue }) => {
+  async (arg = {}, { rejectWithValue, getState }) => {
     try {
+      const { sellerId, force = false } = normalizeArg(arg);
+      const state = getState();
+      const cached = state.sellerPanel?.products;
+      if (!force && Array.isArray(cached) && cached.length > 0) {
+        if (!sellerId) return cached;
+        const first = cached[0];
+        if (first && (first.sellerId == null || Number(first.sellerId) === Number(sellerId))) {
+          return cached;
+        }
+      }
       const resp = await sellerService.getSellerProducts(sellerId);
       return resp;
     } catch (err) {
@@ -17,8 +37,17 @@ export const fetchSellerProducts = createAsyncThunk(
 
 export const fetchSellerActiveProducts = createAsyncThunk(
   'sellerPanel/fetchActiveProducts',
-  async ({ sellerId } = {}, { rejectWithValue }) => {
+  async (arg = {}, { rejectWithValue, getState }) => {
     try {
+      const { sellerId, force = false } = normalizeArg(arg);
+      const state = getState();
+      const cached = state.sellerPanel?.activeProducts;
+      if (!force && Array.isArray(cached) && cached.length > 0) {
+        const first = cached[0];
+        if (!sellerId || !first || Number(first.sellerId) === Number(sellerId)) {
+          return cached;
+        }
+      }
       const resp = await sellerService.getSellerActiveProducts(sellerId);
       return resp;
     } catch (err) {
@@ -29,10 +58,17 @@ export const fetchSellerActiveProducts = createAsyncThunk(
 
 export const fetchSellerProductsPaginated = createAsyncThunk(
   'sellerPanel/fetchProductsPaginated',
-  async ({ sellerId, page = 0, size = 10 } = {}, { rejectWithValue }) => {
+  async (arg = {}, { rejectWithValue, getState }) => {
     try {
+      const params = normalizeArg(arg);
+      const { sellerId, page = 0, size = 10, force = false } = params;
+      const state = getState();
+      const cached = state.sellerPanel?.productsPaginatedPages?.[makePageKey({ sellerId, page, size })];
+      if (!force && cached) {
+        return { key: makePageKey({ sellerId, page, size }), resp: cached };
+      }
       const resp = await sellerService.getSellerProductsPaginated(sellerId, page, size);
-      return resp;
+      return { key: makePageKey({ sellerId, page, size }), resp };
     } catch (err) {
       return rejectWithValue(err);
     }
@@ -41,10 +77,18 @@ export const fetchSellerProductsPaginated = createAsyncThunk(
 
 export const fetchSellerOrders = createAsyncThunk(
   'sellerPanel/fetchOrders',
-  async ({ sellerId, page = 0, size = 10, status } = {}, { rejectWithValue }) => {
+  async (arg = {}, { rejectWithValue, getState }) => {
     try {
+      const params = normalizeArg(arg);
+      const { sellerId, page = 0, size = 10, status = undefined, force = false } = params;
+      const state = getState();
+      const key = makePageKey({ sellerId, page, size, status });
+      const cached = state.sellerPanel?.ordersPages?.[key];
+      if (!force && cached) {
+        return { key, resp: cached };
+      }
       const resp = await sellerService.getSellerOrders({ sellerId, page, size, status });
-      return resp;
+      return { key, resp };
     } catch (err) {
       return rejectWithValue(err);
     }
@@ -53,10 +97,18 @@ export const fetchSellerOrders = createAsyncThunk(
 
 export const fetchSellerStats = createAsyncThunk(
   'sellerPanel/fetchStats',
-  async (sellerId, { rejectWithValue }) => {
+  async (arg = {}, { rejectWithValue, getState }) => {
     try {
+      const params = normalizeArg(arg);
+      const { sellerId, force = false } = params;
+      const state = getState();
+      const cached = state.sellerPanel?.stats;
+      if (!force && cached && cached.sellerId != null && Number(cached.sellerId) === Number(sellerId)) {
+        return cached;
+      }
       const resp = await sellerService.getSellerStats(sellerId);
-      return resp;
+      const respWithId = resp && typeof resp === 'object' ? { ...resp, sellerId } : { ...resp, sellerId };
+      return respWithId;
     } catch (err) {
       return rejectWithValue(err);
     }
@@ -65,10 +117,18 @@ export const fetchSellerStats = createAsyncThunk(
 
 export const getProductKeys = createAsyncThunk(
   'sellerPanel/getProductKeys',
-  async ({ productId, page = 0, size = 20 } = {}, { rejectWithValue }) => {
+  async (arg = {}, { rejectWithValue, getState }) => {
     try {
+      const params = typeof arg === 'object' && arg !== null && !Array.isArray(arg) ? arg : { productId: arg };
+      const { productId, page = 0, size = 20, force = false } = params;
+      const state = getState();
+      const cachedForProduct = state.sellerPanel?.keysByProduct?.[String(productId)];
+      const cachedPage = cachedForProduct && cachedForProduct.pages && cachedForProduct.pages[String(page)];
+      if (!force && cachedPage) {
+        return { productId, page, resp: cachedPage };
+      }
       const resp = await sellerService.getProductKeys(productId, page, size);
-      return { productId, resp };
+      return { productId, page, resp };
     } catch (err) {
       return rejectWithValue(err);
     }
@@ -156,16 +216,21 @@ export const setPrimaryImage = createAsyncThunk('sellerPanel/setPrimaryImage', a
   }
 });
 
+
+
 const initialState = {
   products: [],
   productsPaginated: { items: [], total: 0 },
+  productsPaginatedPages: {},
   activeProducts: [],
   orders: { items: [], total: 0 },
+  ordersPages: {},
   stats: null,
   keysByProduct: {},
   loading: false,
   error: null
 };
+
 
 const sellerPanelSlice = createSlice({
   name: 'sellerPanel',
@@ -174,12 +239,25 @@ const sellerPanelSlice = createSlice({
     clearSellerPanel(state) {
       state.products = [];
       state.productsPaginated = { items: [], total: 0 };
+      state.productsPaginatedPages = {};
       state.activeProducts = [];
       state.orders = { items: [], total: 0 };
+      state.ordersPages = {};
       state.stats = null;
       state.keysByProduct = {};
       state.loading = false;
       state.error = null;
+    },
+
+
+    setProductsPaginatedFromCache(state, action) {
+      const key = action.payload?.key;
+      if (!key) return;
+      const resp = state.productsPaginatedPages?.[key];
+      if (!resp) return;
+      const items = resp.items ?? resp.content ?? [];
+      const total = resp.total ?? resp.totalElements ?? 0;
+      state.productsPaginated = { items, total };
     }
   },
   extraReducers: (builder) => {
@@ -187,21 +265,80 @@ const sellerPanelSlice = createSlice({
       .addCase(fetchSellerProducts.fulfilled, (s, a) => { s.products = a.payload ?? []; })
       .addCase(fetchSellerActiveProducts.fulfilled, (s, a) => { s.activeProducts = a.payload ?? []; })
       .addCase(fetchSellerProductsPaginated.fulfilled, (s, a) => {
-        s.productsPaginated = { items: a.payload.items ?? a.payload.content ?? [], total: a.payload.total ?? a.payload.totalElements ?? 0 };
+        const key = a.payload?.key;
+        const resp = a.payload?.resp ?? a.payload;
+        if (key) s.productsPaginatedPages[key] = resp ?? { items: [], total: 0 };
+        s.productsPaginated = resp?.items ? { items: resp.items ?? resp.content ?? [], total: resp.total ?? resp.totalElements ?? 0 } : (a.payload?.items ? { items: a.payload.items, total: a.payload.total } : s.productsPaginated);
       })
+
+      .addCase(fetchSellerOrders.pending, (s) => { s.loading = true; s.error = null; })
       .addCase(fetchSellerOrders.fulfilled, (s, a) => {
-        s.orders = a.payload ?? { items: [], total: 0 };
+        s.loading = false;
+        const key = a.payload?.key;
+        const resp = a.payload?.resp ?? a.payload;
+        if (key) {
+          s.ordersPages = { ...(s.ordersPages || {}), [key]: resp ?? { items: [], total: 0 } };
+        }
+        s.orders = resp ?? { items: [], total: 0 };
       })
-      .addCase(fetchSellerStats.fulfilled, (s, a) => { s.stats = a.payload; })
+      .addCase(fetchSellerOrders.rejected, (s, a) => { s.loading = false; s.error = a.payload || a.error; })
+
+      .addCase(fetchSellerStats.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(fetchSellerStats.fulfilled, (s, a) => {
+        s.loading = false;
+        s.stats = a.payload ?? a.payload?.resp ?? null;
+      })
+      .addCase(fetchSellerStats.rejected, (s, a) => { s.loading = false; s.error = a.payload || a.error; })
+
       .addCase(getProductKeys.fulfilled, (s, a) => {
-        const { productId, resp } = a.payload;
-        s.keysByProduct[productId] = resp ?? { items: [], total: 0 };
+        const { productId, page, resp } = a.payload;
+        const pid = String(productId);
+        const existing = s.keysByProduct[pid] || { pages: {}, total: 0 };
+        const respObj = resp ?? { items: [], total: 0 };
+        const items = respObj.items ?? respObj.content ?? (Array.isArray(respObj) ? respObj : []);
+        const total = respObj.total ?? respObj.totalElements ?? (Array.isArray(respObj) ? items.length : existing.total ?? 0);
+        const pageKey = String(page ?? 0);
+        existing.pages = { ...(existing.pages || {}), [pageKey]: { items, total } };
+        existing.total = total;
+        s.keysByProduct[pid] = existing;
       })
-
       .addCase(createProduct.fulfilled, (s, a) => {
-        s.products = [a.payload, ...s.products];
-      })
+        const created = a.payload;
+        if (!created) return;
 
+        s.products = [created, ...(s.products || [])];
+
+        try {
+          if (created.active === undefined || created.active === null || created.active === true) {
+            s.activeProducts = [created, ...(s.activeProducts || [])];
+          }
+        } catch (err) {}
+
+        try {
+          if (s.productsPaginated && Array.isArray(s.productsPaginated.items)) {
+            s.productsPaginated = {
+              items: [created, ...s.productsPaginated.items],
+              total: (Number(s.productsPaginated.total || 0) + 1)
+            };
+          }
+        } catch (err) {}
+
+        try {
+          Object.keys(s.productsPaginatedPages || {}).forEach(k => {
+            try {
+              const parts = String(k).split('_');
+              const pageNum = Number(parts[1] ?? 0);
+              if (pageNum === 0) {
+                const pageResp = s.productsPaginatedPages[k];
+                if (pageResp && Array.isArray(pageResp.items)) {
+                  const newTotal = (pageResp.total ?? pageResp.totalElements ?? pageResp.items.length) + 1;
+                  s.productsPaginatedPages[k] = { ...pageResp, items: [created, ...pageResp.items], total: newTotal };
+                }
+              }
+            } catch (inner) { }
+          });
+        } catch (err) { }
+      })
       .addCase(updateProduct.fulfilled, (s, a) => {
         const p = a.payload;
         s.products = s.products.map(it => it.id === p.id ? { ...it, ...p } : it);
@@ -209,40 +346,48 @@ const sellerPanelSlice = createSlice({
         if (s.productsPaginated && Array.isArray(s.productsPaginated.items)) {
           s.productsPaginated.items = s.productsPaginated.items.map(it => it.id === p.id ? { ...it, ...p } : it);
         }
+
+        Object.keys(s.productsPaginatedPages || {}).forEach(k => {
+          const pageResp = s.productsPaginatedPages[k];
+          if (pageResp && Array.isArray(pageResp.items)) {
+            s.productsPaginatedPages[k] = {
+              ...pageResp,
+              items: pageResp.items.map(it => it.id === p.id ? { ...it, ...p } : it)
+            };
+          }
+        });
       })
 
-      .addCase(addBulkDigitalKeys.fulfilled, (s, a) => {
+
+      .addCase(addProductImage.fulfilled, (s, a) => {
+        try {
+          const productId = a.payload?.productId;
+          const resp = a.payload?.resp;
+          if (productId && resp && (resp.id || resp.url)) {
+            const light = { id: resp.id, url: resp.url ?? undefined, name: resp.name, isPrimary: !!resp.isPrimary };
+            s.products = s.products.map(p => p.id === Number(productId) ? { ...p, images: [ ...(p.images || []).filter(i => !i.isPrimary), light ] } : p);
+            s.activeProducts = s.activeProducts.map(p => p.id === Number(productId) ? { ...p, images: [ ...(p.images || []).filter(i => !i.isPrimary), light ] } : p);
+            Object.keys(s.productsPaginatedPages || {}).forEach(k => {
+              const pageResp = s.productsPaginatedPages[k];
+              if (pageResp && Array.isArray(pageResp.items)) {
+                pageResp.items = pageResp.items.map(p => p.id === Number(productId) ? { ...p, images: [ ...(p.images || []).filter(i => !i.isPrimary), light ] } : p);
+                s.productsPaginatedPages[k] = pageResp;
+              }
+            });
+          }
+        } catch (err) { }
       })
 
-      .addCase(createSellerDiscount.fulfilled, (s, a) => {
-      })
-      .addCase(updateSellerDiscount.fulfilled, (s, a) => {
-      })
-
-    .addCase(addProductImage.fulfilled, (s, a) => {
-      try {
-        const productId = a.payload?.productId;
-        const resp = a.payload?.resp;
-        if (productId && resp && (resp.id || resp.url)) {
-          const light = { id: resp.id, url: resp.url ?? undefined, name: resp.name, isPrimary: !!resp.isPrimary };
-          s.products = s.products.map(p => p.id === Number(productId) ? { ...p, images: [ ...(p.images || []).filter(i => !i.isPrimary), light ] } : p);
-          s.activeProducts = s.activeProducts.map(p => p.id === Number(productId) ? { ...p, images: [ ...(p.images || []).filter(i => !i.isPrimary), light ] } : p);
-        }
-      } catch (err) {
-      }
-    })
-      .addCase(updateProductImage.fulfilled, (s, a) => {
-      })
-      .addCase(deleteProductImage.fulfilled, (s, a) => {
-      })
-      .addCase(setPrimaryImage.fulfilled, (s, a) => {
-      })
-
+      .addCase(updateProductImage.fulfilled, (s, a) => {})
+      .addCase(deleteProductImage.fulfilled, (s, a) => {})
+      .addCase(setPrimaryImage.fulfilled, (s, a) => {})
       .addCase(logout.fulfilled, (s) => {
         s.products = [];
         s.productsPaginated = { items: [], total: 0 };
+        s.productsPaginatedPages = {};
         s.activeProducts = [];
         s.orders = { items: [], total: 0 };
+        s.ordersPages = {};
         s.stats = null;
         s.keysByProduct = {};
         s.loading = false;
@@ -251,7 +396,8 @@ const sellerPanelSlice = createSlice({
   }
 });
 
-export const { clearSellerPanel } = sellerPanelSlice.actions;
+
+export const { clearSellerPanel, setProductsPaginatedFromCache } = sellerPanelSlice.actions;
 export default sellerPanelSlice.reducer;
 
 export const selectSellerPanel = state => state.sellerPanel;

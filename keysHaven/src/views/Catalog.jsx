@@ -9,7 +9,7 @@ import "../components/estilos/catalog.css";
 import Loading from "../assets/doppyKnight/doppyTimeCheck.png";
 
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
-import { searchProducts, fetchFilterExtras, selectSearchResult, selectProductsFilterExtras } from "../redux/slices/productsSlice";
+import { searchProducts, fetchFilterExtras, selectSearchResult, selectProductsFilterExtras, selectSearchPages, makeProductsSearchKey } from "../redux/slices/productsSlice";
 import { fetchAllCategories, selectAllCategories } from "../redux/slices/categoriesSlice";
 
 import { useCart } from "../store/cart.jsx";
@@ -27,6 +27,7 @@ export default function Catalog() {
   const searchResult = useAppSelector(selectSearchResult) ?? { content: [], totalElements: 0, totalPages: 0, number: 0, size: 12 };
   const filterExtras = useAppSelector(selectProductsFilterExtras) ?? { developers: [], publishers: [] };
   const allCategories = useAppSelector(selectAllCategories) ?? [];
+  const searchPages = useAppSelector(selectSearchPages) ?? {};
 
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
@@ -104,9 +105,13 @@ export default function Catalog() {
   }, [rawPlatform]);
 
   useEffect(() => {
-    dispatch(fetchAllCategories()).catch(err => console.error("fetchAllCategories", err));
-    dispatch(fetchFilterExtras()).catch(err => console.error("fetchFilterExtras", err));
-  }, [dispatch]);
+    if (!allCategories || allCategories.length === 0) {
+      dispatch(fetchAllCategories()).catch(err => console.error("fetchAllCategories", err));
+    }
+    if (!filterExtras || ((!filterExtras.developers || filterExtras.developers.length === 0) && (!filterExtras.publishers || filterExtras.publishers.length === 0))) {
+      dispatch(fetchFilterExtras()).catch(err => console.error("fetchFilterExtras", err));
+    }
+  }, [dispatch, allCategories, filterExtras]);
 
   useEffect(() => {
     setCategoriesOptions((allCategories || []).map(c => ({ id: c.id, description: c.description || c.name })));
@@ -125,18 +130,40 @@ export default function Catalog() {
     return () => clearTimeout(t);
   }, [searchText]);
 
+  const buildBackendFilters = (af) => {
+    const backendFilters = { ...(af || {}) };
+    if (backendFilters.sellerIds && !Array.isArray(backendFilters.sellerIds)) backendFilters.sellerIds = [backendFilters.sellerIds];
+    if (backendFilters.categories && !Array.isArray(backendFilters.categories)) backendFilters.categories = [backendFilters.categories];
+    return backendFilters;
+  };
+
   useEffect(() => {
     let cancelled = false;
-
-    const runSearch = async () => {
+    const run = async () => {
       try {
         setLoading(true);
         const backendPage = Math.max(0, page - 1);
-        const backendFilters = { ...appliedFilters };
-        if (backendFilters.sellerIds && !Array.isArray(backendFilters.sellerIds)) backendFilters.sellerIds = [backendFilters.sellerIds];
-        if (backendFilters.categories && !Array.isArray(backendFilters.categories)) backendFilters.categories = [backendFilters.categories];
+        const backendFilters = buildBackendFilters(appliedFilters);
+        const key = makeProductsSearchKey({ filters: backendFilters, page: backendPage, size: pageSize, sort: sortBy, onlyActive: true });
 
-        await dispatch(searchProducts({ filters: backendFilters, page: backendPage, size: pageSize, sort: sortBy, onlyActive: true })).unwrap();
+        const cached = searchPages?.[key];
+        if (cached) {
+          if (!cancelled) {
+            setLoading(false);
+            const content = cached?.content ?? cached?.items ?? [];
+            setItems(content);
+            setTotalItems(cached?.totalElements ?? cached?.total ?? content.length);
+            setTotalPages(Math.max(1, cached?.totalPages ?? Math.ceil((cached?.totalElements ?? content.length) / pageSize)));
+          }
+          return;
+        }
+        const resp = await dispatch(searchProducts({ filters: backendFilters, page: backendPage, size: pageSize, sort: sortBy, onlyActive: true })).unwrap();
+        if (cancelled) return;
+        const payload = resp?.resp ?? resp;
+        const content = payload?.content ?? payload?.items ?? [];
+        setItems(content);
+        setTotalItems(payload?.totalElements ?? payload?.total ?? content.length);
+        setTotalPages(Math.max(1, payload?.totalPages ?? Math.ceil((payload?.totalElements ?? content.length) / pageSize)));
       } catch (err) {
         console.error("Error searching products (redux)", err);
       } finally {
@@ -144,9 +171,10 @@ export default function Catalog() {
       }
     };
 
-    runSearch();
+    run();
     return () => { cancelled = true; };
-  }, [appliedFilters, page, sortBy, dispatch]);
+  }, [appliedFilters, page, sortBy, dispatch, searchPages]);
+
   useEffect(() => {
     const content = searchResult?.content || [];
     setItems(content);

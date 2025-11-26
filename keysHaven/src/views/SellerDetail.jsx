@@ -11,9 +11,7 @@ import ApiErrorAlert from "../components/common/ApiErrorAlert";
 import useApiError from "../hooks/useApiError";
 
 import { fetchSellerDetail, selectSellerDetail, selectSellerDetailProducts, fetchSellerActiveProductsForDetail } from "../redux/slices/sellersSlice";
-import {
-  fetchSellerStats,
-} from "../redux/slices/sellerPanelSlice";
+import { fetchSellerStats } from "../redux/slices/sellerPanelSlice";
 
 export default function SellerDetail() {
   const { sellerId } = useParams();
@@ -26,6 +24,10 @@ export default function SellerDetail() {
   const sellerStats = useAppSelector((s) => s.sellerPanel.stats);
   const activeProducts = useAppSelector(selectSellerDetailProducts);
   const sellersNeedsRefresh = useAppSelector((s) => s.sellers.needsRefresh);
+
+  const sellerCacheEntry = useAppSelector(s => s.sellers?.detailCache?.[String(sellerId)]);
+  const sellerProductsCacheEntry = useAppSelector(s => s.sellers?.detailProductsCache?.[String(sellerId)]);
+  const sellerStatsCached = useAppSelector(s => s.sellerPanel?.stats && Number(s.sellerPanel.stats?.sellerId) === Number(sellerId) ? s.sellerPanel.stats : null);
 
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -62,14 +64,21 @@ export default function SellerDetail() {
         setLoading(true);
         clear();
 
+        const promises = [];
 
-        const p1 = dispatch(fetchSellerDetail(Number(sellerId)));
-        const p2 = dispatch(fetchSellerStats(Number(sellerId)));
+        if (!sellerCacheEntry || sellersNeedsRefresh) {
+          promises.push(dispatch(fetchSellerDetail({ sellerId: Number(sellerId), force: !!sellersNeedsRefresh })));
+        }
 
-        const p3 = dispatch(fetchSellerActiveProductsForDetail(Number(sellerId)));
+        if (!sellerStatsCached || sellersNeedsRefresh) {
+          promises.push(dispatch(fetchSellerStats({ sellerId: Number(sellerId), force: !!sellersNeedsRefresh })));
+        }
 
+        if (!sellerProductsCacheEntry || sellersNeedsRefresh) {
+          promises.push(dispatch(fetchSellerActiveProductsForDetail({ sellerId: Number(sellerId), force: !!sellersNeedsRefresh })));
+        }
 
-        await Promise.allSettled([p1, p2, p3]);
+        await Promise.allSettled(promises);
       } catch (err) {
         console.error("Error cargando seller detail:", err);
         setFrom(err);
@@ -80,19 +89,16 @@ export default function SellerDetail() {
 
     load();
     return () => { mounted = false; };
-  }, [sellerId, dispatch, clear, setFrom]);
-
+  }, [sellerId, dispatch, clear, setFrom, sellerCacheEntry, sellerProductsCacheEntry, sellerStatsCached, sellersNeedsRefresh]);
 
   useEffect(() => {
     if (!sellerId) return;
     if (sellersNeedsRefresh) {
-      dispatch(fetchSellerDetail(Number(sellerId)));
-      dispatch(fetchSellerStats(Number(sellerId)));
-
-      dispatch(fetchSellerActiveProductsForDetail(Number(sellerId)));
+      dispatch(fetchSellerDetail({ sellerId: Number(sellerId), force: true }));
+      dispatch(fetchSellerStats({ sellerId: Number(sellerId), force: true }));
+      dispatch(fetchSellerActiveProductsForDetail({ sellerId: Number(sellerId), force: true }));
     }
   }, [sellersNeedsRefresh, sellerId, dispatch]);
-
 
   const handleRetry = () => {
     if (!sellerId) return;
@@ -100,12 +106,13 @@ export default function SellerDetail() {
     clear();
 
     Promise.allSettled([
-      dispatch(fetchSellerDetail(Number(sellerId))),
-      dispatch(fetchSellerStats(Number(sellerId))),
-      dispatch(fetchSellerActiveProductsForDetail(Number(sellerId)))
+      dispatch(fetchSellerDetail({ sellerId: Number(sellerId), force: true })),
+      dispatch(fetchSellerStats({ sellerId: Number(sellerId), force: true })),
+      dispatch(fetchSellerActiveProductsForDetail({ sellerId: Number(sellerId), force: true }))
     ]).finally(() => setLoading(false));
   };
 
+  const handleSetPage = (p) => setPage(p);
 
   if (loading) {
     return (
@@ -132,7 +139,6 @@ export default function SellerDetail() {
     );
   }
 
-
   const totalItems = (activeProducts || []).length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const safePage = Math.min(Math.max(1, page), totalPages);
@@ -149,7 +155,7 @@ export default function SellerDetail() {
 
   return (
     <div className="product-page">
-      {error && (
+      {hasError && (
         <div className="container mt-3">
           <ApiErrorAlert error={apiError} onRetry={handleRetry} onClose={clear} />
         </div>
@@ -195,14 +201,14 @@ export default function SellerDetail() {
             ) : (
               <>
                 <div className="mt-3">
-                  <ProductGrid products={pageItems} />
+                  <ProductGrid products={pageItems}/>
                 </div>
 
                 <div className="mt-3 d-flex justify-content-center">
-                  <PaginationBar 
-                    page={safePage} 
-                    setPage={handleSetPage} 
-                    totalPages={totalPages} 
+                  <PaginationBar
+                    page={safePage}
+                    setPage={handleSetPage}
+                    totalPages={totalPages}
                   />
                 </div>
 

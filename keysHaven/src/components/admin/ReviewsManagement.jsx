@@ -1,18 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
 
-import { fetchReviewsPage, adminToggleReviewVisibility } from '../../redux/slices/adminPanelSlice';
-import { fetchProductsPage } from '../../redux/slices/adminPanelSlice';
+import {
+  fetchReviewsPage as fetchAdminReviewsPage,
+  adminToggleReviewVisibility,
+  fetchProductsPage as fetchAdminProductsPage,
+  setReviewsPageFromCache,
+  setProductsPageFromCache,
+  setUsersPageFromCache
+} from '../../redux/slices/adminPanelSlice';
 import { fetchLatestReviews, fetchReviewsByProduct } from '../../redux/slices/reviewsSlice';
 import { fetchProductDetail } from '../../redux/slices/productDetailSlice';
 import { fetchSellerDetail } from '../../redux/slices/sellersSlice';
-import { selectAdminPanel } from '../../redux/slices/adminPanelSlice';
 
 export default function ReviewsManagement() {
-  const dispatch = useDispatch();
-  const admin = useSelector(selectAdminPanel);
+  const dispatch = useAppDispatch();
+  const admin = useAppSelector(state => state.adminPanel);
   const reviewsPage = admin?.reviewsPage ?? null;
   const reviews = reviewsPage?.content ?? [];
 
@@ -32,16 +37,36 @@ export default function ReviewsManagement() {
   const load = async () => {
     setLoadingLocal(true);
     try {
-      const [rvwsResp] = await Promise.all([
-        dispatch(fetchReviewsPage({ page, size: pageSize })).unwrap()
-      ]);
-      const prodsResp = await dispatch(fetchProductsPage({ page: 1, size: 200 })).unwrap().catch(()=>null);
-      const usersResp = await dispatch(fetchProductsPage({ page: 1, size: 200 })).unwrap().catch(()=>null);
+      const pageRequested = Math.max(1, Number(page) || 1);
+      const reviewsKey = `${pageRequested}_${pageSize}`;
+      const productsKey = `1_200`;
+      const usersKey = `1_500`;
 
-      const prods = prodsResp?.content ?? prodsResp ?? [];
-      const us = usersResp?.content ?? usersResp ?? [];
+      const calls = [];
 
+      if (admin?.reviewsPageCache?.[reviewsKey]) {
+        dispatch(setReviewsPageFromCache({ key: reviewsKey }));
+      } else {
+        calls.push(dispatch(fetchAdminReviewsPage({ page: pageRequested, size: pageSize })).unwrap());
+      }
+
+      if (admin?.productsPageCache?.[productsKey]) {
+        dispatch(setProductsPageFromCache({ key: productsKey }));
+      } else if (!admin.productsPage || !Array.isArray(admin.productsPage.content) || admin.productsPage.content.length === 0) {
+        calls.push(dispatch(fetchAdminProductsPage({ page: 1, size: 200 })).unwrap());
+      }
+
+      if (admin?.usersPageCache?.[usersKey]) {
+        dispatch(setUsersPageFromCache({ key: usersKey }));
+      } else if (!admin.usersPage || !Array.isArray(admin.usersPage.content) || admin.usersPage.content.length === 0) {
+        calls.push(dispatch(fetchAdminProductsPage({ page: 1, size: 200 })).unwrap());
+      }
+
+      await Promise.allSettled(calls);
+
+      const prods = admin.productsPage?.content ?? [];
       setProductsMap(Object.fromEntries((prods || []).map(p => [p.id, p])));
+      const us = admin.usersPage?.content ?? [];
       setUsersMap(Object.fromEntries((us || []).map(u => [u.id, u])));
     } catch (err) {
       console.error(err);
@@ -53,8 +78,15 @@ export default function ReviewsManagement() {
 
   const closeConfirm = () => setConfirm({ show:false, title:'', message:'', onConfirm:null });
 
-  const handleToggleRequest = (reviewId, visible) => {
-    if (visible) {
+  const deriveVisible = (r) => {
+    if (r == null) return true;
+    if (typeof r.visible === 'boolean') return r.visible;
+    if (typeof r.hidden === 'boolean') return !r.hidden;
+    return true;
+  };
+
+  const handleToggleRequest = (reviewId, currentVisible) => {
+    if (currentVisible) {
       setConfirm({
         show: true,
         title: 'Ocultar Reseña',
@@ -70,7 +102,6 @@ export default function ReviewsManagement() {
     setLoadingLocal(true);
     try {
       const payload = await dispatch(adminToggleReviewVisibility({ reviewId, visible: false })).unwrap();
-      await dispatch(fetchReviewsPage({ page, size: pageSize })).unwrap();
       dispatch(fetchLatestReviews()).catch(()=>{});
       const prodId = payload?.resp?.productId ?? payload?.resp?.product?.id ?? payload?.resp?.productId;
       const sellerId = payload?.resp?.sellerId ?? payload?.resp?.seller?.id;
@@ -94,7 +125,6 @@ export default function ReviewsManagement() {
     setLoadingLocal(true);
     try {
       const payload = await dispatch(adminToggleReviewVisibility({ reviewId, visible: true })).unwrap();
-      await dispatch(fetchReviewsPage({ page, size: pageSize })).unwrap();
       dispatch(fetchLatestReviews()).catch(()=>{});
       const prodId = payload?.resp?.productId ?? payload?.resp?.product?.id ?? payload?.resp?.productId;
       const sellerId = payload?.resp?.sellerId ?? payload?.resp?.seller?.id;
@@ -139,23 +169,26 @@ export default function ReviewsManagement() {
             <tbody>
               {loadingLocal ? (
                 <tr><td colSpan="7" className="text-center py-4 text-muted">Cargando reseñas...</td></tr>
-              ) : reviews.map(r => (
-                <tr key={r.id}>
-                  <td>{productsMap[r.productId]?.title || `#${r.productId}`}</td>
-                  <td>{usersMap[r.buyerId]?.displayName || usersMap[r.buyerId]?.email || `#${r.buyerId}`}</td>
-                  <td>{r.rating}</td>
-                  <td>{r.title}</td>
-                  <td style={{maxWidth: 300}}><small className="text-muted">{r.comment}</small></td>
-                  <td><span className={`badge ${r.visible ? 'bg-success' : 'bg-danger'}`}>{r.visible ? 'Visible' : 'Oculta'}</span></td>
-                  <td>
-                    <div className="btn-group btn-group-sm">
-                      <button className="btn btn-outline-secondary" onClick={()=>handleToggleRequest(r.id, r.visible)} disabled={loadingLocal}>
-                        {r.visible ? 'Ocultar' : 'Mostrar'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              ) : reviews.map(r => {
+                const visible = deriveVisible(r);
+                return (
+                  <tr key={r.id}>
+                    <td>{productsMap[r.productId]?.title || `#${r.productId}`}</td>
+                    <td>{usersMap[r.buyerId]?.displayName || usersMap[r.buyerId]?.email || `#${r.buyerId}`}</td>
+                    <td>{r.rating}</td>
+                    <td>{r.title}</td>
+                    <td style={{maxWidth: 300}}><small className="text-muted">{r.comment}</small></td>
+                    <td><span className={`badge ${visible ? 'bg-success' : 'bg-danger'}`}>{visible ? 'Visible' : 'Oculta'}</span></td>
+                    <td>
+                      <div className="btn-group btn-group-sm">
+                        <button className="btn btn-outline-secondary" onClick={()=>handleToggleRequest(r.id, visible)} disabled={loadingLocal}>
+                          {visible ? 'Ocultar' : 'Mostrar'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {!loadingLocal && reviews.length === 0 && <div className="text-center text-muted py-4">No hay reseñas</div>}

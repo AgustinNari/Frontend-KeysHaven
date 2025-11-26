@@ -10,6 +10,7 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
   const dispatch = useAppDispatch();
 
   const reviewByOrderItem = useAppSelector(state => state.reviews.reviewByOrderItem ?? {});
+  const keysByOrderItemStore = useAppSelector(state => state.orders.keysByOrderItem ?? {});
 
   const [activeItem, setActiveItem] = useState(null);
   const [editingReviewForItem, setEditingReviewForItem] = useState(null);
@@ -17,7 +18,6 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
   const [reviewToDelete, setReviewToDelete] = useState(null);
   const [viewMode, setViewMode] = useState(null);
 
-  const [keysByItemId, setKeysByItemId] = useState({});
   const [loadingKeysByItemId, setLoadingKeysByItemId] = useState({});
   const [loadingReviewByItemId, setLoadingReviewByItemId] = useState({});
 
@@ -55,17 +55,18 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
     const id = getOrderItemId(item);
     if (!id) return;
 
-    if (keysByItemId[id] || (item.digitalKeys && item.digitalKeys.length > 0)) return;
+
+    if (keysByOrderItemStore && Object.prototype.hasOwnProperty.call(keysByOrderItemStore, String(id))) {
+
+      return;
+    }
 
     setLoadingKeysByItemId(m => ({ ...m, [id]: true }));
     try {
-      const action = await dispatch(getKeysByOrderItemId(id));
-      const resp = action.payload?.resp ?? action.payload ?? [];
-      const keys = Array.isArray(resp) ? resp : (resp?.items ?? resp?.content ?? resp ?? []);
-      setKeysByItemId(m => ({ ...m, [id]: keys }));
+      await dispatch(getKeysByOrderItemId(id)).unwrap();
+
     } catch (err) {
       console.error("Error cargando claves para orderItem:", id, err);
-      setKeysByItemId(m => ({ ...m, [id]: [] }));
     } finally {
       setLoadingKeysByItemId(m => ({ ...m, [id]: false }));
     }
@@ -103,6 +104,14 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
       setLoadingReviewByItemId(m => ({ ...m, [id]: false }));
     }
   }
+
+  const getKeysForItem = (item) => {
+    const id = getOrderItemId(item);
+    if (id != null && keysByOrderItemStore && keysByOrderItemStore[String(id)]) {
+      return keysByOrderItemStore[String(id)];
+    }
+    return item.digitalKeys ?? [];
+  };
 
   async function handleSaveReviewLocal(data) {
     if (!activeItem) return;
@@ -243,6 +252,7 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
             const { qty, unitPrice, lineSubtotal, lineTotal, discountAmount } = normalizeLine(item);
 
             const reviewFromStore = orderItemId != null ? reviewByOrderItem[String(orderItemId)] : null;
+            const keysForThis = getKeysForItem(item);
 
             return (
               <div key={orderItemId ?? Math.random()} className="card p-2 mb-2" style={{ border: "1px solid rgba(255,255,255,0.03)", ...itemWrapperStyle }}>
@@ -292,11 +302,11 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
                 {loadingKeysByItemId[getOrderItemId(activeItem)] && <div className="text-muted">Cargando claves...</div>}
 
                 <ul className="list-group" style={{ marginTop: 8 }}>
-                  {(keysByItemId[getOrderItemId(activeItem)] ?? activeItem.digitalKeys ?? []).length === 0 && !loadingKeysByItemId[getOrderItemId(activeItem)] && (
+                  {(getKeysForItem(activeItem) ?? []).length === 0 && !loadingKeysByItemId[getOrderItemId(activeItem)] && (
                     <li className="list-group-item">No hay claves disponibles para este item.</li>
                   )}
 
-                  {(keysByItemId[getOrderItemId(activeItem)] ?? activeItem.digitalKeys ?? []).map((k, i) => {
+                  {(getKeysForItem(activeItem) ?? []).map((k, i) => {
                     const code = k?.keyCode ?? k?.code ?? k?.value ?? k?.key ?? String(k);
                     const isCopied = copiedKey === code;
                     return (

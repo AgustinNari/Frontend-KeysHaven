@@ -3,10 +3,16 @@ import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { fetchSellerStats, fetchSellerOrders } from '../../redux/slices/sellerPanelSlice';
 import PaginationBar from '../catalog/PaginationBar';
 
+function makePageKey({ sellerId, page = 0, size = 10, status }) {
+  return `${sellerId ?? 'anon'}_${page}_${size}_${status ?? 'all'}`;
+}
+
 export default function SalesAnalytics({ sellerId }) {
   const dispatch = useAppDispatch();
+
   const stats = useAppSelector(state => state.sellerPanel.stats) ?? { totalSales:0, totalRevenue:0, activeProducts:0, totalProducts:0, avgRating:0, pendingOrders:0 };
   const ordersState = useAppSelector(state => state.sellerPanel.orders) ?? { items: [], total: 0 };
+  const ordersPages = useAppSelector(state => state.sellerPanel.ordersPages) ?? {};
   const loading = useAppSelector(state => state.sellerPanel.loading);
 
   const [page, setPage] = React.useState(1);
@@ -14,14 +20,38 @@ export default function SalesAnalytics({ sellerId }) {
   const [sortBy, setSortBy] = React.useState('date_desc');
 
   useEffect(() => {
-    if (sellerId) {
-      dispatch(fetchSellerStats(sellerId));
-      dispatch(fetchSellerOrders({ sellerId, page: Math.max(0, page - 1), size: pageSize, status: 'COMPLETED' }));
-    }
-  }, [sellerId, page, dispatch]);
+    if (!sellerId) return;
 
-  const recentOrders = ordersState.items || [];
-  const totalOrders = ordersState.total ?? (recentOrders.length);
+    if (stats && stats.sellerId != null && Number(stats.sellerId) === Number(sellerId)) {
+      return;
+    }
+
+    dispatch(fetchSellerStats({ sellerId })).catch(() => { });
+
+  }, [sellerId, dispatch, stats]);
+
+  useEffect(() => {
+    if (!sellerId) return;
+
+    const zeroBased = Math.max(0, page - 1);
+    const key = makePageKey({ sellerId, page: zeroBased, size: pageSize, status: 'COMPLETED' });
+    const cachedPage = ordersPages[key];
+
+    if (!cachedPage) {
+
+      dispatch(fetchSellerOrders({ sellerId, page: zeroBased, size: pageSize, status: 'COMPLETED' })).catch(() => {});
+    } else {
+
+    }
+
+  }, [sellerId, page, dispatch, ordersPages]);
+
+
+  const zeroBased = Math.max(0, page - 1);
+  const currentKey = makePageKey({ sellerId, page: zeroBased, size: pageSize, status: 'COMPLETED' });
+  const currentPageResp = ordersPages[currentKey] ?? ordersState;
+  const recentOrders = currentPageResp.items ?? [];
+  const totalOrders = currentPageResp.total ?? (recentOrders.length);
 
   const computeOrderAmount = (order) => {
     if (!order || !Array.isArray(order.items)) return 0;

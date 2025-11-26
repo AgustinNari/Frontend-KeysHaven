@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
 
 import {
-  fetchProductsPage,
+  fetchProductsPage as fetchAdminProductsPage,
   adminUpdateProduct,
-  fetchAdminStats
+  setProductsPageFromCache
 } from '../../redux/slices/adminPanelSlice';
 import { upsertProductInList } from '../../redux/slices/productsSlice';
 import { upsertProductDetail } from '../../redux/slices/productDetailSlice';
-import { selectAdminPanel } from '../../redux/slices/adminPanelSlice';
 
 export default function ProductManagement() {
-  const dispatch = useDispatch();
-  const admin = useSelector(selectAdminPanel);
+  const dispatch = useAppDispatch();
+  const admin = useAppSelector(state => state.adminPanel);
   const productsPage = admin?.productsPage ?? null;
   const products = productsPage?.content ?? [];
 
@@ -30,14 +29,27 @@ export default function ProductManagement() {
   const pageSize = 10;
   const totalPages = Math.max(1, productsPage?.totalPages ?? 1);
 
-  useEffect(() => { loadProducts(); }, [page]);
 
-  const loadProducts = async () => {
+  const pageKey = `${Math.max(1, Number(page) || 1)}_${pageSize}`;
+
+  useEffect(() => {
+
+    if (admin?.productsPageCache?.[pageKey]) {
+      dispatch(setProductsPageFromCache({ key: pageKey }));
+      return;
+    }
+
+    loadProducts(Math.max(1, Number(page) || 1));
+
+  }, [page, dispatch, pageKey]);
+
+  const loadProducts = async (p = 1) => {
     setLoadingLocal(true);
+    setError('');
     try {
-      await dispatch(fetchProductsPage({ page, size: pageSize })).unwrap();
+      await dispatch(fetchAdminProductsPage({ page: p, size: pageSize })).unwrap();
     } catch (err) {
-    console.error('Error cargando productos:', err);
+      console.error('Error cargando productos:', err);
       if (err && err.status === 401) {
         setError('No autorizado. Iniciá sesión.');
       } else if (err && err.status === 403) {
@@ -71,8 +83,6 @@ export default function ProductManagement() {
       const result = await dispatch(adminUpdateProduct({ productId, productData: { active: false } })).unwrap();
       dispatch(upsertProductInList(result));
       dispatch(upsertProductDetail(result));
-      await dispatch(fetchProductsPage({ page, size: pageSize })).unwrap();
-      dispatch(fetchAdminStats());
     } catch (err) {
       console.error('Error desactivando producto:', err);
       setError('Error al desactivar producto');
@@ -88,8 +98,6 @@ export default function ProductManagement() {
       const result = await dispatch(adminUpdateProduct({ productId, productData: { active: true } })).unwrap();
       dispatch(upsertProductInList(result));
       dispatch(upsertProductDetail(result));
-      await dispatch(fetchProductsPage({ page, size: pageSize })).unwrap();
-      dispatch(fetchAdminStats());
     } catch (err) {
       console.error('Error activando producto:', err);
       setError('Error al activar producto');
@@ -105,8 +113,6 @@ export default function ProductManagement() {
       const result = await dispatch(adminUpdateProduct({ productId: product.id, productData: { featured: !originalFeatured } })).unwrap();
       dispatch(upsertProductInList(result));
       dispatch(upsertProductDetail(result));
-      await dispatch(fetchProductsPage({ page, size: pageSize })).unwrap();
-      dispatch(fetchAdminStats());
     } catch (err) {
       console.error('Error actualizando producto:', err);
       setError('Error al actualizar producto');
@@ -149,7 +155,7 @@ export default function ProductManagement() {
   };
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = (product.title?.toLowerCase().includes(searchTerm.toLowerCase()) || product.sellerDisplayName?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = (product.title?.toLowerCase().includes(searchTerm.toLowerCase()) || (product.sellerDisplayName || '').toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? product.active : !product.active);
     return matchesSearch && matchesStatus;
   });

@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
 
 import {
-  fetchUsersPage,
+  fetchUsersPage as fetchAdminUsersPage,
   adminUpdateUser,
-  fetchAdminStats
+  setUsersPageFromCache
 } from '../../redux/slices/adminPanelSlice';
-import { selectAdminPanel } from '../../redux/slices/adminPanelSlice';
 
 export default function UserManagement() {
-  const dispatch = useDispatch();
-  const admin = useSelector(selectAdminPanel);
+  const dispatch = useAppDispatch();
+  const admin = useAppSelector(state => state.adminPanel);
   const usersPage = admin?.usersPage ?? null;
   const users = usersPage?.content ?? [];
 
@@ -27,17 +26,27 @@ export default function UserManagement() {
 
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
   const totalPages = Math.max(1, usersPage?.totalPages ?? 1);
 
   useEffect(() => {
-    loadUsers();
-  }, [page]);
+    const pageRequested = Math.max(1, Number(page) || 1);
+    const cacheKey = `${pageRequested}_${pageSize}`;
 
-  const loadUsers = async () => {
+    const cached = admin?.usersPageCache?.[cacheKey];
+    if (cached) {
+      dispatch(setUsersPageFromCache({ key: cacheKey }));
+      return;
+    }
+
+    loadUsers(pageRequested);
+  }, [page, dispatch, admin?.usersPageCache]);
+
+  const loadUsers = async (page1based = 1) => {
     setLoadingLocal(true);
     setError('');
     try {
-      await dispatch(fetchUsersPage({ page, size: pageSize })).unwrap();
+      await dispatch(fetchAdminUsersPage({ page: page1based, size: pageSize })).unwrap();
     } catch (err) {
       console.error('loadUsers err', err);
       setError('Error cargando usuarios');
@@ -64,9 +73,7 @@ export default function UserManagement() {
   const handleDeactivateConfirmed = async (userId) => {
     setLoadingLocal(true);
     try {
-      await dispatch(adminUpdateUser({ userId, payload: { active: false } })).unwrap();
-      await dispatch(fetchUsersPage({ page, size: pageSize })).unwrap();
-      dispatch(fetchAdminStats());
+      const updatedUser = await dispatch(adminUpdateUser({ userId, payload: { active: false } })).unwrap();
     } catch (err) {
       console.error(err);
       setError('Error desactivando usuario');
@@ -80,8 +87,6 @@ export default function UserManagement() {
     setLoadingLocal(true);
     try {
       await dispatch(adminUpdateUser({ userId, payload: { active: true } })).unwrap();
-      await dispatch(fetchUsersPage({ page, size: pageSize })).unwrap();
-      dispatch(fetchAdminStats());
     } catch (err) {
       console.error(err);
       setError('Error activando usuario');

@@ -10,13 +10,30 @@ import ProfileCoupons from "../components/profile/ProfileCoupons";
 
 import { useAppSelector, useAppDispatch } from "../redux/hooks";
 import { selectUser, refreshProfile, logout as logoutAction, setUser } from "../redux/slices/authSlice";
-import { fetchMyProfile, updateMyUser, uploadAvatar, replaceAvatar, deleteAvatar, fetchMyCoupons, changePasswordThunk } from "../redux/slices/profileSlice";
+import {
+  fetchMyProfile,
+  updateMyUser,
+  uploadAvatar,
+  replaceAvatar,
+  deleteAvatar,
+  fetchMyCoupons,
+  changePasswordThunk,
+  selectProfileCoupons,
+  selectProfileCouponsFetchedAt,
+  selectProfileFetchedAt
+} from "../redux/slices/profileSlice";
 import { fetchMyOrders } from "../redux/slices/ordersSlice";
 
 export default function Profile() {
-  const ctxUser = useAppSelector(selectUser);
-  const profileFromStore = useAppSelector(state => state.profile.me);
   const dispatch = useAppDispatch();
+
+  const ctxUser = useAppSelector(selectUser);
+  const profileFromStore = useAppSelector((s) => s.profile.me);
+  const profileFetchedAt = useAppSelector(selectProfileFetchedAt);
+  const couponsFromStore = useAppSelector(selectProfileCoupons);
+  const couponsFetchedAt = useAppSelector(selectProfileCouponsFetchedAt);
+  const ordersPages = useAppSelector((s) => s.orders.myOrdersPages ?? {});
+
 
   const [profile, setProfile] = useState(profileFromStore ?? null);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -29,13 +46,14 @@ export default function Profile() {
   const [showProfileDeleteConfirm, setShowProfileDeleteConfirm] = useState(false);
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
 
-
   const [toast, setToast] = useState(null);
   const toastTimeoutRef = useRef(null);
 
   const role = (profile && profile.role) ? profile.role : (ctxUser && ctxUser.role ? ctxUser.role : null);
   const isAdmin = role === "ADMIN";
 
+  const COUPONS_TTL_MS = 10 * 60 * 1000;
+  const PROFILE_TTL_MS = 10 * 60 * 1000;
 
   useEffect(() => {
     if (profileFromStore) setProfile(profileFromStore);
@@ -45,10 +63,15 @@ export default function Profile() {
     async function loadProfile() {
       setLoadingProfile(true);
       try {
-        const p = await dispatch(fetchMyProfile()).unwrap();
-
-        if (p) dispatch(setUser(p));
-        try { await dispatch(refreshProfile()).unwrap(); } catch {}
+        const needFetch = !profileFromStore;
+        if (needFetch) {
+          const p = await dispatch(fetchMyProfile()).unwrap();
+          if (p) {
+            dispatch(setUser(p));
+            setProfile(p);
+          }
+          try { await dispatch(refreshProfile()).unwrap(); } catch {}
+        }
       } catch (err) {
         console.error("No se pudo cargar perfil:", err);
       } finally {
@@ -56,17 +79,24 @@ export default function Profile() {
       }
     }
 
-    if (!profileFromStore) loadProfile();
+    loadProfile();
   }, [dispatch, profileFromStore]);
 
   useEffect(() => {
-    if (!isAdmin) {
-      loadOrders(0, 10);
-    } else {
-      setOrdersPage(null);
+    async function ensureData() {
+      if (!isAdmin) {
+        await loadOrders(0, 10);
+      } else {
+        setOrdersPage(null);
+      }
+
+      const couponsStale = !Array.isArray(couponsFromStore) || couponsFromStore.length === 0 || !couponsFetchedAt || (Date.now() - couponsFetchedAt) > COUPONS_TTL_MS;
+      if (couponsStale) {
+        dispatch(fetchMyCoupons()).catch(() => {});
+      }
     }
 
-    dispatch(fetchMyCoupons());
+    ensureData();
 
   }, [profile, isAdmin, dispatch]);
 
@@ -74,17 +104,30 @@ export default function Profile() {
   async function loadOrders(page = 0, size = 10) {
     setOrdersLoading(true);
     try {
-      const pageRes = await dispatch(fetchMyOrders({ page, size })).unwrap();
-      setOrdersPage(pageRes);
-      setOrdersPageIndex(Math.max(0, Number(page) || 0));
+      const pageNum = Number(page) || 0;
+      const cached = ordersPages?.[pageNum];
+      if (cached) {
+
+        setOrdersPage(cached);
+        setOrdersPageIndex(pageNum);
+        return cached;
+      }
+
+
+      const pageRes = await dispatch(fetchMyOrders({ page: pageNum, size })).unwrap();
+
+      const resp = pageRes?.resp ?? pageRes;
+      setOrdersPage(resp);
+      setOrdersPageIndex(pageNum);
+      return resp;
     } catch (err) {
       console.error("Error cargando órdenes:", err);
       showToast({ type: "error", text: "No se pudieron cargar las órdenes." });
+      return null;
     } finally {
       setOrdersLoading(false);
     }
   }
-
 
   function showToast({ type = "success", text = "" } = {}) {
     if (toastTimeoutRef.current) {
@@ -98,14 +141,19 @@ export default function Profile() {
     }, 3500);
   }
 
-
   async function handleSaveAccount(updated) {
     if (!profile) return;
     try {
       const resp = await dispatch(updateMyUser({ userId: profile.id, dto: updated })).unwrap();
 
-      const p = await dispatch(fetchMyProfile()).unwrap();
-      if (p) dispatch(setUser(p));
+      if (resp) {
+        dispatch(setUser(resp));
+        setProfile(resp);
+      } else {
+
+        const p = await dispatch(fetchMyProfile()).unwrap();
+        if (p) { dispatch(setUser(p)); setProfile(p); }
+      }
       showToast({ type: "success", text: "Perfil actualizado correctamente." });
     } catch (err) {
       console.error("Error actualizando perfil:", err);
@@ -116,9 +164,18 @@ export default function Profile() {
   async function handleUploadAvatar(file) {
     if (!profile) return;
     try {
-      await dispatch(uploadAvatar({ userId: profile.id, file })).unwrap();
-      const p = await dispatch(fetchMyProfile()).unwrap();
-      if (p) dispatch(setUser(p));
+      const resp = await dispatch(uploadAvatar({ userId: profile.id, file })).unwrap();
+      if (resp?.id) {
+        dispatch(setUser(resp));
+        setProfile(resp);
+      } else if (resp?.avatarDataUrl) {
+        const merged = { ...(profile || {}), avatarDataUrl: resp.avatarDataUrl };
+        dispatch(setUser(merged));
+        setProfile(merged);
+      } else {
+        const p = await dispatch(fetchMyProfile()).unwrap();
+        if (p) { dispatch(setUser(p)); setProfile(p); }
+      }
       showToast({ type: "success", text: "Avatar subido." });
     } catch (err) {
       console.error("Error subiendo avatar:", err);
@@ -129,9 +186,18 @@ export default function Profile() {
   async function handleReplaceAvatar(file) {
     if (!profile) return;
     try {
-      await dispatch(replaceAvatar({ userId: profile.id, file })).unwrap();
-      const p = await dispatch(fetchMyProfile()).unwrap();
-      if (p) dispatch(setUser(p));
+      const resp = await dispatch(replaceAvatar({ userId: profile.id, file })).unwrap();
+      if (resp?.id) {
+        dispatch(setUser(resp));
+        setProfile(resp);
+      } else if (resp?.avatarDataUrl) {
+        const merged = { ...(profile || {}), avatarDataUrl: resp.avatarDataUrl };
+        dispatch(setUser(merged));
+        setProfile(merged);
+      } else {
+        const p = await dispatch(fetchMyProfile()).unwrap();
+        if (p) { dispatch(setUser(p)); setProfile(p); }
+      }
       showToast({ type: "success", text: "Avatar reemplazado." });
     } catch (err) {
       console.error("Error reemplazando avatar:", err);
@@ -142,9 +208,15 @@ export default function Profile() {
   async function handleDeleteAvatar() {
     if (!profile) return;
     try {
-      await dispatch(deleteAvatar(profile.id)).unwrap();
-      const p = await dispatch(fetchMyProfile()).unwrap();
-      if (p) dispatch(setUser(p));
+      const resp = await dispatch(deleteAvatar(profile.id)).unwrap();
+      if (resp?.id) {
+        dispatch(setUser(resp));
+        setProfile(resp);
+      } else {
+        const merged = { ...(profile || {}) , avatarDataUrl: null };
+        dispatch(setUser(merged));
+        setProfile(merged);
+      }
       showToast({ type: "success", text: "Avatar eliminado." });
     } catch (err) {
       console.error("Error eliminando avatar:", err);
@@ -165,7 +237,6 @@ export default function Profile() {
   async function handleSaveReview(orderId, orderItemId, data, existingReview = null) {
     try {
       showToast({ type: "success", text: existingReview ? "Reseña actualizada." : "Reseña publicada." });
-
       await loadOrders(ordersPageIndex, 10);
     } catch (err) {
       console.warn("handleSaveReview: error refreshing orders", err);
@@ -269,7 +340,7 @@ export default function Profile() {
 
               <div style={{ marginTop: 10, fontSize: 13 }}>
                 <div className="small">Miembro desde: <span style={{ color: "#e6dbff" }}>{formatDate(profile.createdAt)}</span></div>
-                <div className="small">Último login: <span style={{ color: "#e6dbff" }}>{new Date(profile.lastLogin).toLocaleString()}</span></div>
+                <div className="small">Último login: <span style={{ color: "#e6dbff" }}>{profile.lastLogin ? new Date(profile.lastLogin).toLocaleString() : ''}</span></div>
                 {!isAdmin && (
                   <div className="small">Saldo: <span style={{ color: "#e6dbff" }}>${profile.buyerBalance ?? 0}</span></div>
                 )}

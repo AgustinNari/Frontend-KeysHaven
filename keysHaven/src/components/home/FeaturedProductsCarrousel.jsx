@@ -13,40 +13,40 @@ export default function FeaturedProductsCarousel() {
   const sellers = useAppSelector(selectTopSellers);
 
   const [featuredProducts, setFeaturedProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
+      if (featuredFromStore && featuredFromStore.length > 0) {
+        setFeaturedProducts(featuredFromStore);
+        return;
+      }
       try {
         setError(null);
         setLoading(true);
-        const resp = await dispatch(fetchFeaturedProducts(10)).unwrap().catch(e => { throw e; });
+        const resp = await dispatch(fetchFeaturedProducts(10)).unwrap();
         if (!mounted) return;
-        const list = selectListFromPayload(resp, featuredFromStore);
+        const list = resp?.content ?? resp ?? [];
         setFeaturedProducts(list);
       } catch (err) {
         console.error("Failed to load featured products (redux)", err);
         setError(err?.message || "Error cargando productos destacados");
       } finally {
+        setLoading(false);
         if (mounted) setLoading(false);
       }
     };
     load();
     return () => { mounted = false; };
-  }, [dispatch]);
+  }, [dispatch, featuredFromStore]);
+
 
   useEffect(() => {
     setFeaturedProducts(Array.isArray(featuredFromStore) ? featuredFromStore : []);
   }, [featuredFromStore]);
-
-  useEffect(() => {
-    if (!sellers) return;
-    dispatch(fetchFeaturedProducts(10)).catch(err => console.error("re-fetch featured failed", err));
-  }, [sellers, dispatch]);
 
   useEffect(() => {
     if ((featuredProducts || []).length <= 1) return;
@@ -196,9 +196,9 @@ export default function FeaturedProductsCarousel() {
                   <div className="col-md-4 text-md-end mt-3 mt-md-0">
                     <div className="d-flex flex-column align-items-md-end">
                       <div className="d-flex align-items-center gap-2 mb-1">
-                        <span className="text-light fw-bold fs-4">${getDisplayPrice(currentProduct).toFixed(2)}</span>
+                        <span className="text fw-bold fs-4" style = {{color : "var(--accent)"}}>${getDisplayPrice(currentProduct).toFixed(2)}</span>
                         {currentProduct.discountedPrice && (
-                          <span className="text-muted text-decoration-line-through" style={{ fontSize: "1rem" }}>${Number(currentProduct.price).toFixed(2)}</span>
+                          <span className="text text-decoration-line-through" style={{ fontSize: "1rem" }}>${Number(currentProduct.price).toFixed(2)}</span>
                         )}
                       </div>
                       {(currentProduct.discountPctDisplay ?? 0) > 0 && (<span className="badge bg-success">{currentProduct.discountPctDisplay}% OFF</span>)}

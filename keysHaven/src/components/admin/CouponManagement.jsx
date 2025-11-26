@@ -1,24 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
 import { useNavigate } from 'react-router-dom';
 import PaginationBar from '../catalog/PaginationBar';
 
 import {
-  fetchDiscountsPage,
+  fetchDiscountsPage as fetchAdminDiscountsPage,
   adminCreateDiscount,
   adminUpdateDiscount,
-  fetchCategoriesPage,
-  fetchUsersPage
+  fetchCategoriesPage as fetchAdminCategoriesPage,
+  fetchUsersPage as fetchAdminUsersPage,
+
+  setDiscountsPageFromCache,
+  setUsersPageFromCache,
+  setCategoriesPageFromCache
 } from '../../redux/slices/adminPanelSlice';
-import { fetchAdminDiscountsPage } from '../../redux/slices/discountsSlice';
-import { selectAdminPanel } from '../../redux/slices/adminPanelSlice';
+import { fetchAdminDiscountsPage as fetchDiscountsFromDiscountsSlice } from '../../redux/slices/discountsSlice';
+import { selectAllCategories } from '../../redux/slices/categoriesSlice';
 
 export default function CouponManagement() {
-  const dispatch = useDispatch();
-  const admin = useSelector(selectAdminPanel);
+  const dispatch = useAppDispatch();
+  const admin = useAppSelector(state => state.adminPanel);
   const discountsPage = admin?.discountsPage ?? null;
   const discounts = (discountsPage?.content) ?? [];
+  const allCategories = useAppSelector(selectAllCategories);
 
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
@@ -57,15 +62,48 @@ export default function CouponManagement() {
     setLoadingLocal(true);
     setError('');
     try {
-      const discPromise = dispatch(fetchDiscountsPage({ page, size: pageSize })).unwrap();
-      const catsPromise = dispatch(fetchCategoriesPage({ page: 1, size: 200 })).unwrap();
-      const usersPromise = dispatch(fetchUsersPage({ page: 1, size: 500 })).unwrap();
+      const pageRequested = Math.max(1, Number(page) || 1);
+      const discountsKey = `${pageRequested}_${pageSize}`;
 
-      const [disc, cats, us] = await Promise.all([discPromise, catsPromise, usersPromise]);
+      const calls = [];
 
-      setCategories(cats?.content ?? cats ?? []);
-      setUsers(us?.content ?? us ?? []);
-      dispatch(fetchAdminDiscountsPage({ page, size: pageSize })).catch(()=>{});
+
+      if (admin?.discountsPageCache?.[discountsKey]) {
+
+        dispatch(setDiscountsPageFromCache({ key: discountsKey }));
+      } else {
+        calls.push(dispatch(fetchAdminDiscountsPage({ page: pageRequested, size: pageSize })).unwrap());
+      }
+
+
+      const categoriesKey = `1_200`;
+      if (allCategories && allCategories.length > 0) {
+      } else if (admin?.categoriesPageCache?.[categoriesKey]) {
+        dispatch(setCategoriesPageFromCache({ key: categoriesKey }));
+      } else {
+        calls.push(dispatch(fetchAdminCategoriesPage({ page: 1, size: 200 })).unwrap());
+      }
+
+
+      const usersKey = `1_500`;
+      if (admin?.usersPageCache?.[usersKey]) {
+        dispatch(setUsersPageFromCache({ key: usersKey }));
+      } else {
+
+        calls.push(dispatch(fetchAdminUsersPage({ page: 1, size: 500 })).unwrap());
+      }
+
+      const results = await Promise.allSettled(calls);
+
+
+      const cats = allCategories && allCategories.length > 0 ? allCategories : (admin.categoriesPage?.content ?? []);
+      setCategories(cats);
+      const us = admin.usersPage?.content ?? [];
+      setUsers(us);
+
+      if (!admin.discountsPage) {
+        dispatch(fetchDiscountsFromDiscountsSlice({ page: pageRequested, size: pageSize })).catch(()=>{});
+      }
     } catch (err) {
       console.error(err);
       setError('Error cargando datos');
@@ -151,15 +189,13 @@ export default function CouponManagement() {
         await dispatch(adminCreateDiscount(payload)).unwrap();
       }
 
-      await dispatch(fetchDiscountsPage({ page, size: pageSize })).unwrap();
-      dispatch(fetchAdminDiscountsPage({ page, size: pageSize })).catch(()=>{});
       setShowForm(false);
       setEditingId(null);
       setFormData(emptyForm);
     } catch (err) {
       console.error(err);
       setError(err?.message || 'Error guardando descuento');
-        if (err && err.status === 401) {
+      if (err && err.status === 401) {
         setError('No autorizado. Por favor iniciá sesión.');
         navigate('/login', { replace: true });
         return;
@@ -192,19 +228,8 @@ export default function CouponManagement() {
     setLoadingLocal(true);
     try {
       await dispatch(adminUpdateDiscount({ discountId, discountData: { active: false } })).unwrap();
-      await dispatch(fetchDiscountsPage({ page, size: pageSize })).unwrap();
-      dispatch(fetchAdminDiscountsPage({ page, size: pageSize })).catch(()=>{});
     } catch (err) {
       console.error(err);
-        if (err && err.status === 401) {
-        setError('No autorizado. Por favor iniciá sesión.');
-        navigate('/login', { replace: true });
-        return;
-      }
-      if (err && err.status === 403) {
-        setError('No tenés permisos para desactivar este cupón.');
-        return;
-      }
       setError('Error desactivando descuento');
     } finally {
       setLoadingLocal(false);
@@ -216,19 +241,8 @@ export default function CouponManagement() {
     setLoadingLocal(true);
     try {
       await dispatch(adminUpdateDiscount({ discountId, discountData: { active: true } })).unwrap();
-      await dispatch(fetchDiscountsPage({ page, size: pageSize })).unwrap();
-      dispatch(fetchAdminDiscountsPage({ page, size: pageSize })).catch(()=>{});
     } catch (err) {
       console.error(err);
-        if (err && err.status === 401) {
-        setError('No autorizado. Por favor iniciá sesión.');
-        navigate('/login', { replace: true });
-        return;
-      }
-      if (err && err.status === 403) {
-        setError('No tenés permisos para activar este cupón.');
-        return;
-      }
       setError('Error activando descuento');
     } finally {
       setLoadingLocal(false);
