@@ -8,44 +8,55 @@ const STORAGE_USER_KEY = 'userProfile';
 function normalizeError(err) {
   try {
     if (!err) return { message: 'Error desconocido' };
-    if (err?.message) return err;
+    if (typeof err === 'object' && err !== null) {
+      if ('message' in err && typeof err.message === 'string') {
+        return { message: err.message, ...(err.status ? { status: err.status } : {}) };
+      }
+      if (err.response?.data) {
+        const data = err.response.data;
+        return { message: data.message ?? data.error ?? String(data) };
+      }
+      return { message: String(err) };
+    }
     return { message: String(err) };
   } catch {
     return { message: 'Error desconocido' };
   }
 }
 
-
 export const registerThunk = createAsyncThunk(
   'auth/register',
   async (registerPayload, { rejectWithValue }) => {
     try {
       const resp = await authApi.register(registerPayload);
-      const accessToken = resp?.access_token || resp?.accessToken || resp?.token;
-      if (!accessToken) return rejectWithValue({ message: 'No se recibió token del servidor' });
-
-      localStorage.setItem(STORAGE_TOKEN_KEY, accessToken);
-
+      const accessToken =
+        resp?.access_token ?? resp?.accessToken ?? resp?.token ?? null;
+      if (!accessToken) {
+        return rejectWithValue({ message: 'No se recibió token del servidor' });
+      }
+      try { localStorage.setItem(STORAGE_TOKEN_KEY, accessToken); } catch {}
       const profile = await usersApi.getMyProfile();
       try { localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(profile ?? null)); } catch {}
-
       return { token: accessToken, profile };
     } catch (err) {
       return rejectWithValue(normalizeError(err));
     }
   }
 );
-
 
 export const loginThunk = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
       const resp = await authApi.authenticate({ email, password });
-      const accessToken = resp?.access_token || resp?.accessToken || resp?.token;
-      if (!accessToken) return rejectWithValue({ message: 'No se recibió token del servidor' });
+      const accessToken =
+        resp?.access_token ?? resp?.accessToken ?? resp?.token ?? null;
 
-      localStorage.setItem(STORAGE_TOKEN_KEY, accessToken);
+      if (!accessToken) {
+        return rejectWithValue({ message: 'No se recibió token del servidor' });
+      }
+
+      try { localStorage.setItem(STORAGE_TOKEN_KEY, accessToken); } catch {}
 
       const profile = await usersApi.getMyProfile();
       try { localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(profile ?? null)); } catch {}
@@ -56,7 +67,6 @@ export const loginThunk = createAsyncThunk(
     }
   }
 );
-
 
 export const fetchProfileThunk = createAsyncThunk(
   'auth/fetchProfile',
@@ -73,10 +83,7 @@ export const fetchProfileThunk = createAsyncThunk(
 );
 
 export const logout = createAsyncThunk('auth/logout', async () => {
-  try {
-    localStorage.removeItem(STORAGE_TOKEN_KEY);
-    localStorage.removeItem(STORAGE_USER_KEY);
-  } catch {}
+  try { localStorage.removeItem(STORAGE_TOKEN_KEY); localStorage.removeItem(STORAGE_USER_KEY); } catch {}
   return null;
 });
 
@@ -95,25 +102,16 @@ const initialState = {
   isAuthenticated: !!(typeof window !== 'undefined' && localStorage.getItem(STORAGE_TOKEN_KEY) && localStorage.getItem(STORAGE_USER_KEY)),
 };
 
-
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
     setUser(state, action) {
       state.user = action.payload ?? null;
-      try {
-        if (state.user) localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(state.user));
-        else localStorage.removeItem(STORAGE_USER_KEY);
-      } catch {}
       state.isAuthenticated = !!(state.token && state.user);
     },
     setToken(state, action) {
       state.token = action.payload ?? null;
-      try {
-        if (state.token) localStorage.setItem(STORAGE_TOKEN_KEY, state.token);
-        else localStorage.removeItem(STORAGE_TOKEN_KEY);
-      } catch {}
       state.isAuthenticated = !!(state.token && state.user);
     },
     clearAuthError(state) {
@@ -184,10 +182,7 @@ const authSlice = createSlice({
   }
 });
 
-
-
 export const { setUser, setToken, clearAuthError } = authSlice.actions;
-
 
 export const refreshProfile = fetchProfileThunk;
 export const register = registerThunk;
