@@ -111,7 +111,7 @@ export default function ReviewCarousel() {
             Reseñas Recientes de Nuestros Clientes
           </h2>
           <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
-            <div className="spinner-border text-light ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}>
+            <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}>
               <span className="visually-hidden">Loading...</span>
             </div>
             <img src={Loading} alt="Loading..." style={{ width: "120px", height: "160px" }} />

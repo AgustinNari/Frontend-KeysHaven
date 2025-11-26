@@ -6,6 +6,7 @@ import SortDropdown from "../components/catalog/SortDropdown";
 import ProductGrid from "../components/catalog/ProductGrid";
 import PaginationBar from "../components/catalog/PaginationBar";
 import "../components/estilos/catalog.css";
+import Loading from "../assets/doppyKnight/doppyTimeCheck.png";
 
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { searchProducts, fetchFilterExtras, selectSearchResult, selectProductsFilterExtras } from "../redux/slices/productsSlice";
@@ -242,6 +243,7 @@ export default function Catalog() {
           {loading ? (
             <div className="d-flex justify-content-center align-items-center" style={{ height: 200 }}>
               <div className="spinner-border text-primary" role="status"><span className="visually-hidden">Cargando...</span></div>
+              <img src={Loading} alt="Loading..." style={{ width: "120px", height: "160px" }} />
             </div>
           ) : (
             <>

@@ -200,7 +200,7 @@ export default function Home() {
           <div className="row g-4 justify-content-center">
             {loadingCategories && (
               <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
-                <div className="spinner-border text-light ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Loading...</span></div>
+                <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Loading...</span></div>
                 <img src={Loading} alt="Loading..." style={{ width: "120px", height: "160px" }} />
               </div>
             )}
@@ -230,7 +230,7 @@ export default function Home() {
           <div className="row g-5 justify-content-center">
             {loadingSellers && (
               <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
-                <div className="spinner-border text-light ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Loading...</span></div>
+                <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Loading...</span></div>
                 <img src={Loading} alt="Loading..." style={{ width: "120px", height: "160px" }} />
               </div>
             )}
@@ -259,7 +259,7 @@ export default function Home() {
 
           {loadingProducts && (
             <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
-              <div className="spinner-border text-light ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Loading...</span></div>
+              <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Loading...</span></div>
               <img src={Loading} alt="Loading..." style={{ width: "120px", height: "160px" }} />
             </div>
           )}
