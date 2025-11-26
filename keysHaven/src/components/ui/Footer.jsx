@@ -33,9 +33,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <span className="text-light text-decoration-none">
-                  Política de reembolso
-                </span>
+                <Link 
+                  className="text-light text-decoration-none"
+                  to="/contactdetails">
+                  Contacto
+                </Link>
               </li>
             </ul>
           </div>

@@ -17,6 +17,7 @@ import PaymentMethod from './views/PaymentMethod';
 import TermsAndConditions from './views/TermsAndConditions';
 import FAQ from './views/FAQ';
 import Privacy from './views/Privacy';
+import ContactUs from './views/ContactUs';
 
 
 import Checkout from './views/Checkout';
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/termsandconditions" element={<TermsAndConditions />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/contactdetails" element={<ContactUs />} />
 
 
           <Route path="/admin/*" element={<AdminPanel />} />
