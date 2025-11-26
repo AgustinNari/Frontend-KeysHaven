@@ -36,7 +36,9 @@ export default function HelpCenter() {
                 Actualmente podes comunicarte con nuestro equipo a traves de:
                 <br />
                 - Email de soporte:{" "}
-                <strong>soporte@keyshaven.com</strong> <br />
+                <strong className="text-primary">contacto@keyshaven.com</strong> <br />
+                - Teléfono:{" "}
+                <strong className="text-primary">+54 11 3306-8080</strong> <br />
                 - Formulario de contacto dentro de la plataforma (cuando este
                   disponible). <br />
                 - Seccion de Preguntas Frecuentes (FAQ) para dudas generales.
