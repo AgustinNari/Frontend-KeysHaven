@@ -17,6 +17,9 @@ import PaymentMethod from './views/PaymentMethod';
 import TermsAndConditions from './views/TermsAndConditions';
 import FAQ from './views/FAQ';
 import Privacy from './views/Privacy';
+import RefundPolicy from './views/RefundPolicy';
+import About from './views/About';
+import HelpCenter from './views/HelpCenter';
 
 
 import Checkout from './views/Checkout';
@@ -59,6 +62,9 @@ export default function App() {
           <Route path="/termsandconditions" element={<TermsAndConditions />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/help-center" element={<HelpCenter />} />
 
 
           <Route path="/admin/*" element={<AdminPanel />} />
