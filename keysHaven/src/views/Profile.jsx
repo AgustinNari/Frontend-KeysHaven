@@ -1,15 +1,15 @@
+import bundledAsset1 from "../assets/doppyKnight/doppyThumbsUp.png";
 import React, { useEffect, useState, useRef } from "react";
 import "../components/estilos/profile.css";
 
 import AvatarUploader from "../components/profile/AvatarUploader";
 import AccountSettings from "../components/profile/AccountSettings";
 import OrdersTab from "../components/profile/OrdersTab";
-import ConfirmModal from "../components/profile/ConfirmModal";
 import ChangePasswordModal from "../components/profile/ChangePasswordModal";
 import ProfileCoupons from "../components/profile/ProfileCoupons";
 
 import { useAppSelector, useAppDispatch } from "../redux/hooks";
-import { selectUser, refreshProfile, logout as logoutAction, setUser } from "../redux/slices/authSlice";
+import { selectUser, setUser } from "../redux/slices/authSlice";
 import {
   fetchMyProfile,
   updateMyUser,
@@ -18,32 +18,26 @@ import {
   deleteAvatar,
   fetchMyCoupons,
   changePasswordThunk,
-  selectProfileCoupons,
   selectProfileCouponsFetchedAt,
-  selectProfileFetchedAt
-} from "../redux/slices/profileSlice";
+  } from "../redux/slices/profileSlice";
 import { fetchMyOrders } from "../redux/slices/ordersSlice";
 
 export default function Profile() {
   const dispatch = useAppDispatch();
 
   const ctxUser = useAppSelector(selectUser);
-  const profileFromStore = useAppSelector((s) => s.profile.me);
-  const profileFetchedAt = useAppSelector(selectProfileFetchedAt);
-  const couponsFromStore = useAppSelector(selectProfileCoupons);
+  const profileFromStore = ctxUser;
   const couponsFetchedAt = useAppSelector(selectProfileCouponsFetchedAt);
   const ordersPages = useAppSelector((s) => s.orders.myOrdersPages ?? {});
 
 
-  const [profile, setProfile] = useState(profileFromStore ?? null);
-  const [loadingProfile, setLoadingProfile] = useState(false);
+  const profile = profileFromStore;
 
   const [ordersPage, setOrdersPage] = useState(null);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersPageIndex, setOrdersPageIndex] = useState(0);
 
   const [activeTab, setActiveTab] = useState("account");
-  const [showProfileDeleteConfirm, setShowProfileDeleteConfirm] = useState(false);
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
 
   const [toast, setToast] = useState(null);
@@ -52,61 +46,24 @@ export default function Profile() {
   const role = (profile && profile.role) ? profile.role : (ctxUser && ctxUser.role ? ctxUser.role : null);
   const isAdmin = role === "ADMIN";
 
-  const COUPONS_TTL_MS = 10 * 60 * 1000;
-  const PROFILE_TTL_MS = 10 * 60 * 1000;
 
   useEffect(() => {
-    if (profileFromStore) setProfile(profileFromStore);
-  }, [profileFromStore]);
+    if (!profile?.id || isAdmin) return;
+    dispatch(fetchMyOrders({ page: 0, size: 10 })).unwrap().then(result => {
+      setOrdersPage(result?.resp ?? result); setOrdersPageIndex(0);
+    }).catch(() => setToast({ type: 'error', text: 'No se pudieron cargar las órdenes.' }));
+  }, [profile?.id, isAdmin, dispatch]);
 
   useEffect(() => {
-    async function loadProfile() {
-      setLoadingProfile(true);
-      try {
-        const needFetch = !profileFromStore;
-        if (needFetch) {
-          const p = await dispatch(fetchMyProfile()).unwrap();
-          if (p) {
-            dispatch(setUser(p));
-            setProfile(p);
-          }
-          try { await dispatch(refreshProfile()).unwrap(); } catch {}
-        }
-      } catch (err) {
-        console.error("No se pudo cargar perfil:", err);
-      } finally {
-        setLoadingProfile(false);
-      }
-    }
+    if (profile?.id && !isAdmin && (!couponsFetchedAt || Date.now() - couponsFetchedAt > 10 * 60 * 1000)) dispatch(fetchMyCoupons());
+  }, [profile?.id, isAdmin, couponsFetchedAt, dispatch]);
 
-    loadProfile();
-  }, [dispatch, profileFromStore]);
-
-  useEffect(() => {
-    async function ensureData() {
-      if (!isAdmin) {
-        await loadOrders(0, 10);
-      } else {
-        setOrdersPage(null);
-      }
-
-      const couponsStale = !Array.isArray(couponsFromStore) || couponsFromStore.length === 0 || !couponsFetchedAt || (Date.now() - couponsFetchedAt) > COUPONS_TTL_MS;
-      if (couponsStale) {
-        dispatch(fetchMyCoupons()).catch(() => {});
-      }
-    }
-
-    ensureData();
-
-  }, [profile, isAdmin, dispatch]);
-
-
-  async function loadOrders(page = 0, size = 10) {
+  async function loadOrders(page = 0, size = 10, force = false) {
     setOrdersLoading(true);
     try {
       const pageNum = Number(page) || 0;
-      const cached = ordersPages?.[pageNum];
-      if (cached) {
+      const cached = ordersPages?.[`${pageNum}_${size}`];
+      if (cached && !force) {
 
         setOrdersPage(cached);
         setOrdersPageIndex(pageNum);
@@ -114,7 +71,7 @@ export default function Profile() {
       }
 
 
-      const pageRes = await dispatch(fetchMyOrders({ page: pageNum, size })).unwrap();
+      const pageRes = await dispatch(fetchMyOrders({ page: pageNum, size, force })).unwrap();
 
       const resp = pageRes?.resp ?? pageRes;
       setOrdersPage(resp);
@@ -148,11 +105,11 @@ export default function Profile() {
 
       if (resp) {
         dispatch(setUser(resp));
-        setProfile(resp);
+
       } else {
 
         const p = await dispatch(fetchMyProfile()).unwrap();
-        if (p) { dispatch(setUser(p)); setProfile(p); }
+        if (p) { dispatch(setUser(p));  }
       }
       showToast({ type: "success", text: "Perfil actualizado correctamente." });
     } catch (err) {
@@ -165,16 +122,16 @@ export default function Profile() {
     if (!profile) return;
     try {
       const resp = await dispatch(uploadAvatar({ userId: profile.id, file })).unwrap();
-      if (resp?.id) {
+      if (resp?.id && resp?.role) {
         dispatch(setUser(resp));
-        setProfile(resp);
-      } else if (resp?.avatarDataUrl) {
-        const merged = { ...(profile || {}), avatarDataUrl: resp.avatarDataUrl };
+
+      } else if (resp?.dataUrl) {
+        const merged = { ...(profile || {}), avatarDataUrl: resp.dataUrl };
         dispatch(setUser(merged));
-        setProfile(merged);
+
       } else {
         const p = await dispatch(fetchMyProfile()).unwrap();
-        if (p) { dispatch(setUser(p)); setProfile(p); }
+        if (p) { dispatch(setUser(p));  }
       }
       showToast({ type: "success", text: "Avatar subido." });
     } catch (err) {
@@ -187,16 +144,16 @@ export default function Profile() {
     if (!profile) return;
     try {
       const resp = await dispatch(replaceAvatar({ userId: profile.id, file })).unwrap();
-      if (resp?.id) {
+      if (resp?.id && resp?.role) {
         dispatch(setUser(resp));
-        setProfile(resp);
-      } else if (resp?.avatarDataUrl) {
-        const merged = { ...(profile || {}), avatarDataUrl: resp.avatarDataUrl };
+
+      } else if (resp?.dataUrl) {
+        const merged = { ...(profile || {}), avatarDataUrl: resp.dataUrl };
         dispatch(setUser(merged));
-        setProfile(merged);
+
       } else {
         const p = await dispatch(fetchMyProfile()).unwrap();
-        if (p) { dispatch(setUser(p)); setProfile(p); }
+        if (p) { dispatch(setUser(p));  }
       }
       showToast({ type: "success", text: "Avatar reemplazado." });
     } catch (err) {
@@ -209,13 +166,13 @@ export default function Profile() {
     if (!profile) return;
     try {
       const resp = await dispatch(deleteAvatar(profile.id)).unwrap();
-      if (resp?.id) {
+      if (resp?.id && resp?.role) {
         dispatch(setUser(resp));
-        setProfile(resp);
+
       } else {
         const merged = { ...(profile || {}) , avatarDataUrl: null };
         dispatch(setUser(merged));
-        setProfile(merged);
+
       }
       showToast({ type: "success", text: "Avatar eliminado." });
     } catch (err) {
@@ -237,28 +194,19 @@ export default function Profile() {
   async function handleSaveReview(orderId, orderItemId, data, existingReview = null) {
     try {
       showToast({ type: "success", text: existingReview ? "Reseña actualizada." : "Reseña publicada." });
-      await loadOrders(ordersPageIndex, 10);
+      await loadOrders(ordersPageIndex, 10, true);
     } catch (err) {
       console.warn("handleSaveReview: error refreshing orders", err);
     }
   }
 
-  async function handleDeleteReview(reviewId) {
+  async function handleDeleteReview() {
     try {
       showToast({ type: "success", text: "Reseña eliminada." });
-      await loadOrders(ordersPageIndex, 10);
+      await loadOrders(ordersPageIndex, 10, true);
     } catch (err) {
       console.warn("handleDeleteReview: error refreshing orders", err);
     }
-  }
-
-  function handleConfirmDeleteProfile() {
-    localStorage.removeItem("jwtToken");
-    localStorage.removeItem("userProfile");
-    setShowProfileDeleteConfirm(false);
-    setProfile(null);
-    setOrdersPage(null);
-    try { dispatch(logoutAction()); } catch { window.location.reload(); }
   }
 
   function formatDate(iso) {
@@ -322,7 +270,7 @@ export default function Profile() {
                 <div className="avatar-box">
                   <div className="avatar-preview">
                     <img
-                      src={profile.avatarDataUrl ?? "/src/assets/doppyKnight/doppyThumbsUp.png"}
+                      src={profile.avatarDataUrl ?? bundledAsset1}
                       alt="avatar"
                       style={{ width: 120, height: 120, borderRadius: 8 }}
                     />
@@ -372,7 +320,7 @@ export default function Profile() {
                   <h3>Avatar</h3>
                   <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                     <AvatarUploader
-                      avatarDataUrl={profile.avatarDataUrl ?? "/src/assets/doppyKnight/doppyThumbsUp.png"}
+                      avatarDataUrl={profile.avatarDataUrl ?? bundledAsset1}
                       onUpload={handleUploadAvatar}
                       onReplace={handleReplaceAvatar}
                       onDelete={handleDeleteAvatar}
@@ -409,15 +357,6 @@ export default function Profile() {
             )}
           </section>
         </div>
-
-        <ConfirmModal
-          show={showProfileDeleteConfirm}
-          title="Eliminar perfil"
-          message="¿Estás seguro que querés eliminar tu perfil (demo)? Esta acción eliminará todos los datos locales de demostración."
-          onCancel={() => setShowProfileDeleteConfirm(false)}
-          onConfirm={handleConfirmDeleteProfile}
-          confirmText="Sí, eliminar"
-        />
 
         <ChangePasswordModal
           show={showChangePwdModal}

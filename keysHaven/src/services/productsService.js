@@ -72,8 +72,7 @@ function normalizeDiscountValueToFraction(raw) {
   if (raw == null) return null;
   const n = Number(raw);
   if (Number.isNaN(n)) return null;
-  if (n > 1) return n / 100;
-  return n;
+  return n / 100;
 }
 
 async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc", onlyActive = true) {
@@ -91,7 +90,6 @@ async function search(filters = {}, page = 0, size = 12, sort = "createdAt_desc"
     if (p.primaryImageDataUrl) primaryImageUrl = p.primaryImageDataUrl;
     else if (p.imageUrls && p.imageUrls.length > 0) primaryImageUrl = p.imageUrls[0];
     else if (p.primaryImageUrl) primaryImageUrl = p.primaryImageUrl;
-    else if (p.primaryImageContentType && p.primaryImageDataUrl) primaryImageUrl = p.primaryImageDataUrl;
 
     let rawBestPct = null;
     if (p.bestDiscountPercentage != null) rawBestPct = p.bestDiscountPercentage;

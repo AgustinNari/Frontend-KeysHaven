@@ -34,7 +34,6 @@ function ensurePrimaryImage(product) {
 
   const copy = { ...product };
 
-  let primary = null;
 
   if (copy.primaryImageDataUrl) {
     copy.primaryImageUrl = copy.primaryImageDataUrl;
@@ -71,9 +70,9 @@ function ensurePrimaryImage(product) {
   return copy;
 }
 
-export const getSellerProductsPaginated = async (sellerId, page = 0, size = 10) => {
+export const getSellerProductsPaginated = async (sellerId, page = 0, size = 10, status = "all") => {
   try {
-    const qs = buildQueryString({ page, size, sellerId });
+    const qs = buildQueryString({ page, size, sellerId, active: status === "all" ? undefined : status === "active" });
     const res = await apiClient.apiFetch(`/api/v1/products/filtered/all${qs}`, { method: "GET" });
     if (!res) return { items: [], total: 0 };
 
@@ -88,7 +87,7 @@ export const getSellerProductsPaginated = async (sellerId, page = 0, size = 10) 
     return { items: normalized, total };
   } catch (err) {
     console.error("getSellerProductsPaginated error:", err);
-    return { items: [], total: 0 };
+    throw err;
   }
 };
 
@@ -111,7 +110,7 @@ export const getSellerProducts = async (sellerId) => {
     return normalized;
   } catch (err) {
     console.error("getSellerProducts error:", err);
-    return [];
+    throw err;
   }
 };
 
@@ -120,7 +119,7 @@ export const getSellerActiveProducts = async (sellerId) => {
   try {
     const sId = sellerId ? (Number.isNaN(Number(sellerId)) ? sellerId : Number(sellerId)) : undefined;
     const qs = buildQueryString({ page: 0, size: 2147483647, sellerId: sId });
-    const res = await apiClient.apiFetch(`/api/v1/products/filtered/all${qs}`, { method: "GET" });
+    const res = await apiClient.apiFetch(`/api/v1/products/filtered/active${qs}`, { method: "GET" });
     if (!res) return [];
 
     let items = [];
@@ -146,7 +145,7 @@ export const getSellerActiveProducts = async (sellerId) => {
     return normalized;
   } catch (err) {
     console.error("getSellerActiveProducts error:", err);
-    return [];
+    throw err;
   }
 };
 
@@ -154,8 +153,7 @@ function normalizeDiscountValueToFraction(raw) {
   if (raw == null) return null;
   const n = Number(raw);
   if (Number.isNaN(n)) return null;
-  if (n > 1) return n / 100;
-  return n;
+  return n / 100;
 }
 
 export const getSellerActiveProductsForDetail = async (sellerId) => {
@@ -202,21 +200,10 @@ export const getSellerActiveProductsForDetail = async (sellerId) => {
       };
     });
 
-    if ((!normalized || normalized.length === 0) && sId) {
-      try {
-        const fallback = await getSellerProducts(sId);
-        const onlyActive = (Array.isArray(fallback) ? fallback : []).filter(p => p.active !== false);
-        if (onlyActive.length > 0) return onlyActive;
-        return fallback;
-      } catch (fbErr) {
-        console.warn("Fallback getSellerProducts failed:", fbErr);
-      }
-    }
-
     return normalized;
   } catch (err) {
     console.error("getSellerActiveProducts error:", err);
-    return [];
+    throw err;
   }
 };
 
@@ -227,7 +214,7 @@ export const getProductDetail = async (productId) => {
     return await apiClient.apiFetch(`/products/${productId}/detail`, { method: "GET" });
   } catch (err) {
     console.error("getProductDetail error:", err);
-    return null;
+    throw err;
   }
 };
 
@@ -249,7 +236,7 @@ export const updateProduct = async (productId, productData) => {
   }
 };
 
-export const addProductImage = async (productId, { name, dataUrl, contentType, isPrimary = false }) => {
+export const addProductImage = async (productId, { name, dataUrl, isPrimary = false }) => {
   const form = new FormData();
   form.append("productId", String(productId));
   form.append("name", name || "");
@@ -288,7 +275,7 @@ export const addProductImage = async (productId, { name, dataUrl, contentType, i
   }
 };
 
-export const updateProductImage = async (imageId, { name, isPrimary, dataUrl, contentType }) => {
+export const updateProductImage = async (imageId, { name, isPrimary, dataUrl }) => {
   const form = new FormData();
   if (typeof name !== "undefined") form.append("name", name);
   if (typeof isPrimary !== "undefined") form.append("isPrimary", String(Boolean(isPrimary)));
@@ -343,7 +330,7 @@ export const getProductKeys = async (productId, page = 0, size = 20) => {
     return { items, total };
   } catch (err) {
     console.error("getProductKeys error:", err);
-    return { items: [], total: 0 };
+    throw err;
   }
 };
 
@@ -369,7 +356,7 @@ export const getSellerDiscounts = async (page = 0, size = 10) => {
     return { items, total };
   } catch (err) {
     console.error("getSellerDiscounts error:", err);
-    return { items: [], total: 0 };
+    throw err;
   }
 };
 
@@ -406,7 +393,7 @@ export const getSellerOrders = async ({ sellerId, page = 0, size = 10, status } 
     return { items: resp.content ?? resp.items ?? [], total: resp.totalElements ?? resp.total ?? 0 };
   } catch (err) {
     console.error("getSellerOrders error:", err);
-    return { items: [], total: 0 };
+    throw err;
   }
 };
 
@@ -516,7 +503,7 @@ export const getCategories = async () => {
     return res.content ?? [];
   } catch (err) {
     console.error("getCategories error:", err);
-    return [];
+    throw err;
   }
 };
 
@@ -562,4 +549,3 @@ export default {
   updateUser,
   getUserById
 };
-

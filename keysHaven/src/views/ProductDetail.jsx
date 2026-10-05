@@ -20,22 +20,16 @@ import {
   setReviewsFromCache,
   setRelatedFromCache,
   selectProductReviewsPages,
-  selectProductCache,
+
   selectRelatedCache
 } from "../redux/slices/productDetailSlice";
 
 import {
   fetchSellerDetail,
-  selectSellerDetail,
+
   fetchSellerActiveProductsForDetail,
   selectSellerDetailProducts
 } from "../redux/slices/sellersSlice";
-import {
-  selectProduct,
-  selectProductDetail,
-  selectRelatedProducts,
-  selectProductReviews
-} from "../redux/slices/productDetailSlice";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -114,7 +108,7 @@ export default function ProductDetail() {
     return () => {
       mounted = false;
     };
-  }, [id, dispatch, productCacheEntry, reviewsPages, sellersNeedsRefresh]);
+  }, [id, dispatch, product, productCacheEntry, reviewsPages, sellersNeedsRefresh]);
 
   useEffect(() => {
     if (!product) {
@@ -229,7 +223,7 @@ export default function ProductDetail() {
       showToast(product?.sellerId && user?.role === "SELLER" ? "No se pueden comprar productos propios" : "El administrador no puede comprar", "warn");
       return;
     }
-    const res = await add(buildAddPayload(), 1);
+    const res = await add(buildAddPayload(), Number(product.minPurchaseQuantity ?? 1));
     if (!res || !res.ok) showToast(res?.reason ?? "No se pudo agregar al carrito", "warn");
     else showToast("Añadido al carrito", "info");
   };
@@ -239,7 +233,7 @@ export default function ProductDetail() {
       showToast(product?.sellerId && user?.role === "SELLER" ? "No se pueden comprar productos propios" : "El administrador no puede comprar", "warn");
       return;
     }
-    const res = await add(buildAddPayload(), 1);
+    const res = await add(buildAddPayload(), Number(product.minPurchaseQuantity ?? 1));
     if (!res || !res.ok) {
       showToast(res?.reason ?? "No se pudo agregar al carrito", "warn");
       return;

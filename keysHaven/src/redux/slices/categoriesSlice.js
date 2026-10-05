@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import categoriesService from '../../services/categories';
-import adminService from '../../services/adminService';
 import { logout } from './authSlice';
 
 export const fetchFeaturedCategories = createAsyncThunk(
@@ -32,12 +31,7 @@ export const fetchAllCategories = createAsyncThunk(
       const resp = await categoriesService.getAllCategories();
       return resp;
     } catch (err) {
-      try {
-        const r2 = await adminService.getCategories();
-        return r2;
-      } catch (err2) {
-        return rejectWithValue(err2 || err);
-      }
+      return rejectWithValue(err);
     }
   }
 );

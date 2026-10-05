@@ -9,7 +9,7 @@ import { Provider } from 'react-redux';
 import store from './redux/store';
 import { fetchProfileThunk } from './redux/slices/authSlice';
 
-const token = typeof window !== 'undefined' ? localStorage.getItem('jwtToken') : null;
+const token = store.getState().auth.token;
 if (token) {
   store.dispatch(fetchProfileThunk());
 }
@@ -23,4 +23,3 @@ createRoot(document.getElementById('root')).render(
     </Provider>
   </StrictMode>
 );
-

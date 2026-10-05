@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
@@ -32,18 +32,7 @@ export default function ProductManagement() {
 
   const pageKey = `${Math.max(1, Number(page) || 1)}_${pageSize}`;
 
-  useEffect(() => {
-
-    if (admin?.productsPageCache?.[pageKey]) {
-      dispatch(setProductsPageFromCache({ key: pageKey }));
-      return;
-    }
-
-    loadProducts(Math.max(1, Number(page) || 1));
-
-  }, [page, dispatch, pageKey]);
-
-  const loadProducts = async (p = 1) => {
+  const loadProducts = useCallback(async (p = 1) => {
     setLoadingLocal(true);
     setError('');
     try {
@@ -60,7 +49,20 @@ export default function ProductManagement() {
     } finally {
       setLoadingLocal(false);
     }
-  };
+  }, [dispatch]);
+
+  useEffect(() => {
+
+    if (admin?.productsPageCache?.[pageKey]) {
+      dispatch(setProductsPageFromCache({ key: pageKey }));
+      return;
+    }
+
+    loadProducts(Math.max(1, Number(page) || 1));
+
+  }, [page, dispatch, pageKey, admin?.productsPageCache, loadProducts]);
+
+
 
   const closeConfirm = () => setConfirm({ show: false, title: '', message: '', onConfirm: null });
 
@@ -137,7 +139,7 @@ export default function ProductManagement() {
           if (typeof ic === 'string' && ic.trim() !== '' && !Number.isNaN(Number(ic))) return Number(ic);
         }
       }
-    } catch (e) {}
+    } catch { /* Ignore malformed optional inventory metadata. */ }
     return 0;
   };
 

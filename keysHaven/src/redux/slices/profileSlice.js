@@ -2,28 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import usersService from '../../services/users';
 import discountsService from '../../services/discountsService';
 import { logout } from './authSlice';
-import { createOrder } from './ordersSlice';
 import authService from '../../services/auth';
-
-const LS_KEYS = {
-  ME: 'app_profile_me_v1',
-  COUPONS: 'app_profile_coupons_v1'
-};
-
-function loadFromStorage(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-function saveToStorage(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch { }
-}
 
 export const fetchMyProfile = createAsyncThunk('profile/fetchMe', async (_, { rejectWithValue }) => {
   try {
@@ -100,76 +79,37 @@ export const changePasswordThunk = createAsyncThunk(
   }
 );
 
-const savedMe = loadFromStorage(LS_KEYS.ME);
-const savedCoupons = loadFromStorage(LS_KEYS.COUPONS);
-
 const initialState = {
-  me: savedMe?.data ?? null,
-  meFetchedAt: savedMe?.fetchedAt ?? null,
-  coupons: savedCoupons?.data ?? [],
-  couponsFetchedAt: savedCoupons?.fetchedAt ?? null,
-  loading: false,
-  error: null
+  meFetchedAt: null, coupons: [], couponsFetchedAt: null, loading: false, error: null
 };
 
 const profileSlice = createSlice({
   name: 'profile',
   initialState,
   reducers: {
-    clearProfile(state) { Object.assign(state, { me: null, meFetchedAt: null, coupons: [], couponsFetchedAt: null, loading: false, error: null }); }
+    clearProfile(state) { Object.assign(state, { meFetchedAt: null, coupons: [], couponsFetchedAt: null, loading: false, error: null }); }
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMyProfile.fulfilled, (s, a) => {
-        s.me = a.payload;
+      .addCase(fetchMyProfile.fulfilled, (s) => {
         s.meFetchedAt = Date.now();
-        saveToStorage(LS_KEYS.ME, { data: s.me, fetchedAt: s.meFetchedAt });
       })
-      .addCase(updateMyUser.fulfilled, (s, a) => {
-        s.me = a.payload;
+      .addCase(updateMyUser.fulfilled, (s) => {
         s.meFetchedAt = Date.now();
-        saveToStorage(LS_KEYS.ME, { data: s.me, fetchedAt: s.meFetchedAt });
       })
       .addCase(fetchMyCoupons.fulfilled, (s, a) => {
         const items = a.payload?.content ?? a.payload ?? [];
         s.coupons = items;
         s.couponsFetchedAt = Date.now();
-        saveToStorage(LS_KEYS.COUPONS, { data: s.coupons, fetchedAt: s.couponsFetchedAt });
-      })
-
-      .addCase(createOrder.fulfilled, (s, a) => {
-        const serverOrder = a.payload;
-        if (serverOrder?.newBalance != null) {
-          s.me = s.me ? { ...s.me, buyerBalance: serverOrder.newBalance } : s.me;
-          s.meFetchedAt = Date.now();
-          saveToStorage(LS_KEYS.ME, { data: s.me, fetchedAt: s.meFetchedAt });
-        }
       })
 
       .addCase(logout.fulfilled, (s) => {
-        Object.assign(s, { me: null, meFetchedAt: null, coupons: [], couponsFetchedAt: null, loading: false, error: null });
-        try { localStorage.removeItem(LS_KEYS.ME); localStorage.removeItem(LS_KEYS.COUPONS); } catch {}
+        Object.assign(s, { meFetchedAt: null, coupons: [], couponsFetchedAt: null, loading: false, error: null });
       })
 
-      .addCase(uploadAvatar.fulfilled, (s, a) => {
-        if (a.payload?.id) s.me = a.payload;
-        else if (a.payload?.avatarDataUrl && s.me) s.me.avatarDataUrl = a.payload.avatarDataUrl;
-        s.meFetchedAt = Date.now();
-        saveToStorage(LS_KEYS.ME, { data: s.me, fetchedAt: s.meFetchedAt });
-      })
-      .addCase(replaceAvatar.fulfilled, (s, a) => {
-        if (a.payload?.id) s.me = a.payload;
-        else if (a.payload?.avatarDataUrl && s.me) s.me.avatarDataUrl = a.payload.avatarDataUrl;
-        s.meFetchedAt = Date.now();
-        saveToStorage(LS_KEYS.ME, { data: s.me, fetchedAt: s.meFetchedAt });
-      })
-      .addCase(deleteAvatar.fulfilled, (s, a) => {
-        if (s.me) s.me.avatarDataUrl = null;
-        s.meFetchedAt = Date.now();
-        saveToStorage(LS_KEYS.ME, { data: s.me, fetchedAt: s.meFetchedAt });
-      })
-      .addCase(changePasswordThunk.fulfilled, (s, a) => {
-      })
+      .addCase(fetchMyProfile.rejected, (s, a) => { s.error = a.payload || a.error; })
+      .addCase(updateMyUser.rejected, (s, a) => { s.error = a.payload || a.error; })
+      .addCase(fetchMyCoupons.rejected, (s, a) => { s.error = a.payload || a.error; })
       .addCase(uploadAvatar.rejected, (s, a) => { s.error = a.payload || a.error; })
       .addCase(replaceAvatar.rejected, (s, a) => { s.error = a.payload || a.error; })
       .addCase(deleteAvatar.rejected, (s, a) => { s.error = a.payload || a.error; })
@@ -180,7 +120,7 @@ const profileSlice = createSlice({
 export const { clearProfile } = profileSlice.actions;
 export default profileSlice.reducer;
 
-export const selectProfile = state => state.profile.me;
+export const selectProfile = state => state.auth.user;
 export const selectProfileFetchedAt = state => state.profile.meFetchedAt;
 export const selectProfileCoupons = state => state.profile.coupons;
 export const selectProfileCouponsFetchedAt = state => state.profile.couponsFetchedAt;

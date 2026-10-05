@@ -1,10 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
-import { useAppDispatch, useAppSelector } from "../redux/hooks";
+import { useAppDispatch } from "../redux/hooks";
 import { createOrder } from "../redux/slices/ordersSlice";
-import { fetchActiveCouponsByBuyer } from "../redux/slices/discountsSlice";
-import { fetchMyProfile } from "../redux/slices/profileSlice";
+import { fetchMyProfile, fetchMyCoupons } from "../redux/slices/profileSlice";
 import { setAvailableCoupons } from "../redux/slices/cartSlice";
 
 export default function Checkout() {
@@ -26,7 +25,6 @@ export default function Checkout() {
     hasProductPercentDiscount
   } = useCart();
 
-  const buyerBalance = useAppSelector(state => state.profile?.me?.buyerBalance ?? 0);
 
   const [placing, setPlacing] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -81,12 +79,6 @@ export default function Checkout() {
       clear();
 
       try {
-        const serverTotalAmount = Number(serverOrder?.totalAmount ?? serverOrder?.total ?? total ?? 0);
-
-        const prevQuotient = Math.floor(Number(buyerBalance || 0) / 100);
-        const afterQuotient = Math.floor((Number(buyerBalance || 0) + serverTotalAmount) / 100);
-        const couponsGenerated = Math.max(0, afterQuotient - prevQuotient);
-
         try {
           await dispatch(fetchMyProfile()).unwrap();
         } catch (errProfile) {
@@ -94,7 +86,7 @@ export default function Checkout() {
         }
 
         try {
-          const couponsResp = await dispatch(fetchActiveCouponsByBuyer({ page: 0, size: 200 })).unwrap();
+          const couponsResp = await dispatch(fetchMyCoupons()).unwrap();
           const list = couponsResp?.content ?? couponsResp ?? [];
           dispatch(setAvailableCoupons(list));
         } catch (errCoupons) {

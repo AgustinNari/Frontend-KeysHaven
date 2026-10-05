@@ -1,3 +1,4 @@
+import bundledAsset0 from "../../assets/keyLogo.svg";
 import React from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import "../estilos/Fondos.css";
@@ -36,7 +37,7 @@ export default function Navigation() {
     <nav className="navbar navbar-expand-lg sticky-top navbar-dark bg-primary-dark border-bottom border-light">
       <div className="container-fluid">
         <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
-          <img src="/src/assets/keyLogo.svg" width={55} height={35} alt="KeysHaven" />
+          <img src={bundledAsset0} width={55} height={35} alt="KeysHaven" />
           KeysHaven
         </Link>
 
@@ -163,12 +164,12 @@ export default function Navigation() {
                     className="rounded-circle"
                     style={{ width: '30px', height: '30px' }} // Adjust size as needed
                   />
-                  
-                  
-                  
+
+
+
 <button className="btn btn-outline-secondary rounded-circle p-2"style={{
                   background:
-                    ("url('/src/assets/homeImage.png')"),
+                    `url(${bundledAsset1})`,
                   backgroundRepeat: "no-repeat",
                   backgroundSize: "contain",
                   backgroundPosition: "center",

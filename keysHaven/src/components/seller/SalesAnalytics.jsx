@@ -7,12 +7,16 @@ function makePageKey({ sellerId, page = 0, size = 10, status }) {
   return `${sellerId ?? 'anon'}_${page}_${size}_${status ?? 'all'}`;
 }
 
-export default function SalesAnalytics({ sellerId }) {
+const emptyOrders = [];
+const emptyStats = { totalSales: 0, totalRevenue: 0, activeProducts: 0, totalProducts: 0, avgRating: 0, pendingOrders: 0 };
+
+export default function SalesAnalytics({ sellerId: suppliedSellerId }) {
+  const sellerId = useAppSelector(state => suppliedSellerId ?? state.auth.user?.id);
   const dispatch = useAppDispatch();
 
-  const stats = useAppSelector(state => state.sellerPanel.stats) ?? { totalSales:0, totalRevenue:0, activeProducts:0, totalProducts:0, avgRating:0, pendingOrders:0 };
+  const stats = useAppSelector(state => state.sellerPanel.stats) ?? emptyStats;
   const ordersState = useAppSelector(state => state.sellerPanel.orders) ?? { items: [], total: 0 };
-  const ordersPages = useAppSelector(state => state.sellerPanel.ordersPages) ?? {};
+  const ordersPages = useAppSelector(state => state.sellerPanel.ordersPages);
   const loading = useAppSelector(state => state.sellerPanel.loading);
 
   const [page, setPage] = React.useState(1);
@@ -22,13 +26,9 @@ export default function SalesAnalytics({ sellerId }) {
   useEffect(() => {
     if (!sellerId) return;
 
-    if (stats && stats.sellerId != null && Number(stats.sellerId) === Number(sellerId)) {
-      return;
-    }
+    dispatch(fetchSellerStats({ sellerId }));
 
-    dispatch(fetchSellerStats({ sellerId })).catch(() => { });
-
-  }, [sellerId, dispatch, stats]);
+  }, [sellerId, dispatch]);
 
   useEffect(() => {
     if (!sellerId) return;
@@ -39,9 +39,7 @@ export default function SalesAnalytics({ sellerId }) {
 
     if (!cachedPage) {
 
-      dispatch(fetchSellerOrders({ sellerId, page: zeroBased, size: pageSize, status: 'COMPLETED' })).catch(() => {});
-    } else {
-
+      dispatch(fetchSellerOrders({ sellerId, page: zeroBased, size: pageSize, status: 'COMPLETED' })).catch(() => { /* The view reports errors through Redux. */ });
     }
 
   }, [sellerId, page, dispatch, ordersPages]);
@@ -50,7 +48,7 @@ export default function SalesAnalytics({ sellerId }) {
   const zeroBased = Math.max(0, page - 1);
   const currentKey = makePageKey({ sellerId, page: zeroBased, size: pageSize, status: 'COMPLETED' });
   const currentPageResp = ordersPages[currentKey] ?? ordersState;
-  const recentOrders = currentPageResp.items ?? [];
+  const recentOrders = currentPageResp.items ?? emptyOrders;
   const totalOrders = currentPageResp.total ?? (recentOrders.length);
 
   const computeOrderAmount = (order) => {

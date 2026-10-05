@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import sellerService from '../../services/sellerService';
 import productsService from '../../services/productsService';
 import reviewsService from '../../services/reviews';
 import { logout } from './authSlice';
@@ -24,16 +23,10 @@ export const fetchProductDetail = createAsyncThunk(
       const cached = state.productDetail?.productCache?.[String(productId)];
       if (!force && cached) return cached;
 
-      const resp = await sellerService.getProductDetail(productId);
+      const resp = await productsService.getById(productId);
       return resp;
     } catch (err) {
-      try {
-        const idFallback = (typeof arg === 'object' && arg !== null) ? (arg.productId ?? arg.id) : arg;
-        const r2 = await productsService.getById(idFallback);
-        return r2;
-      } catch (err2) {
-        return rejectWithValue(err2 || err);
-      }
+      return rejectWithValue(err);
     }
   }
 );
@@ -78,6 +71,7 @@ const initialState = {
   related: [],
   reviews: [],
   reviewsMeta: null,
+  requestId: null,
   loading: false,
   error: null,
 
@@ -91,7 +85,7 @@ const productDetailSlice = createSlice({
   initialState,
   reducers: {
     upsertProductDetail(state, action) {
-      state.product = { ...(state.product || {}), ...(action.payload || {}) };
+      state.product = { ...(String(state.product?.id) === String(action.payload?.id) ? state.product : {}), ...(action.payload || {}) };
       if (action.payload && action.payload.id != null) {
         state.productCache[String(action.payload.id)] = {
           ...(state.productCache[String(action.payload.id)] || {}),
@@ -129,15 +123,18 @@ const productDetailSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchProductDetail.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(fetchProductDetail.pending, (s, a) => { s.requestId = a.meta.requestId; s.loading = true; s.error = null; })
       .addCase(fetchProductDetail.fulfilled, (s, a) => {
+        if (s.requestId !== a.meta.requestId) return;
+        s.requestId = null;
         s.loading = false;
         s.product = a.payload;
         if (a.payload && a.payload.id != null) s.productCache[String(a.payload.id)] = a.payload;
       })
-      .addCase(fetchProductDetail.rejected, (s, a) => { s.loading = false; s.error = a.payload || a.error; })
+      .addCase(fetchProductDetail.rejected, (s, a) => { if (s.requestId !== a.meta.requestId) return; s.requestId = null; s.loading = false; s.error = a.payload || a.error; })
 
       .addCase(fetchRelatedProducts.fulfilled, (s, a) => {
+        if (Number(a.meta.arg.excludeProductId) !== Number(s.product?.id)) return;
         const key = a.payload?.key;
         const resp = a.payload?.resp ?? a.payload;
         if (key) s.relatedCache[key] = resp ?? [];
@@ -145,6 +142,7 @@ const productDetailSlice = createSlice({
       })
 
       .addCase(fetchProductReviews.fulfilled, (s, a) => {
+        if (Number(a.meta.arg.productId) !== Number(s.product?.id)) return;
         const key = a.payload?.key;
         const resp = a.payload?.resp ?? a.payload;
         if (key) {

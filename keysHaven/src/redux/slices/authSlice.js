@@ -2,111 +2,48 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import * as authApi from '../../services/auth';
 import * as usersApi from '../../services/users';
 
-const STORAGE_TOKEN_KEY = 'jwtToken';
-const STORAGE_USER_KEY = 'userProfile';
-
-function normalizeError(err) {
+function readToken() {
+  try { return globalThis.localStorage?.getItem('jwtToken') || null; }
+  catch { return null; }
+}
+function errorData(err) {
+  return { message: err?.body?.message || err?.message || 'Error desconocido', status: err?.status || 0 };
+}
+async function authenticate(payload, api, { dispatch, rejectWithValue, getState, requestId }) {
   try {
-    if (!err) return { message: 'Error desconocido' };
-    if (typeof err === 'object' && err !== null) {
-      if ('message' in err && typeof err.message === 'string') {
-        return { message: err.message, ...(err.status ? { status: err.status } : {}) };
-      }
-      if (err.response?.data) {
-        const data = err.response.data;
-        return { message: data.message ?? data.error ?? String(data) };
-      }
-      return { message: String(err) };
-    }
-    return { message: String(err) };
-  } catch {
-    return { message: 'Error desconocido' };
+    const resp = await api(payload);
+    const token = resp?.access_token ?? resp?.accessToken ?? resp?.token;
+    if (!token) throw new Error('No se recibió token del servidor');
+    if (getState().auth.requestId !== requestId) throw new Error('Solicitud de sesión cancelada');
+    dispatch(setToken(token));
+    const profile = await usersApi.getMyProfile();
+    if (!profile?.id) throw new Error('No se recibió el perfil del usuario');
+    return { token, profile };
+  } catch (err) {
+    return rejectWithValue(errorData(err));
   }
 }
+export const registerThunk = createAsyncThunk('auth/register', (payload, api) => authenticate(payload, authApi.register, api));
+export const loginThunk = createAsyncThunk('auth/login', (payload, api) => authenticate(payload, authApi.authenticate, api));
+export const fetchProfileThunk = createAsyncThunk('auth/fetchProfile', async (_, { rejectWithValue }) => {
+  try {
+    const profile = await usersApi.getMyProfile();
+    if (!profile?.id) throw new Error('Perfil no disponible');
+    return profile;
+  } catch (err) { return rejectWithValue(errorData(err)); }
+}, { condition: (_, { getState }) => !!getState().auth.token && !getState().auth.requestId });
+export const logout = createAsyncThunk('auth/logout', async () => null);
 
-export const registerThunk = createAsyncThunk(
-  'auth/register',
-  async (registerPayload, { rejectWithValue }) => {
-    try {
-      const resp = await authApi.register(registerPayload);
-      const accessToken =
-        resp?.access_token ?? resp?.accessToken ?? resp?.token ?? null;
-      if (!accessToken) {
-        return rejectWithValue({ message: 'No se recibió token del servidor' });
-      }
-      try { localStorage.setItem(STORAGE_TOKEN_KEY, accessToken); } catch {}
-      const profile = await usersApi.getMyProfile();
-      try { localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(profile ?? null)); } catch {}
-      return { token: accessToken, profile };
-    } catch (err) {
-      return rejectWithValue(normalizeError(err));
-    }
-  }
-);
-
-export const loginThunk = createAsyncThunk(
-  'auth/login',
-  async ({ email, password }, { rejectWithValue }) => {
-    try {
-      const resp = await authApi.authenticate({ email, password });
-      const accessToken =
-        resp?.access_token ?? resp?.accessToken ?? resp?.token ?? null;
-
-      if (!accessToken) {
-        return rejectWithValue({ message: 'No se recibió token del servidor' });
-      }
-
-      try { localStorage.setItem(STORAGE_TOKEN_KEY, accessToken); } catch {}
-
-      const profile = await usersApi.getMyProfile();
-      try { localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(profile ?? null)); } catch {}
-
-      return { token: accessToken, profile };
-    } catch (err) {
-      return rejectWithValue(normalizeError(err));
-    }
-  }
-);
-
-export const fetchProfileThunk = createAsyncThunk(
-  'auth/fetchProfile',
-  async (_, { rejectWithValue }) => {
-    try {
-      const profile = await usersApi.getMyProfile();
-      try { localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(profile ?? null)); } catch {}
-      return profile;
-    } catch (err) {
-      try { localStorage.removeItem(STORAGE_TOKEN_KEY); localStorage.removeItem(STORAGE_USER_KEY); } catch {}
-      return rejectWithValue(normalizeError(err));
-    }
-  }
-);
-
-export const logout = createAsyncThunk('auth/logout', async () => {
-  try { localStorage.removeItem(STORAGE_TOKEN_KEY); localStorage.removeItem(STORAGE_USER_KEY); } catch {}
-  return null;
-});
-
+const initialToken = readToken();
 const initialState = {
-  token: typeof window !== 'undefined' ? (localStorage.getItem(STORAGE_TOKEN_KEY) || null) : null,
-  user: (() => {
-    try {
-      const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_USER_KEY) : null;
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  })(),
-  loading: false,
-  error: null,
-  isAuthenticated: !!(typeof window !== 'undefined' && localStorage.getItem(STORAGE_TOKEN_KEY) && localStorage.getItem(STORAGE_USER_KEY)),
+  token: initialToken, user: null, loading: !!initialToken, error: null,
+  isAuthenticated: false, requestId: null
 };
-
 const authSlice = createSlice({
-  name: 'auth',
-  initialState,
+  name: 'auth', initialState,
   reducers: {
     setUser(state, action) {
+      if (!state.token || (state.user && action.payload && Number(state.user.id) !== Number(action.payload.id))) return;
       state.user = action.payload ?? null;
       state.isAuthenticated = !!(state.token && state.user);
     },
@@ -114,85 +51,56 @@ const authSlice = createSlice({
       state.token = action.payload ?? null;
       state.isAuthenticated = !!(state.token && state.user);
     },
-    clearAuthError(state) {
-      state.error = null;
-    }
+    clearAuthError(state) { state.error = null; }
   },
-  extraReducers: (builder) => {
-    builder
-      .addCase(registerThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(registerThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.token = action.payload?.token ?? state.token;
-        state.user = action.payload?.profile ?? state.user;
-        state.error = null;
-        state.isAuthenticated = !!(state.token && state.user);
-      })
-      .addCase(registerThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload ?? action.error ?? { message: 'Error al registrarse' };
-        state.isAuthenticated = false;
-      })
-
-      .addCase(loginThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(loginThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.token = action.payload?.token ?? state.token;
-        state.user = action.payload?.profile ?? state.user;
-        state.error = null;
-        state.isAuthenticated = !!(state.token && state.user);
-      })
-      .addCase(loginThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload ?? action.error ?? { message: 'Error al iniciar sesión' };
-        state.isAuthenticated = false;
-      })
-
-      .addCase(fetchProfileThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchProfileThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload ?? null;
-        state.error = null;
-        state.isAuthenticated = !!(state.token && state.user);
-      })
-      .addCase(fetchProfileThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload ?? action.error ?? { message: 'No se pudo restaurar el perfil' };
-        state.user = null;
-        state.token = null;
-        state.isAuthenticated = false;
-      })
-
-      .addCase(logout.fulfilled, (state) => {
-        state.loading = false;
-        state.token = null;
-        state.user = null;
-        state.error = null;
-        state.isAuthenticated = false;
+  extraReducers: builder => {
+    for (const thunk of [loginThunk, registerThunk, fetchProfileThunk]) {
+      builder.addCase(thunk.pending, (state, action) => {
+        state.loading = true; state.error = null; state.requestId = action.meta.requestId;
       });
+      builder.addCase(thunk.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return;
+        state.loading = false; state.error = null; state.requestId = null;
+        if (thunk !== fetchProfileThunk) state.token = action.payload.token;
+        state.user = thunk === fetchProfileThunk ? action.payload : action.payload.profile;
+        state.isAuthenticated = !!(state.token && state.user);
+      });
+      builder.addCase(thunk.rejected, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return;
+        state.loading = false; state.requestId = null;
+        state.error = action.payload ?? action.error;
+        if (thunk !== fetchProfileThunk || action.payload?.status === 401) {
+          state.token = null; state.user = null; state.isAuthenticated = false;
+        }
+      });
+    }
+    for (const action of [logout.pending, logout.fulfilled]) {
+      builder.addCase(action, state => {
+        state.token = null; state.user = null; state.loading = false;
+        state.error = null; state.isAuthenticated = false; state.requestId = null;
+      });
+    }
+    // Profile edits use the same user as navigation and role checks.
+    builder.addMatcher(action => ['profile/fetchMe/fulfilled', 'profile/updateUser/fulfilled'].includes(action.type), (state, action) => {
+      if (state.token && action.payload?.id) {
+        state.user = action.payload; state.isAuthenticated = true;
+      }
+    });
+    builder.addMatcher(action => ['profile/uploadAvatar/fulfilled', 'profile/replaceAvatar/fulfilled', 'profile/deleteAvatar/fulfilled'].includes(action.type), (state, action) => {
+      if (state.user && Number(action.payload?.userId) === Number(state.user.id)) {
+        state.user.avatarDataUrl = action.type === 'profile/deleteAvatar/fulfilled' ? null : action.payload.dataUrl;
+      }
+    });
   }
 });
-
 export const { setUser, setToken, clearAuthError } = authSlice.actions;
-
 export const refreshProfile = fetchProfileThunk;
 export const register = registerThunk;
 export const login = loginThunk;
-
-export const selectAuth = (state) => state.auth;
-export const selectUser = (state) => state.auth.user;
-export const selectToken = (state) => state.auth.token;
-export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
-export const selectAuthLoading = (state) => state.auth.loading;
-export const selectAuthError = (state) => state.auth.error;
-
+export const selectAuth = state => state.auth;
+export const selectUser = state => state.auth.user;
+export const selectToken = state => state.auth.token;
+export const selectIsAuthenticated = state => state.auth.isAuthenticated;
+export const selectAuthLoading = state => state.auth.loading;
+export const selectAuthError = state => state.auth.error;
 export default authSlice.reducer;

@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { fetchAdminStats, fetchPlatformMetrics, fetchRecentActivity } from '../../redux/slices/adminPanelSlice';
 import PaginationBar from '../catalog/PaginationBar';
+
+const emptyActivity = [];
 
 export default function AdminDashboard() {
   const dispatch = useAppDispatch();
@@ -13,24 +15,14 @@ export default function AdminDashboard() {
   };
 
   const platformMetrics = admin.platformMetrics ?? { uptime: 0, responseTime: 0, dailyVisits: 0, platformRating: 0, activeSupport: 0, incidents: 0 };
-  const recentActivity = admin.recentActivity ?? [];
+  const recentActivity = admin.recentActivity ?? emptyActivity;
 
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [activityPage, setActivityPage] = useState(1);
   const activityPageSize = 6;
   const totalActivityPages = Math.max(1, Math.ceil(recentActivity.length / activityPageSize));
 
-  useEffect(() => {
-    const needsStats = !admin.stats;
-    const needsMetrics = !admin.platformMetrics;
-    const needsActivity = !admin.recentActivity || admin.recentActivity.length === 0;
-
-    if (needsStats || needsMetrics || needsActivity) {
-      loadDashboardData({ needsStats, needsMetrics, needsActivity });
-    }
-  }, []);
-
-  const loadDashboardData = async ({ needsStats = true, needsMetrics = true, needsActivity = true } = {}) => {
+  const loadDashboardData = useCallback(async ({ needsStats = true, needsMetrics = true, needsActivity = true } = {}) => {
     setLoadingLocal(true);
     try {
       const promises = [];
@@ -43,7 +35,9 @@ export default function AdminDashboard() {
     } finally {
       setLoadingLocal(false);
     }
-  };
+  }, [dispatch]);
+
+  useEffect(() => { loadDashboardData(); }, [loadDashboardData]);
 
   useEffect(() => {
     if (activityPage > totalActivityPages) setActivityPage(totalActivityPages);
@@ -63,7 +57,7 @@ export default function AdminDashboard() {
   const activityStart = (activityPage - 1) * activityPageSize;
   const activityPageItems = recentActivity.slice(activityStart, activityStart + activityPageSize);
 
-  
+
   return (
     <div className="row">
       {/* Tarjetas Principales */}

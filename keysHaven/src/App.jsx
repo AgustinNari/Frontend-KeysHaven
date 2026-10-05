@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 import Navigation from './components/ui/Navigation';
 import Footer from './components/ui/Footer';
+import RequireAuth from './components/common/RequireAuth';
 
 import Home from './views/Home';
 import Catalog from './views/Catalog';
@@ -51,12 +52,14 @@ export default function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/product/:id" element={<ProductDetail />} />
+          <Route element={<RequireAuth roles={["BUYER", "SELLER"]} />} >
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
+          </Route>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route element={<RequireAuth />}><Route path="/profile" element={<Profile />} /></Route>
           <Route path="/seller-detail/:sellerId" element={<SellerDetail />} />
           <Route path="/paymentmethod" element={<PaymentMethod />} />
           <Route path="/termsandconditions" element={<TermsAndConditions />} />
@@ -67,6 +70,7 @@ export default function App() {
           <Route path="/help-center" element={<HelpCenter />} />
 
 
+          <Route element={<RequireAuth roles={["ADMIN"]} />} >
           <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="/adminpanel/*" element={<AdminPanel />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -76,6 +80,8 @@ export default function App() {
           <Route path="/admin/users" element={<UserManagement />} />
           <Route path="/admin/reviews" element={<ReviewsManagement />} />
 
+          </Route>
+          <Route element={<RequireAuth roles={["SELLER"]} />} >
           <Route path="/seller/*" element={<SellerDashboard />} />
           <Route path="/sellerdashboard/*" element={<SellerDashboard />} />
           <Route path="/seller/products" element={<ProductList />} />
@@ -85,6 +91,7 @@ export default function App() {
           <Route path="/seller/coupons" element={<SellerCoupons />} />
           <Route path="/seller/keys" element={<KeyManagement />} />
 
+          </Route>
           <Route path="/404" element={<NotFound />} />
           <Route path="/400" element={<NotFound />} />
           <Route path="/401" element={<NotFound />} />

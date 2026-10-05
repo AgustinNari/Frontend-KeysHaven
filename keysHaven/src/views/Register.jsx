@@ -39,15 +39,14 @@ export default function Register() {
       if (raw) {
         const d = JSON.parse(raw);
         if (d) {
-          if (!displayName && d.displayName) setDisplayName(d.displayName);
-          if (!email && d.email) setEmail(d.email);
-          if (!password && d.password) setPassword(d.password);
-          if (!firstName && d.firstName) setFirstName(d.firstName);
-          if (!lastName && d.lastName) setLastName(d.lastName);
-          if (!phone && d.phone) setPhone(d.phone);
-          if (!country && d.country) setCountry(d.country);
-          if (!sellerDescription && d.sellerDescription) setSellerDescription(d.sellerDescription);
-          if (!role && d.role) setRole(d.role);
+          if (d.displayName) setDisplayName(d.displayName);
+          if (d.email) setEmail(d.email);
+          if (d.firstName) setFirstName(d.firstName);
+          if (d.lastName) setLastName(d.lastName);
+          if (d.phone) setPhone(d.phone);
+          if (d.country) setCountry(d.country);
+          if (d.sellerDescription) setSellerDescription(d.sellerDescription);
+          if (["BUYER", "SELLER"].includes(d.role)) setRole(d.role);
           if (d.termsAccepted) setTermsAccepted(Boolean(d.termsAccepted));
           if (d.step) setStep(d.step);
         }
@@ -62,7 +61,7 @@ export default function Register() {
       setTermsAccepted(true);
       try {
         window.history.replaceState({}, document.title);
-      } catch {}
+      } catch { /* History may be unavailable; keep the accepted terms. */ }
     }
   }, [location.state]);
 
@@ -73,7 +72,6 @@ export default function Register() {
         termsAccepted,
         displayName,
         email,
-        password,
         firstName,
         lastName,
         phone,
@@ -89,50 +87,50 @@ export default function Register() {
 
   function validateStep1() {
     const newErrors = {};
-    
+
     if (!displayName.trim()) {
       newErrors.displayName = "El nombre de usuario es requerido";
     }
-    
+
     if (!email) {
       newErrors.email = "El email es requerido";
     } else if (!validations.email(email)) {
       newErrors.email = validationMessages.email;
     }
-    
+
     if (!password) {
       newErrors.password = "La contraseña es requerida";
     } else if (!validations.password(password)) {
       newErrors.password = validationMessages.password;
     }
-    
+
     if (!termsAccepted) {
       newErrors.terms = "Debes aceptar los términos y condiciones";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
 
   function validateStep2() {
     const newErrors = {};
-    
+
     if (firstName && !validations.onlyText(firstName)) {
       newErrors.firstName = validationMessages.onlyText;
     }
-    
+
     if (lastName && !validations.onlyText(lastName)) {
       newErrors.lastName = validationMessages.onlyText;
     }
-    
+
     if (phone && !validations.phone(phone)) {
       newErrors.phone = validationMessages.phone;
     }
-    
+
     if (country && !validations.onlyText(country)) {
       newErrors.country = validationMessages.onlyText;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -162,7 +160,6 @@ export default function Register() {
         termsAccepted,
         displayName,
         email,
-        password,
         firstName,
         lastName,
         phone,
@@ -182,7 +179,7 @@ export default function Register() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* Storage may be unavailable; continue to the home page. */ }
       navigate("/", { replace: true });
     }
   }, [isAuthenticated, navigate]);
@@ -211,8 +208,7 @@ export default function Register() {
 
     try {
       const resultAction = await dispatch(registerThunk(payload));
-      if (registerThunk.fulfilled.match(resultAction)) {
-      } else {
+      if (!registerThunk.fulfilled.match(resultAction)) {
         const payloadErr = resultAction.payload || resultAction.error;
         setLocalError(payloadErr?.message || payloadErr?.error?.message || 'Error al registrarse');
       }

@@ -9,7 +9,7 @@ import productsService from "../../services/productsService";
 
 export default function ReviewCarousel() {
   const dispatch = useAppDispatch();
-  const latestReviews = useAppSelector(selectLatestReviews) ?? [];
+  const latestReviews = useAppSelector(selectLatestReviews);
 
   const [reviewsWithCategories, setReviewsWithCategories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -19,9 +19,6 @@ export default function ReviewCarousel() {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      if (latestReviews && latestReviews.length > 0) {
-        return;
-      }
       try {
         setError(null);
         setLoading(true);
@@ -30,13 +27,12 @@ export default function ReviewCarousel() {
         console.error("Failed to fetch latest reviews (redux)", err);
         if (mounted) setError(err?.message || "Error cargando reseñas");
       } finally {
-        setLoading(false);
         if (mounted) setLoading(false);
       }
     };
     load();
     return () => { mounted = false; };
-  }, [dispatch, latestReviews]);
+  }, [dispatch]);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,7 +86,7 @@ export default function ReviewCarousel() {
       setCurrentIndex(prev => prev === reviewsWithCategories.length - 1 ? 0 : prev + 1);
     }, 5000);
     return () => clearInterval(interval);
-  }, [reviewsWithCategories.length]);
+  }, [reviewsWithCategories]);
 
   useEffect(() => {
     if (currentIndex >= (reviewsWithCategories?.length || 0)) {

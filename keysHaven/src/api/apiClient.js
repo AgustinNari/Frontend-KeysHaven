@@ -1,10 +1,16 @@
 import { setLastApiError } from '../services/errorService';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4002";
+let readToken = () => null;
+let invalidateSession = () => {};
+export function configureSession(getToken, onUnauthorized) {
+  readToken = getToken;
+  invalidateSession = onUnauthorized;
+}
 
 async function apiFetch(path, options = {}, navigate) {
   const url = `${API_BASE}${path}`;
-  const token = localStorage.getItem("jwtToken");
+  const token = readToken();
 
   const headers = Object.assign({}, options.headers || {});
   if (!(options.body instanceof FormData) && headers["Content-Type"] === undefined) {
@@ -23,6 +29,7 @@ async function apiFetch(path, options = {}, navigate) {
     err.status = 401;
     err.body = text;
 
+    if (token && token === readToken()) invalidateSession();
     // Save the error and optionally redirect
     setLastApiError({ status: 401, message: "Unauthorized", details: [text] });
     if (navigate) navigate("/401");

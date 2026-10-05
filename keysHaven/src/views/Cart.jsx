@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
 
@@ -14,7 +14,6 @@ export default function Cart() {
     subtotal,
     productDiscountTotal,
     couponDiscountTotal,
-    discountTotal,
     total,
     currency,
     appliedCoupon,
@@ -23,8 +22,12 @@ export default function Cart() {
     removeCoupon,
     priceBreakdown,
     availableCoupons,
+    fetchAvailableCoupons,
+    refreshCart,
     hasProductPercentDiscount,
   } = useCart();
+
+  useEffect(() => { fetchAvailableCoupons(); refreshCart(); }, [fetchAvailableCoupons, refreshCart]);
 
   const [selection, setSelection] = useState({});
   const [msg, setMsg] = useState(null);
@@ -35,7 +38,10 @@ export default function Cart() {
     const map = {};
     for (const it of items) {
       map[it.id] = (availableCoupons || []).filter(
-        (c) => c.active && (!c.productIds?.length || c.productIds.includes(Number(it.id)))
+        (c) => c.active &&
+          (c.scope !== 'PRODUCT' || Number(c.targetProductId) === Number(it.id)) &&
+          (c.scope !== 'SELLER' || Number(c.targetSellerId) === Number(it._raw?.sellerId)) &&
+          (c.scope !== 'CATEGORY' || it._raw?.categories?.some(category => Number(category.id) === Number(c.targetCategoryId)))
       );
     }
     return map;
@@ -211,7 +217,7 @@ export default function Cart() {
                     <div className="btn-group btn-group-sm" role="group">
                       <button
                         className="btn btn-outline-secondary"
-                        onClick={() => dec(it.id)}
+                        onClick={async () => { const result = await dec(it.id); if (!result.ok) setMsg({ type: 'warning', text: result.reason }); }}
                       >
                         −
                       </button>

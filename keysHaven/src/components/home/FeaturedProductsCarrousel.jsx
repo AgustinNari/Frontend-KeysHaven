@@ -4,15 +4,12 @@ import Loading from "../../assets/doppyKnight/doppyTimeCheck.png";
 
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { fetchFeaturedProducts, selectFeaturedProducts } from "../../redux/slices/productsSlice";
-import { selectTopSellers } from "../../redux/slices/sellersSlice";
 
 export default function FeaturedProductsCarousel() {
   const dispatch = useAppDispatch();
 
-  const featuredFromStore = useAppSelector(selectFeaturedProducts) ?? [];
-  const sellers = useAppSelector(selectTopSellers);
+  const featuredProducts = useAppSelector(selectFeaturedProducts);
 
-  const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -20,33 +17,21 @@ export default function FeaturedProductsCarousel() {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      if (featuredFromStore && featuredFromStore.length > 0) {
-        setFeaturedProducts(featuredFromStore);
-        return;
-      }
       try {
         setError(null);
         setLoading(true);
-        const resp = await dispatch(fetchFeaturedProducts(10)).unwrap();
-        if (!mounted) return;
-        const list = resp?.content ?? resp ?? [];
-        setFeaturedProducts(list);
+        await dispatch(fetchFeaturedProducts(10)).unwrap();
       } catch (err) {
         console.error("Failed to load featured products (redux)", err);
         setError(err?.message || "Error cargando productos destacados");
       } finally {
-        setLoading(false);
         if (mounted) setLoading(false);
       }
     };
     load();
     return () => { mounted = false; };
-  }, [dispatch, featuredFromStore]);
+  }, [dispatch]);
 
-
-  useEffect(() => {
-    setFeaturedProducts(Array.isArray(featuredFromStore) ? featuredFromStore : []);
-  }, [featuredFromStore]);
 
   useEffect(() => {
     if ((featuredProducts || []).length <= 1) return;
@@ -54,7 +39,7 @@ export default function FeaturedProductsCarousel() {
       setCurrentIndex(prevIndex => (prevIndex === featuredProducts.length - 1 ? 0 : prevIndex + 1));
     }, 5000);
     return () => clearInterval(interval);
-  }, [featuredProducts.length]);
+  }, [featuredProducts]);
 
   const nextProduct = () => setCurrentIndex(prev => (prev === (featuredProducts.length - 1) ? 0 : prev + 1));
   const prevProduct = () => setCurrentIndex(prev => (prev === 0 ? (featuredProducts.length - 1) : prev - 1));
@@ -239,11 +224,4 @@ export default function FeaturedProductsCarousel() {
       </div>
     </section>
   );
-}
-
-function selectListFromPayload(resp, fallback) {
-  if (!resp) return fallback || [];
-  if (Array.isArray(resp)) return resp;
-  if (resp?.content && Array.isArray(resp.content)) return resp.content;
-  return fallback || [];
 }

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { selectUser } from '../../redux/slices/authSlice';
 import {
@@ -45,7 +45,7 @@ export default function KeyManagement() {
   useEffect(() => {
     const fetchProducts = async () => {
       if (!sellerId) return;
-      if (Array.isArray(productsFromState) && productsFromState.length > 0) return;
+
       setLoadingProducts(true);
       setError('');
       try {
@@ -61,14 +61,11 @@ export default function KeyManagement() {
     fetchProducts();
   }, [sellerId, dispatch]);
 
-  useEffect(() => {
-    if (selectedProduct) loadProductKeys(parseInt(selectedProduct, 10), zeroBasedPage);
-  }, [selectedProduct, keysPage]);
-
-  const loadProductKeys = async (productId, page = 0) => {
+  const loadProductKeys = useCallback(async (productId, page = 0) => {
     setLoading(true);
     setError('');
     try {
+      const keysByProduct = dispatch((send, getState) => getState().sellerPanel.keysByProduct);
       const cachedForProduct = keysByProduct?.[String(productId)];
       const cachedPage = cachedForProduct && cachedForProduct.pages && cachedForProduct.pages[String(page)];
       if (cachedPage && Array.isArray(cachedPage.items) && cachedPage.items.length >= 0) {
@@ -82,7 +79,9 @@ export default function KeyManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dispatch]);
+
+  useEffect(() => { if (selectedProduct) loadProductKeys(Number(selectedProduct), zeroBasedPage); }, [selectedProduct, zeroBasedPage, loadProductKeys]);
 
   const handleAddBulkKeys = async () => {
     if (!bulkKeys.trim() || !selectedProduct) return;

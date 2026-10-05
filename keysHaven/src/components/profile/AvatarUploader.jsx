@@ -1,3 +1,4 @@
+import bundledAsset0 from "../../assets/homeImage.png";
 import React, { useRef, useState } from "react";
 import ConfirmModal from "./ConfirmModal";
 
@@ -36,7 +37,7 @@ export default function AvatarUploader({ avatarDataUrl, onUpload, onReplace, onD
     <div>
       <div className="avatar-box">
         <div className="avatar-preview">
-          <img src={preview ?? avatarDataUrl ?? "/src/assets/doppyKnight/homeImage.png"} alt="avatar" />
+          <img src={preview ?? avatarDataUrl ?? bundledAsset0} alt="avatar" />
         </div>
       </div>
 

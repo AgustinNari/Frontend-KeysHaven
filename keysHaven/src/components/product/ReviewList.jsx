@@ -2,7 +2,7 @@ import React from "react";
 import PaginationBar from "../catalog/PaginationBar";
 import Rating from "../catalog/Rating";
 
-export default function ReviewList({ reviews = [], page = 1, setPage = () => {}, totalPages = 1, pageSize = 4 }) {
+export default function ReviewList({ reviews = [], page = 1, setPage = () => {}, totalPages = 1 }) {
   const pageContent = Array.isArray(reviews) ? reviews : [];
 
   return (
@@ -11,7 +11,7 @@ export default function ReviewList({ reviews = [], page = 1, setPage = () => {},
         {pageContent.length === 0 && (
           <div className="muted">Todavía no hay reseñas para este producto.</div>
         )}
-        
+
         {pageContent.map(r => (
           <div key={r.id} className="review-item">
             <div style={{ width: 56 }}>

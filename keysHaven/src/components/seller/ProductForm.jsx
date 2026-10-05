@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import {
   createProduct as createProductThunk,
@@ -17,7 +18,9 @@ import { fetchFilterExtras } from '../../redux/slices/productsSlice';
 import ConfirmModal from '../profile/ConfirmModal';
 import { getCategories } from '../../services/sellerService';
 
-export default function ProductForm({ product, onSuccess }) {
+export default function ProductForm({ product: suppliedProduct, onSuccess }) {
+  const { id: routeId } = useParams();
+  const product = useMemo(() => suppliedProduct ?? (routeId ? { id: Number(routeId) } : null), [suppliedProduct, routeId]);
   const dispatch = useAppDispatch();
   const user = useAppSelector(state => state.auth.user);
   const sellerId = user?.id;
@@ -99,7 +102,7 @@ export default function ProductForm({ product, onSuccess }) {
     }
 
     ensureDetail();
-  }, [product]);
+  }, [product, productDetail, dispatch]);
 
   useEffect(() => {
     if (!product) return;

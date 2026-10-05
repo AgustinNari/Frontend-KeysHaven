@@ -1,6 +1,6 @@
 import apiClient from "../api/apiClient";
 
-import { parseApiError } from "./apiErrors";
+import { parseApiError } from "./apiError";
 
 export async function apiFetchSafe(path, options = {}) {
   try {

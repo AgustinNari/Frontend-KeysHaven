@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
@@ -10,7 +10,6 @@ import { selectUser } from '../../redux/slices/authSlice';
 import {
   fetchSellerProductsPaginated,
   updateProduct as updateProductThunk,
-  getProductKeys as getProductKeysThunk,
   setProductsPaginatedFromCache
 } from '../../redux/slices/sellerPanelSlice';
 
@@ -36,13 +35,10 @@ export default function ProductList({ onEditProduct }) {
   const pageIndex = Math.max(0, (Number(page) || 1) - 1);
   const pageKey = `${sellerId ?? 'anon'}_${pageIndex}_${pageSize}_${statusFilter ?? 'all'}`;
 
-  useEffect(() => {
-    loadProducts();
-  }, [sellerId, page, statusFilter]);
-
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     if (!sellerId) return;
-    
+
+    const pagesCache = dispatch((send, getState) => getState().sellerPanel.productsPaginatedPages);
     if (pagesCache && pagesCache[pageKey]) {
       dispatch(setProductsPaginatedFromCache({ key: pageKey }));
       return;
@@ -53,7 +49,9 @@ export default function ProductList({ onEditProduct }) {
     } catch (err) {
       console.error('loadProducts error', err);
     }
-  };
+  }, [dispatch, sellerId, pageKey, pageIndex, statusFilter]);
+
+  useEffect(() => { loadProducts(); }, [loadProducts, pagesCache]);
 
   const closeConfirm = () => setConfirm({ show:false, title:'', message:'', onConfirm:null });
 
@@ -89,7 +87,8 @@ export default function ProductList({ onEditProduct }) {
     } catch (err) {
       console.warn('fetchProductDetail falló (se abrirá editor con datos del listado):', err);
     }
-    onEditProduct(prod);
+    if (onEditProduct) onEditProduct(prod);
+    else navigate(`/seller/products/edit/${prod.id}`);
   };
 
   const products = sellerProductsPaginated.items || [];
@@ -112,7 +111,7 @@ export default function ProductList({ onEditProduct }) {
             <option value="active">Activos</option>
             <option value="inactive">Inactivos</option>
           </select>
-          <button className="btn btn-primary btn-sm" onClick={() => onEditProduct(null)}><i className="fas fa-plus me-1"></i>Nuevo</button>
+          <button className="btn btn-primary btn-sm" onClick={() => onEditProduct ? onEditProduct(null) : navigate('/seller/products/new')}><i className="fas fa-plus me-1"></i>Nuevo</button>
         </div>
       </div>
 

@@ -61,14 +61,14 @@ export const fetchSellerProductsPaginated = createAsyncThunk(
   async (arg = {}, { rejectWithValue, getState }) => {
     try {
       const params = normalizeArg(arg);
-      const { sellerId, page = 0, size = 10, force = false } = params;
+      const { sellerId, page = 0, size = 10, status = "all", force = false } = params;
       const state = getState();
-      const cached = state.sellerPanel?.productsPaginatedPages?.[makePageKey({ sellerId, page, size })];
+      const cached = state.sellerPanel?.productsPaginatedPages?.[makePageKey({ sellerId, page, size, status })];
       if (!force && cached) {
-        return { key: makePageKey({ sellerId, page, size }), resp: cached };
+        return { key: makePageKey({ sellerId, page, size, status }), resp: cached };
       }
-      const resp = await sellerService.getSellerProductsPaginated(sellerId, page, size);
-      return { key: makePageKey({ sellerId, page, size }), resp };
+      const resp = await sellerService.getSellerProductsPaginated(sellerId, page, size, status);
+      return { key: makePageKey({ sellerId, page, size, status }), resp };
     } catch (err) {
       return rejectWithValue(err);
     }
@@ -312,7 +312,7 @@ const sellerPanelSlice = createSlice({
           if (created.active === undefined || created.active === null || created.active === true) {
             s.activeProducts = [created, ...(s.activeProducts || [])];
           }
-        } catch (err) {}
+        } catch { /* Optional refresh failed; the current view remains usable. */ }
 
         try {
           if (s.productsPaginated && Array.isArray(s.productsPaginated.items)) {
@@ -321,7 +321,7 @@ const sellerPanelSlice = createSlice({
               total: (Number(s.productsPaginated.total || 0) + 1)
             };
           }
-        } catch (err) {}
+        } catch { /* Optional refresh failed; the current view remains usable. */ }
 
         try {
           Object.keys(s.productsPaginatedPages || {}).forEach(k => {
@@ -335,9 +335,9 @@ const sellerPanelSlice = createSlice({
                   s.productsPaginatedPages[k] = { ...pageResp, items: [created, ...pageResp.items], total: newTotal };
                 }
               }
-            } catch (inner) { }
+            } catch { /* Optional refresh failed; the current view remains usable. */ }
           });
-        } catch (err) { }
+        } catch { /* Optional refresh failed; the current view remains usable. */ }
       })
       .addCase(updateProduct.fulfilled, (s, a) => {
         const p = a.payload;
@@ -375,12 +375,8 @@ const sellerPanelSlice = createSlice({
               }
             });
           }
-        } catch (err) { }
+        } catch { /* Optional refresh failed; the current view remains usable. */ }
       })
-
-      .addCase(updateProductImage.fulfilled, (s, a) => {})
-      .addCase(deleteProductImage.fulfilled, (s, a) => {})
-      .addCase(setPrimaryImage.fulfilled, (s, a) => {})
       .addCase(logout.fulfilled, (s) => {
         s.products = [];
         s.productsPaginated = { items: [], total: 0 };
@@ -392,6 +388,9 @@ const sellerPanelSlice = createSlice({
         s.keysByProduct = {};
         s.loading = false;
         s.error = null;
+      })
+      .addMatcher(action => /^sellerPanel\/(createProduct|updateProduct|addBulkDigitalKeys|addProductImage|updateProductImage|deleteProductImage|setPrimaryImage)\/fulfilled$/.test(action.type), s => {
+        s.productsPaginatedPages = {}; s.stats = null;
       });
   }
 });

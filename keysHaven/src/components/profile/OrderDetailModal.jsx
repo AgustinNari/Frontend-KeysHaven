@@ -138,8 +138,7 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
 
       try {
         await dispatch(fetchReviewByOrderItem(orderItemId)).unwrap();
-      } catch (e) {
-      }
+      } catch { /* Optional refresh failed; the current view remains usable. */ }
 
       const key = String(orderItemId);
       const updated = (reviewByOrderItem && reviewByOrderItem[key]) ? reviewByOrderItem[key] : null;
@@ -151,7 +150,7 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
       setViewMode(null);
       setReviewError(null);
     } catch (err) {
-      const msg = err?.message ?? String(err) ?? "Error guardando reseña.";
+      const msg = err?.message || String(err) || "Error guardando reseña.";
       console.error("Error en onSaveReview desde modal:", msg);
       setReviewError(msg);
     }
@@ -182,7 +181,7 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
     try {
       await dispatch(deleteReview(idToDelete)).unwrap();
       if (orderItemId != null) {
-        try { await dispatch(fetchReviewByOrderItem(orderItemId)).unwrap(); } catch (e) {}
+        try { await dispatch(fetchReviewByOrderItem(orderItemId)).unwrap(); } catch { /* Optional refresh failed; the current view remains usable. */ }
       }
       onDeleteReview && onDeleteReview(idToDelete);
       setShowConfirmDeleteReview(false);
@@ -192,7 +191,7 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
       setViewMode(null);
       setReviewError(null);
     } catch (err) {
-      const msg = err?.message ?? String(err) ?? "Error eliminando reseña.";
+      const msg = err?.message || String(err) || "Error eliminando reseña.";
       console.error("Error eliminando reseña desde modal:", msg);
       setReviewError(msg);
     }
@@ -205,7 +204,7 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
     const unitPrice = Number(item.unitPrice ?? item.price ?? item.unit_price ?? 0);
     const lineSubtotal = Number(item.lineSubtotal ?? item.line?.subtotal ?? (unitPrice * qty));
     const lineTotal = Number(item.lineTotal ?? item.line?.total ?? (item.line_total ?? (lineSubtotal - (Number(item.discountAmount ?? 0)))));
-    const discountAmount = Number(item.discountAmount ?? (lineSubtotal - lineTotal) ?? 0);
+    const discountAmount = Number(item.discountAmount ?? (lineSubtotal - lineTotal));
     return { qty, unitPrice, lineSubtotal, lineTotal, discountAmount };
   };
 
@@ -249,10 +248,9 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
           {items.map(item => {
             const orderItemId = getOrderItemId(item);
             const productTitle = item.productTitle ?? item.title ?? item.product?.title ?? item.product_title ?? `#${item.productId ?? item.product?.id ?? '-'}`;
-            const { qty, unitPrice, lineSubtotal, lineTotal, discountAmount } = normalizeLine(item);
+            const { qty, unitPrice, lineTotal, discountAmount } = normalizeLine(item);
 
             const reviewFromStore = orderItemId != null ? reviewByOrderItem[String(orderItemId)] : null;
-            const keysForThis = getKeysForItem(item);
 
             return (
               <div key={orderItemId ?? Math.random()} className="card p-2 mb-2" style={{ border: "1px solid rgba(255,255,255,0.03)", ...itemWrapperStyle }}>

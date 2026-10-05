@@ -1,3 +1,4 @@
+import bundledAsset0 from "../../assets/keyLogo.svg";
 import React from "react";
 import { Link } from "react-router-dom";
 
@@ -11,7 +12,7 @@ export default function Footer() {
               to="/"
               className="d-flex align-items-center gap-2 mb-3 text-decoration-none text-light"
             >
-              <img src="/src/assets/keyLogo.svg" width={55} height={50} />
+              <img src={bundledAsset0} width={55} height={50} />
               <strong>KeysHaven</strong>
             </Link>
             <small className="text-light">

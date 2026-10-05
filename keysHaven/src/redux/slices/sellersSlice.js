@@ -98,13 +98,13 @@ const sellersSlice = createSlice({
       })
       .addCase(fetchSellerDetail.rejected, (s, a) => { s.loading = false; s.error = a.payload || a.error; })
 
-      .addCase(fetchSellerActiveProductsForDetail.pending, (s) => { })
+
       .addCase(fetchSellerActiveProductsForDetail.fulfilled, (s, a) => {
         s.detailProducts = a.payload?.products ?? [];
         const sid = String(a.payload?.sellerId);
         if (sid) s.detailProductsCache[sid] = s.detailProducts;
       })
-      .addCase(fetchSellerActiveProductsForDetail.rejected, (s, a) => {
+      .addCase(fetchSellerActiveProductsForDetail.rejected, (s) => {
         s.detailProducts = [];
         s.needsRefresh = true;
       })
@@ -141,7 +141,7 @@ const sellersSlice = createSlice({
             s.detail.amountSold = (s.detail.amountSold ?? 0) + deltaSold;
             s.detail.soldKeys = (s.detail.soldKeys ?? 0) + deltaSold;
           }
-        } catch (err) {
+        } catch {
           s.needsRefresh = true;
         }
       })

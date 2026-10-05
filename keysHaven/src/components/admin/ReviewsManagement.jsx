@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
@@ -7,6 +7,7 @@ import {
   fetchReviewsPage as fetchAdminReviewsPage,
   adminToggleReviewVisibility,
   fetchProductsPage as fetchAdminProductsPage,
+  fetchUsersPage as fetchAdminUsersPage,
   setReviewsPageFromCache,
   setProductsPageFromCache,
   setUsersPageFromCache
@@ -21,8 +22,8 @@ export default function ReviewsManagement() {
   const reviewsPage = admin?.reviewsPage ?? null;
   const reviews = reviewsPage?.content ?? [];
 
-  const [productsMap, setProductsMap] = useState({});
-  const [usersMap, setUsersMap] = useState({});
+  const productsMap = useMemo(() => Object.fromEntries((admin.productsPage?.content ?? []).map(p => [p.id, p])), [admin.productsPage]);
+  const usersMap = useMemo(() => Object.fromEntries((admin.usersPage?.content ?? []).map(u => [u.id, u])), [admin.usersPage]);
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,9 +33,8 @@ export default function ReviewsManagement() {
   const pageSize = 10;
   const totalPages = Math.max(1, reviewsPage?.totalPages ?? 1);
 
-  useEffect(()=>{ load();}, [page]);
-
-  const load = async () => {
+  const load = useCallback(async () => {
+    const admin = dispatch((send, getState) => getState().adminPanel);
     setLoadingLocal(true);
     try {
       const pageRequested = Math.max(1, Number(page) || 1);
@@ -59,22 +59,20 @@ export default function ReviewsManagement() {
       if (admin?.usersPageCache?.[usersKey]) {
         dispatch(setUsersPageFromCache({ key: usersKey }));
       } else if (!admin.usersPage || !Array.isArray(admin.usersPage.content) || admin.usersPage.content.length === 0) {
-        calls.push(dispatch(fetchAdminProductsPage({ page: 1, size: 200 })).unwrap());
+        calls.push(dispatch(fetchAdminUsersPage({ page: 1, size: 500 })).unwrap());
       }
-
-      await Promise.allSettled(calls);
-
-      const prods = admin.productsPage?.content ?? [];
-      setProductsMap(Object.fromEntries((prods || []).map(p => [p.id, p])));
-      const us = admin.usersPage?.content ?? [];
-      setUsersMap(Object.fromEntries((us || []).map(u => [u.id, u])));
+      const results = await Promise.allSettled(calls);
+      const failure = results.find(result => result.status === 'rejected');
+      if (failure) throw failure.reason;
     } catch (err) {
       console.error(err);
       setError('Error cargando reseñas');
     } finally {
       setLoadingLocal(false);
     }
-  };
+  }, [dispatch, page]);
+
+  useEffect(() => { load(); }, [load]);
 
   const closeConfirm = () => setConfirm({ show:false, title:'', message:'', onConfirm:null });
 

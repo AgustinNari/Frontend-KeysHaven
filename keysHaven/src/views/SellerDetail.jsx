@@ -1,3 +1,4 @@
+import bundledAsset0 from "../assets/react.svg";
 import React, { useEffect, useState, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
@@ -10,7 +11,7 @@ import "../components/estilos/product.css";
 import ApiErrorAlert from "../components/common/ApiErrorAlert";
 import useApiError from "../hooks/useApiError";
 
-import { fetchSellerDetail, selectSellerDetail, selectSellerDetailProducts, fetchSellerActiveProductsForDetail } from "../redux/slices/sellersSlice";
+import { fetchSellerDetail, selectSellerDetailProducts, fetchSellerActiveProductsForDetail } from "../redux/slices/sellersSlice";
 import { fetchSellerStats } from "../redux/slices/sellerPanelSlice";
 
 export default function SellerDetail() {
@@ -147,7 +148,7 @@ export default function SellerDetail() {
   const pageItems = (activeProducts || []).slice(startIndex, endIndex);
 
   const displayName = seller.displayName || `${seller.firstName || ""} ${seller.lastName || ""}`.trim() || `Vendedor #${sellerId}`;
-  const avatar = seller.avatarDataUrl || "/src/assets/react.svg";
+  const avatar = seller.avatarDataUrl || bundledAsset0;
   const description = seller.sellerDescription || "-";
   const avgRating = seller.avgRating || 0;
   const ratingCount = seller.ratingCount || 0;

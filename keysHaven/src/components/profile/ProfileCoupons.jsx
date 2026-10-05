@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import PaginationBar from "../catalog/PaginationBar";
 import productsService from "../../services/productsService";
 import categoriesService from "../../services/categories";
 import sellersService from "../../services/sellers";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
-import { fetchMyCoupons, selectProfileCoupons, selectProfileCouponsFetchedAt } from "../../redux/slices/profileSlice";
+import { fetchMyCoupons } from "../../redux/slices/profileSlice";
 import { selectAllCategories, fetchAllCategories } from "../../redux/slices/categoriesSlice";
 
 const DEFAULT_PAGE_SIZE = 9;
@@ -17,8 +17,6 @@ function isStale(fetchedAt, ttl = COUPONS_TTL_MS) {
 
 export default function ProfileCoupons({ profile }) {
   const dispatch = useAppDispatch();
-  const reduxCoupons = useAppSelector(selectProfileCoupons);
-  const couponsFetchedAt = useAppSelector(selectProfileCouponsFetchedAt);
   const storedCategories = useAppSelector(selectAllCategories);
 
   const [page, setPage] = useState(0);
@@ -32,27 +30,24 @@ export default function ProfileCoupons({ profile }) {
   const sellerMapRef = useRef({});
   const categoryMapRef = useRef({});
 
+  useEffect(() => { dispatch(fetchAllCategories()); }, [dispatch]);
   useEffect(() => {
-    if (!storedCategories || storedCategories.length === 0) {
-      dispatch(fetchAllCategories()).catch(() => {});
-    } else {
-      categoryMapRef.current = (storedCategories || []).reduce((acc, c) => {
-        if (c?.id != null) acc[String(c.id)] = c;
-        return acc;
-      }, {});
-    }
-  }, [dispatch, storedCategories]);
+    categoryMapRef.current = storedCategories.reduce((acc, c) => {
+      if (c?.id != null) acc[String(c.id)] = c;
+      return acc;
+    }, {});
+  }, [storedCategories]);
 
-  useEffect(() => {
-    loadCoupons(page);
-  }, [page]);
-
-  async function loadCoupons(p = 0) {
+  const loadCoupons = useCallback(async (p = 0) => {
+    const state = dispatch((send, getState) => getState());
+    const reduxCoupons = state.profile.coupons;
+    const couponsFetchedAt = state.profile.couponsFetchedAt;
+    const storedCategories = state.categories.all;
     setLoading(true);
     setError("");
     try {
       let itemsArr;
-      if (Array.isArray(reduxCoupons) && reduxCoupons.length > 0 && !isStale(couponsFetchedAt)) {
+      if (Array.isArray(reduxCoupons) && !isStale(couponsFetchedAt)) {
         itemsArr = reduxCoupons;
       } else {
         const payload = await dispatch(fetchMyCoupons()).unwrap();
@@ -111,7 +106,6 @@ export default function ProfileCoupons({ profile }) {
 
       const enhancedItems = (itemsArr || []).map(c => {
         const prod = c?.targetProductId ? productMapRef.current[String(c.targetProductId)] : null;
-        const sellerFromProduct = prod?.sellerDisplayName || prod?.sellerId || null;
         const sellerObj = c?.targetSellerId ? sellerMapRef.current[String(c.targetSellerId)] : null;
         const sellerName = prod?.sellerDisplayName ?? sellerObj?.displayName ?? null;
         const productTitle = prod?.title ?? null;
@@ -135,7 +129,9 @@ export default function ProfileCoupons({ profile }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [dispatch, size]);
+
+  useEffect(() => { loadCoupons(page); }, [page, loadCoupons]);
 
   const fixedCoupons = (couponsPage.items ?? []).filter(c => String(c.type ?? "").toUpperCase() === "FIXED");
 

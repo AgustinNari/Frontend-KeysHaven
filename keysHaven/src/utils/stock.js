@@ -30,8 +30,7 @@ export function deriveAvailableStock(product) {
         if (typeof ic === 'string' && ic.trim() !== '' && !Number.isNaN(Number(ic))) return Number(ic);
       }
     }
-  } catch (e) {
-  }
+  } catch { /* Ignore malformed optional inventory metadata. */ }
 
   try {
     if (Array.isArray(product.variants) && product.variants.length > 0) {
@@ -41,8 +40,7 @@ export function deriveAvailableStock(product) {
       }, 0);
       return sum;
     }
-  } catch (e) {
-  }
+  } catch { /* Ignore malformed optional variant metadata. */ }
 
   return 0;
 }

@@ -9,10 +9,19 @@ import "../components/estilos/catalog.css";
 import Loading from "../assets/doppyKnight/doppyTimeCheck.png";
 
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
-import { searchProducts, fetchFilterExtras, selectSearchResult, selectProductsFilterExtras, selectSearchPages, makeProductsSearchKey } from "../redux/slices/productsSlice";
+import { searchProducts, fetchFilterExtras, selectProductsFilterExtras, selectSearchPages, makeProductsSearchKey } from "../redux/slices/productsSlice";
 import { fetchAllCategories, selectAllCategories } from "../redux/slices/categoriesSlice";
 
 import { useCart } from "../store/cart.jsx";
+
+const platformMap = {
+    PC: "PC – Steam",
+    PlayStation: "PlayStation 5",
+    Xbox: "Xbox Series X|S",
+    Nintendo: "Nintendo Switch 2",
+    all: null
+  };
+const emptyExtras = { developers: [], publishers: [] };
 
 export default function Catalog() {
   const location = useLocation();
@@ -24,10 +33,9 @@ export default function Catalog() {
   const rawPlatform = queryParams.get("platform");
   const queryCategoryId = queryParams.get("categoryId");
 
-  const searchResult = useAppSelector(selectSearchResult) ?? { content: [], totalElements: 0, totalPages: 0, number: 0, size: 12 };
-  const filterExtras = useAppSelector(selectProductsFilterExtras) ?? { developers: [], publishers: [] };
-  const allCategories = useAppSelector(selectAllCategories) ?? [];
-  const searchPages = useAppSelector(selectSearchPages) ?? {};
+  const filterExtras = useAppSelector(selectProductsFilterExtras) ?? emptyExtras;
+  const allCategories = useAppSelector(selectAllCategories);
+  const searchPages = useAppSelector(selectSearchPages);
 
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
@@ -49,13 +57,7 @@ export default function Catalog() {
 
   const { add } = useCart();
 
-  const platformMap = {
-    PC: "PC – Steam",
-    PlayStation: "PlayStation 5",
-    Xbox: "Xbox Series X|S",
-    Nintendo: "Nintendo Switch 2",
-    all: null
-  };
+
 
   useEffect(() => {
     if (queryCategoryId) {
@@ -105,13 +107,9 @@ export default function Catalog() {
   }, [rawPlatform]);
 
   useEffect(() => {
-    if (!allCategories || allCategories.length === 0) {
-      dispatch(fetchAllCategories()).catch(err => console.error("fetchAllCategories", err));
-    }
-    if (!filterExtras || ((!filterExtras.developers || filterExtras.developers.length === 0) && (!filterExtras.publishers || filterExtras.publishers.length === 0))) {
-      dispatch(fetchFilterExtras()).catch(err => console.error("fetchFilterExtras", err));
-    }
-  }, [dispatch, allCategories, filterExtras]);
+    dispatch(fetchAllCategories());
+    dispatch(fetchFilterExtras());
+  }, [dispatch]);
 
   useEffect(() => {
     setCategoriesOptions((allCategories || []).map(c => ({ id: c.id, description: c.description || c.name })));
@@ -174,13 +172,6 @@ export default function Catalog() {
     run();
     return () => { cancelled = true; };
   }, [appliedFilters, page, sortBy, dispatch, searchPages]);
-
-  useEffect(() => {
-    const content = searchResult?.content || [];
-    setItems(content);
-    setTotalItems(searchResult?.totalElements ?? content.length);
-    setTotalPages(Math.max(1, searchResult?.totalPages ?? Math.ceil((searchResult?.totalElements ?? content.length) / pageSize)));
-  }, [searchResult]);
 
   useEffect(() => {
     const extractUniqueSellers = (products) => {

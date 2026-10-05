@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
 import PaginationBar from '../catalog/PaginationBar';
@@ -29,6 +29,19 @@ export default function UserManagement() {
 
   const totalPages = Math.max(1, usersPage?.totalPages ?? 1);
 
+  const loadUsers = useCallback(async (page1based = 1) => {
+    setLoadingLocal(true);
+    setError('');
+    try {
+      await dispatch(fetchAdminUsersPage({ page: page1based, size: pageSize })).unwrap();
+    } catch (err) {
+      console.error('loadUsers err', err);
+      setError('Error cargando usuarios');
+    } finally {
+      setLoadingLocal(false);
+    }
+  }, [dispatch]);
+
   useEffect(() => {
     const pageRequested = Math.max(1, Number(page) || 1);
     const cacheKey = `${pageRequested}_${pageSize}`;
@@ -40,20 +53,9 @@ export default function UserManagement() {
     }
 
     loadUsers(pageRequested);
-  }, [page, dispatch, admin?.usersPageCache]);
+  }, [page, dispatch, admin?.usersPageCache, loadUsers]);
 
-  const loadUsers = async (page1based = 1) => {
-    setLoadingLocal(true);
-    setError('');
-    try {
-      await dispatch(fetchAdminUsersPage({ page: page1based, size: pageSize })).unwrap();
-    } catch (err) {
-      console.error('loadUsers err', err);
-      setError('Error cargando usuarios');
-    } finally {
-      setLoadingLocal(false);
-    }
-  };
+
 
   const closeConfirm = () => setConfirm({ show: false, title: '', message: '', onConfirm: null });
 
@@ -73,7 +75,7 @@ export default function UserManagement() {
   const handleDeactivateConfirmed = async (userId) => {
     setLoadingLocal(true);
     try {
-      const updatedUser = await dispatch(adminUpdateUser({ userId, payload: { active: false } })).unwrap();
+      await dispatch(adminUpdateUser({ userId, payload: { active: false } })).unwrap();
     } catch (err) {
       console.error(err);
       setError('Error desactivando usuario');

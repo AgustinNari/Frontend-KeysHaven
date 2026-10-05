@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
 import { useNavigate } from 'react-router-dom';
@@ -15,7 +15,6 @@ import {
   setUsersPageFromCache,
   setCategoriesPageFromCache
 } from '../../redux/slices/adminPanelSlice';
-import { fetchAdminDiscountsPage as fetchDiscountsFromDiscountsSlice } from '../../redux/slices/discountsSlice';
 import { selectAllCategories } from '../../redux/slices/categoriesSlice';
 
 export default function CouponManagement() {
@@ -25,8 +24,8 @@ export default function CouponManagement() {
   const discounts = (discountsPage?.content) ?? [];
   const allCategories = useAppSelector(selectAllCategories);
 
-  const [categories, setCategories] = useState([]);
-  const [users, setUsers] = useState([]);
+  const categories = allCategories.length ? allCategories : (admin.categoriesPage?.content ?? []);
+  const users = admin.usersPage?.content ?? [];
 
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [error, setError] = useState('');
@@ -56,9 +55,10 @@ export default function CouponManagement() {
   const pageSize = 10;
   const totalPages = Math.max(1, discountsPage?.totalPages ?? 1);
 
-  useEffect(() => { loadData(); }, [page]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    const state = dispatch((send, getState) => getState());
+    const admin = state.adminPanel;
+    const allCategories = state.categories.all;
     setLoadingLocal(true);
     setError('');
     try {
@@ -78,6 +78,7 @@ export default function CouponManagement() {
 
       const categoriesKey = `1_200`;
       if (allCategories && allCategories.length > 0) {
+        // Categories are already available from the shared cache.
       } else if (admin?.categoriesPageCache?.[categoriesKey]) {
         dispatch(setCategoriesPageFromCache({ key: categoriesKey }));
       } else {
@@ -94,23 +95,19 @@ export default function CouponManagement() {
       }
 
       const results = await Promise.allSettled(calls);
+      const failed = results.find(result => result.status === "rejected");
+      if (failed) throw failed.reason;
 
 
-      const cats = allCategories && allCategories.length > 0 ? allCategories : (admin.categoriesPage?.content ?? []);
-      setCategories(cats);
-      const us = admin.usersPage?.content ?? [];
-      setUsers(us);
-
-      if (!admin.discountsPage) {
-        dispatch(fetchDiscountsFromDiscountsSlice({ page: pageRequested, size: pageSize })).catch(()=>{});
-      }
     } catch (err) {
       console.error(err);
       setError('Error cargando datos');
     } finally {
       setLoadingLocal(false);
     }
-  };
+  }, [dispatch, page]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const closeConfirm = () => setConfirm({ show:false, title:'', message:'', onConfirm:null });
 

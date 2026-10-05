@@ -88,6 +88,7 @@ const initialState = {
   featured: [],
   topSold: [],
   filterExtras: { developers: [], publishers: [] },
+  requestId: null,
   loading: false,
   error: null
 };
@@ -120,8 +121,10 @@ const productsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(searchProducts.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(searchProducts.pending, (s, a) => { s.requestId = a.meta.requestId; s.loading = true; s.error = null; })
       .addCase(searchProducts.fulfilled, (s, a) => {
+        if (s.requestId !== a.meta.requestId) return;
+        s.requestId = null;
         s.loading = false;
         const key = a.payload?.key;
         const resp = a.payload?.resp ?? a.payload;
@@ -130,7 +133,7 @@ const productsSlice = createSlice({
         }
         s.searchResult = resp ?? { content: [], totalElements: 0, totalPages: 0, number: 0, size: 12 };
       })
-      .addCase(searchProducts.rejected, (s, a) => { s.loading = false; s.error = a.payload || a.error; })
+      .addCase(searchProducts.rejected, (s, a) => { if (s.requestId !== a.meta.requestId) return; s.requestId = null; s.loading = false; s.error = a.payload || a.error; })
 
       .addCase(fetchFeaturedProducts.pending, (s) => { s.loading = true; s.error = null; })
       .addCase(fetchFeaturedProducts.fulfilled, (s, a) => { s.loading = false; s.featured = a.payload?.content ?? a.payload ?? []; })
@@ -159,7 +162,7 @@ const productsSlice = createSlice({
               return next;
             });
           }
-        } catch (err) { }
+        } catch { /* Optional refresh failed; the current view remains usable. */ }
       })
 
       .addCase(logout.fulfilled, (s) => {

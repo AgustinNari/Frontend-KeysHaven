@@ -7,17 +7,12 @@ export const fetchMyOrders = createAsyncThunk(
   async ({ page = 0, size = 20, force = false } = {}, { rejectWithValue, getState }) => {
     try {
       const state = getState();
-      const cachedPage = state.orders?.myOrdersPages?.[Number(page)];
+      const cachedPage = state.orders?.myOrdersPages?.[`${page}_${size}`];
       if (!force && cachedPage) {
-        return { page, resp: cachedPage };
+        return { page, size, resp: cachedPage };
       }
-      const latest = state.orders?.myOrders;
-      if (!force && page === 0 && latest && Array.isArray(latest.items) && latest.items.length > 0 && (!cachedPage)) {
-        return { page, resp: latest };
-      }
-
       const resp = await ordersService.getMyOrders(page, size);
-      return { page, resp };
+      return { page, size, resp };
     } catch (err) {
       return rejectWithValue(err);
     }
@@ -76,11 +71,11 @@ const ordersSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchMyOrders.fulfilled, (s, a) => {
-        const { page, resp } = a.payload ?? {};
+        const { page, size, resp } = a.payload ?? {};
         if (page == null) {
           s.myOrders = a.payload?.resp ?? a.payload ?? { items: [], total: 0 };
         } else {
-          s.myOrdersPages[Number(page)] = resp ?? a.payload?.resp ?? a.payload ?? { items: [], total: 0 };
+          s.myOrdersPages[`${page}_${size}`] = resp ?? a.payload?.resp ?? a.payload ?? { items: [], total: 0 };
           s.myOrders = resp ?? a.payload?.resp ?? a.payload ?? s.myOrders;
         }
       })
@@ -108,4 +103,4 @@ export const { clearOrders } = ordersSlice.actions;
 export default ordersSlice.reducer;
 
 export const selectOrders = state => state.orders;
-export const selectOrdersPage = (state, page = 0) => state.orders.myOrdersPages?.[page] ?? null;
+export const selectOrdersPage = (state, page = 0) => state.orders.myOrdersPages?.[`${page}_20`] ?? null;

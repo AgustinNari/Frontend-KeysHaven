@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import PaginationBar from '../catalog/PaginationBar';
 import {
@@ -7,14 +7,13 @@ import {
   adminUpdateCategory,
   setCategoriesPageFromCache
 } from '../../redux/slices/adminPanelSlice';
-import { fetchFeaturedCategories, fetchAllCategories, selectAllCategories } from '../../redux/slices/categoriesSlice';
+import { fetchFeaturedCategories, fetchAllCategories } from '../../redux/slices/categoriesSlice';
 
 export default function CategoryManagement() {
   const dispatch = useAppDispatch();
   const admin = useAppSelector(state => state.adminPanel);
   const categoriesPage = admin?.categoriesPage ?? null;
   const categories = categoriesPage?.content ?? [];
-  const allCategories = useAppSelector(selectAllCategories);
 
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [error, setError] = useState('');
@@ -28,25 +27,7 @@ export default function CategoryManagement() {
 
   const pageKey = `${Math.max(1, Number(page) || 1)}_${pageSize}`;
 
-  useEffect(() => {
-
-    if (admin?.categoriesPageCache?.[pageKey]) {
-      dispatch(setCategoriesPageFromCache({ key: pageKey }));
-
-      if (!Array.isArray(allCategories) || allCategories.length === 0) {
-        dispatch(fetchAllCategories()).catch(() => {});
-      }
-      return;
-    }
-
-    loadCategories(page);
-
-    if (!Array.isArray(allCategories) || allCategories.length === 0) {
-      dispatch(fetchAllCategories()).catch(() => {});
-    }
-  }, [page, dispatch, pageKey]);
-
-  const loadCategories = async (p = 1) => {
+  const loadCategories = useCallback(async (p = 1) => {
     setLoadingLocal(true);
     setError('');
     try {
@@ -59,7 +40,22 @@ export default function CategoryManagement() {
     } finally {
       setLoadingLocal(false);
     }
-  };
+  }, [dispatch]);
+
+  useEffect(() => {
+
+    if (admin?.categoriesPageCache?.[pageKey]) {
+      dispatch(setCategoriesPageFromCache({ key: pageKey }));
+
+      return;
+    }
+
+    loadCategories(page);
+
+
+  }, [page, dispatch, pageKey, admin?.categoriesPageCache, loadCategories]);
+
+  useEffect(() => { dispatch(fetchAllCategories()); }, [dispatch]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

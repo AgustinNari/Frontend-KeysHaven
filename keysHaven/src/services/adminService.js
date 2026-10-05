@@ -26,14 +26,8 @@ const tryEndpoints = async (paths, opts = {}) => {
   throw lastErr;
 };
 
-const candidatesDefault = (path) => {
-  if (path.startsWith('/api/v1')) return [path, path.replace('/api/v1', '')];
-  return [path, `/api/v1${path}`];
-};
-const candidatesPreferApiV1 = (path) => {
-  if (path.startsWith('/api/v1')) return [path, path.replace('/api/v1', '')];
-  return [`/api/v1${path}`, path];
-};
+const candidatesDefault = path => [path];
+const candidatesPreferApiV1 = path => [`/api/v1${path}`];
 
 export const getUsers = async () => {
   const resp = await tryEndpoints(candidatesDefault(`/users?page=0&size=2147483647`), { method: "GET" });
@@ -103,9 +97,7 @@ export const toggleReviewVisibility = async (reviewId, visible) => {
 
 
 export const getAdminStatsExtras = async () => {
-  const paths = candidatesPreferApiV1(`/admin/stats/extras`);
-  paths.push(...candidatesPreferApiV1(`/orders/admin/stats/extras`));
-  const resp = await tryEndpoints(paths, { method: "GET" });
+  const resp = await apiClient.apiFetch('/orders/admin/stats/extras');
   return resp ?? null;
 };
 
@@ -125,7 +117,7 @@ export const getAdminStats = async () => {
 
     const totalOrders = extras?.totalOrders ?? 0;
     const ordersToday = extras?.ordersToday ?? 0;
-    const totalReviews = extras?.totalReviews ?? (Array.isArray(await getAllReviews()) ? (await getAllReviews()).length : 0);
+    const totalReviews = extras?.totalReviews ?? (await getAllReviews()).length;
     const totalRevenue = extras?.totalRevenue ?? 0;
 
     const activeSellers = Array.isArray(activeProducts) ? new Set((activeProducts || []).map(p => p.sellerId).filter(Boolean)).size : 0;
@@ -157,7 +149,7 @@ export const getAdminStats = async () => {
 
 export const getPlatformMetrics = async () => {
   try {
-    const [users, products, reviews] = await Promise.all([getUsers(), getAllProducts(), getAllReviews()]);
+    const [users, reviews] = await Promise.all([getUsers(), getAllReviews()]);
     let platformRating = 0;
     if (Array.isArray(reviews) && reviews.length > 0) {
       const ratings = reviews.map(r => r.rating).filter(r => typeof r === 'number');
@@ -213,7 +205,7 @@ export const getRecentActivity = async () => {
           id: `review-${r.id}`,
           type: 'review',
           action: `Reseña (${r.rating ?? '—'}★)`,
-          user: r.buyerDisplayName ?? `Buyer ${r.buyerId}` ?? `Buyer ${r.buyerId}`,
+          user: r.buyerDisplayName ?? `Buyer ${r.buyerId}`,
           product: r.productTitle ?? `Producto ${r.productId}`,
           amount: null,
           time: r.createdAt ?? null

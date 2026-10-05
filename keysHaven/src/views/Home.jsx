@@ -1,3 +1,4 @@
+import bundledAsset0 from "../assets/react.svg";
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../components/estilos/Fondos.css";
@@ -241,7 +242,7 @@ export default function Home() {
             {!loadingSellers && !sellersError && sellers.map((seller, i) => (
               <div key={seller.id ?? i} className="col-6 col-md-3 text-center">
                 <a href={`/seller-detail/${seller.id}`} className="text-decoration-none text-body text-primary-light">
-                  <img src={seller.avatarDataUrl || "/src/assets/react.svg"} className="rounded-circle border border-primary border-3 mb-3" width="160" height="160" alt={seller.displayName} />
+                  <img src={seller.avatarDataUrl || bundledAsset0} className="rounded-circle border border-primary border-3 mb-3" width="160" height="160" alt={seller.displayName} />
                   <h5 className="text-light fw-bold">{seller.displayName}</h5>
                   <small className="text-light">{seller.amountSold} keys sold • {((seller.avgRating ?? 0) / 2).toFixed(1)}★</small>
                 </a>

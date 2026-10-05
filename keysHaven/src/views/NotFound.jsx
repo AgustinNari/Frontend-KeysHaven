@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import bundledAsset0 from "../assets/doppyKnight/paisaje.jpg";
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import "../components/estilos/Fondos.css";
 
@@ -21,7 +22,7 @@ export default function NotFound() {
   let imageBottom = Number404;
   let messageText = "404 - Página no encontrada";
 
-  const [error, setError] = useState(getLastApiError());
+  const [error] = useState(getLastApiError());
 
   /*if (error?.status === 400) {
     imageBottom = Number400;
@@ -70,13 +71,7 @@ export default function NotFound() {
     imageBottom = null;
     messageText = "Error Desconocido";
   }
- 
-  useEffect(() => {
-    if (error && error.message) {
-      setError(error);
-      setErrorMessage(error.message);
-    }
-  }, []);
+
 
 
     return (
@@ -84,7 +79,7 @@ export default function NotFound() {
         className="position-relative text-center text-white py-5"
         style={{
           background:
-            ("url('/src/assets/doppyKnight/paisaje.jpg')"),
+            `url(${bundledAsset0})`,
           backgroundRepeat: "no-repeat",
           backgroundSize: "cover",
           backgroundPosition: "center",

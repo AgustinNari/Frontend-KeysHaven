@@ -8,7 +8,7 @@ import SellerCoupons from './SellerCoupons';
 import ErrorBoundary from '../common/ErrorBoundary';
 
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
-import { selectUser, selectIsAuthenticated, selectAuthLoading, refreshProfile, setUser } from '../../redux/slices/authSlice';
+import { selectUser, selectIsAuthenticated, selectAuthLoading, refreshProfile } from '../../redux/slices/authSlice';
 import { updateMyUser } from '../../redux/slices/profileSlice';
 import { upsertSellerDetail } from '../../redux/slices/sellersSlice';
 
@@ -67,7 +67,7 @@ export default function SellerDashboard() {
 
       dispatch(upsertSellerDetail({ sellerDescription: result.sellerDescription, id: result.id }));
 
-      try { await dispatch(refreshProfile()); } catch (e) { }
+      try { await dispatch(refreshProfile()); } catch { /* Optional refresh failed; the current view remains usable. */ }
 
       setIsEditingDescription(false);
     } catch (err) {

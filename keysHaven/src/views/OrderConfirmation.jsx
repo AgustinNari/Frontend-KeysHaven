@@ -1,3 +1,4 @@
+import bundledAsset0 from "../assets/doppyKnight/doppyJump.png";
 import React, { useMemo } from "react";
 import { useLocation, Link } from "react-router-dom";
 
@@ -6,21 +7,8 @@ export default function OrderConfirmation() {
   const serverOrder = state?.order;
   const clientItemsSnapshot = state?.clientItems ?? null;
 
-  if (!serverOrder && !clientItemsSnapshot) {
-    return (
-      <div className="container py-4">
-        <h2>Confirmación de compra</h2>
-        <div className="alert alert-warning mt-3">
-          No encontramos una orden reciente.{" "}
-          Volvé al <Link to="/catalog" className="alert-link">catálogo</Link> o al{" "}
-          <Link to="/cart" className="alert-link">carrito</Link>.
-        </div>
-      </div>
-    );
-  }
-
   const normalizedItems = useMemo(() => {
-    if (Array.isArray(clientItemsSnapshot) && clientItemsSnapshot.length > 0) {
+    if (!serverOrder && Array.isArray(clientItemsSnapshot) && clientItemsSnapshot.length > 0) {
       return clientItemsSnapshot.map(it => ({
         id: it.productId,
         title: it.title,
@@ -48,11 +36,11 @@ export default function OrderConfirmation() {
         id: it.productId ?? it.id ?? null,
         title: it.productTitle ?? it.title ?? "Producto",
         qty,
-        image: null,
+        image: clientItemsSnapshot?.find(snapshot => Number(snapshot.productId) === Number(it.productId))?.image ?? null,
         line: {
           subtotal: lineSubtotal,
-          productDiscount: 0,
-          couponDiscount: discountAmount,
+          productDiscount: discountAmount,
+          couponDiscount: 0,
           total: lineTotal,
           unitOriginal: unitPrice,
           unitFinal: unitPrice
@@ -87,11 +75,24 @@ export default function OrderConfirmation() {
     };
   }, [serverOrder, normalizedItems]);
 
+  if (!serverOrder && !clientItemsSnapshot) {
+    return (
+      <div className="container py-4">
+        <h2>Confirmación de compra</h2>
+        <div className="alert alert-warning mt-3">
+          No encontramos una orden reciente.{" "}
+          Volvé al <Link to="/catalog" className="alert-link">catálogo</Link> o al{" "}
+          <Link to="/cart" className="alert-link">carrito</Link>.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container py-4">
       <div className="text-center mb-4">
         <img
-          src="/src/assets/doppyKnight/doppyJump.png"
+          src={bundledAsset0}
           alt="¡Gracias por tu compra!"
           style={{ width: 160, height: "auto", opacity: 0.95 }}
         />
@@ -139,7 +140,7 @@ export default function OrderConfirmation() {
                     <div style = {{ color: "#8a4ff0" }} className="text small mt-1">
                       Subtotal ítem: {currency} {Number(it.line.subtotal).toFixed(2)}
                       {Number(it.line.productDiscount) > 0 && (
-                        <> · Desc. Producto: −{currency} {Number(it.line.productDiscount).toFixed(2)}</>
+                        <> · Descuento: −{currency} {Number(it.line.productDiscount).toFixed(2)}</>
                       )}
                       {Number(it.line.couponDiscount) > 0 && (
                         <> · Cupón: −{currency} {Number(it.line.couponDiscount).toFixed(2)}</>
@@ -167,23 +168,10 @@ export default function OrderConfirmation() {
                 </span>
               </div>
 
-              {(totals.productDiscountSum > 0 || totals.couponDiscountSum > 0) ? (
-                <>
-                  <div className="d-flex justify-content-between small">
-                    <span style = {{ color: "#8a4ff0" }}>Desc. por producto</span>
-                    <span className="text-danger">−{currency} {Number(totals.productDiscountSum).toFixed(2)}</span>
-                  </div>
-                  <div className="d-flex justify-content-between small">
-                    <span style = {{ color: "#8a4ff0" }}>Cupón</span>
-                    <span className="text-danger">−{currency} {Number(totals.couponDiscountSum).toFixed(2)}</span>
-                  </div>
-                </>
-              ) : (
-                <div className="d-flex justify-content-between small">
-                  <span style = {{ color: "#8a4ff0" }}>Descuentos</span>
-                  <span className="text-danger">−{currency} {Number(totals.discountsTotal).toFixed(2)}</span>
-                </div>
-              )}
+              <div className="d-flex justify-content-between small">
+                <span style={{ color: "#8a4ff0" }}>Descuentos</span>
+                <span className="text-danger">−{currency} {Number(totals.discountsTotal).toFixed(2)}</span>
+              </div>
 
               <hr />
               <div className="d-flex justify-content-between fw-bold">

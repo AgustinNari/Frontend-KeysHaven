@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { selectUser } from '../../redux/slices/authSlice';
@@ -15,8 +15,7 @@ export default function SellerCoupons() {
   const navigate = useNavigate();
 
   const discountsState = useAppSelector(state => state.discounts.sellerDiscounts);
-  const discountsPages = useAppSelector(state => state.discounts.sellerDiscountsPages);
-  const products = useAppSelector(state => state.sellerPanel.activeProducts) || [];
+  const products = useAppSelector(state => state.sellerPanel.products) || [];
 
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -30,10 +29,12 @@ export default function SellerCoupons() {
   const pageSize = 10;
   const total = discountsState.total || 0;
 
-  useEffect(() => { loadData();}, [sellerId, page]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!sellerId) return;
+    const state = dispatch((send, getState) => getState());
+    const discountsPages = state.discounts.sellerDiscountsPages;
+    const products = state.sellerPanel.products;
     setLoading(true);
     setError('');
     try {
@@ -56,7 +57,9 @@ export default function SellerCoupons() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dispatch, sellerId, page]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleOpenCreate = () => {
     setFormData({ code:'', type:'PERCENT', value:'', scope:'PRODUCT', targetProductId:'', startsAt:'', endsAt:'', minQuantity:'', maxQuantity:'', minPrice:'', maxPrice:'' });

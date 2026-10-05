@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { loginThunk, selectAuthLoading, selectAuthError, selectIsAuthenticated } from "../redux/slices/authSlice";
 import { validations, validationMessages } from "../utils/validations";
@@ -8,6 +8,8 @@ import { validations, validationMessages } from "../utils/validations";
 export default function Login() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const destination = location.state?.from || "/";
 
   const loading = useAppSelector(selectAuthLoading);
   const authError = useAppSelector(selectAuthError);
@@ -20,24 +22,24 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/", { replace: true });
+      navigate(destination, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, destination]);
 
-  
+
   function validateForm() {
     const newErrors = {};
-    
+
     if (!email) {
       newErrors.email = "El email es requerido";
     } else if (!validations.email(email)) {
       newErrors.email = validationMessages.email;
     }
-    
+
     if (!password) {
       newErrors.password = "La contraseña es requerida";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -49,7 +51,7 @@ export default function Login() {
     if (!validateForm()) {
       return;
     }
-    
+
 
     if (!email || !password) {
       setLocalError("Completa email y contraseña");
@@ -59,7 +61,7 @@ export default function Login() {
     try {
       const resultAction = await dispatch(loginThunk({ email, password }));
       if (loginThunk.fulfilled.match(resultAction)) {
-        navigate("/", { replace: true });
+        navigate(destination, { replace: true });
       } else {
         const payload = resultAction.payload || resultAction.error;
         setLocalError(payload?.message || payload?.error?.message || "Email o contraseña inválidos");

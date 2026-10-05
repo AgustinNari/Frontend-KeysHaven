@@ -6,7 +6,7 @@ export const validations = {
   },
 
   phone: (phone) => {
-    const phoneRegex = /^\+?[\d\s\-\(\)]{8,20}$/;
+    const phoneRegex = /^\+?[\d\s\-()]{8,20}$/;
     return phoneRegex.test(phone);
   },
 
@@ -28,15 +28,15 @@ export const validations = {
   cardExpiry: (expiry) => {
     const expiryRegex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/;
     if (!expiryRegex.test(expiry)) return false;
-    
+
     const [month, year] = expiry.split('/');
     const now = new Date();
     const currentYear = now.getFullYear() % 100;
     const currentMonth = now.getMonth() + 1;
-    
+
     if (parseInt(year) < currentYear) return false;
     if (parseInt(year) === currentYear && parseInt(month) < currentMonth) return false;
-    
+
     return true;
   },
 

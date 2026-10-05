@@ -135,7 +135,7 @@ const reviewsSlice = createSlice({
         s.byProduct[productId] = { items, meta: { totalElements: resp?.totalElements ?? resp?.total ?? items.length } };
       })
       .addCase(fetchReviewsByProduct.rejected, (s, a) => { s.loading = false; s.error = a.payload?.message ?? a.error?.message ?? null; })
-      .addCase(fetchReviewByOrderItem.pending, (s) => {})
+
       .addCase(fetchReviewByOrderItem.fulfilled, (s, a) => {
         const { orderItemId, resp } = a.payload;
         if (orderItemId == null) return;
