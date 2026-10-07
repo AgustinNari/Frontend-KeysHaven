@@ -1,27 +1,94 @@
 # KeysHaven — Frontend
 
-Frontend de KeysHaven, un marketplace de claves digitales desarrollado en equipo. Incluye catálogo, autenticación, carrito, descuentos y cupones, órdenes, perfiles, panel de vendedores y panel de administración. El flujo de pago es simulado y no procesa dinero ni transacciones reales.
+Frontend application for KeysHaven, a digital-key marketplace developed as a team project.
 
-React 19, Vite 7, Redux Toolkit, React Router y Bootstrap. La aplicación está en `keysHaven/`.
+It includes authentication, product browsing, shopping cart management, discounts and coupons, orders, user profiles, seller tools, and administration views.
 
-## Ejecución local
+The backend is available in [Backend-KeysHaven](https://github.com/AgustinNari/Backend-KeysHaven).
 
-Requisitos: Node.js 20.19+ o 22.12+, npm y backend funcionando en `http://localhost:4002`.
+## Tech Stack
 
-```sh
+- React 19
+- Vite 7
+- Redux Toolkit
+- React Router
+- Bootstrap
+- JavaScript
+
+## Features
+
+- User authentication
+- Product catalog and product details
+- Shopping cart
+- Discounts and coupons
+- Orders
+- User profiles
+- Seller panel
+- Administration panel
+- Per-user cart persistence
+
+The payment flow is simulated and does not process real transactions.
+
+## Local Setup
+
+Requirements:
+
+- Node.js 20.19+ or 22.12+
+- npm
+- KeysHaven backend running locally
+
+Install and start the application:
+
+```bash
 cd keysHaven
 npm ci
 npm run dev
 ```
 
-Abrir `http://localhost:5173`. Para cambiar el backend, copiar `.env.example` a `.env.local` y ajustar `VITE_API_BASE_URL`. Las variables Vite son públicas; nunca colocar secretos en ellas. La configuración de CORS del backend debe permitir el origen elegido.
+The development server is available by default at:
 
-```sh
+```text
+http://localhost:5173
+```
+
+The backend defaults to:
+
+```text
+http://localhost:4002
+```
+
+To configure another backend, copy:
+
+```text
+.env.example
+```
+
+to:
+
+```text
+.env.local
+```
+
+and update:
+
+```text
+VITE_API_BASE_URL
+```
+
+Vite environment variables are exposed to the browser and must never contain secrets.
+
+## Validation
+
+```bash
 npm test
 npm run lint
 npm run build
 ```
 
-Redux mantiene la sesión y los datos globales. `useCart()` es una fachada sobre Redux. El token y los ítems del carrito se conservan en localStorage; el perfil se verifica con el backend al recargar. El carrito está asociado al usuario y se limpia al salir.
+## State Management
 
-Backend en el repositorio hermano `Backend-KeysHaven/marketplace`.
+Redux manages authentication and global application state.
+
+`useCart()` provides the cart-facing application logic on top of Redux.
+
+Authentication tokens and cart items are persisted locally. The user profile is validated against the backend when the session is restored, and the cart is associated with the authenticated user.
