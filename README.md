@@ -4,7 +4,7 @@ Frontend application for KeysHaven, a digital-key marketplace developed as a tea
 
 It includes authentication, product browsing, shopping cart management, discounts and coupons, orders, user profiles, seller tools, and administration views.
 
-The backend is available in [Backend-KeysHaven](https://github.com/AgustinNari/Backend-KeysHaven).
+The backend is available in [keyshaven-backend](https://github.com/AgustinNari/keyshaven-backend).
 
 ## Tech Stack
 
