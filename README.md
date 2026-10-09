@@ -29,23 +29,23 @@ The backend is available in [keyshaven-backend](https://github.com/AgustinNari/k
 
 The payment flow is simulated and does not process real transactions.
 
-   ## Screenshots
+## Screenshots
 
-   Screenshots of KeysHaven running locally with sample marketplace data.
+Screenshots of KeysHaven running locally with sample marketplace data.
 
-   ### Storefront
+### Storefront
 
-   ![KeysHaven storefront and home page](docs/screenshots/home.webp)
+![KeysHaven storefront and home page](docs/screenshots/home.webp)
 
-   ### Game Catalog
+### Game Catalog
 
-   ![Game catalog with search, filters, and product listings](docs/screenshots/catalog.webp)
+![Game catalog with search, filters, and product listings](docs/screenshots/catalog.webp)
 
-   ### Product Details
+### Product Details
 
-   ![Game details with image gallery, pricing, and purchase options](docs/screenshots/product-detail.webp)
+![Game details with image gallery, pricing, and purchase options](docs/screenshots/product-detail.webp)
 
-   *The screenshots use a local demonstration environment with synthetic accounts, orders, inventory, and reviews. Payments are simulated.*
+*The screenshots use a local demonstration environment with synthetic accounts, orders, inventory, and reviews. Payments are simulated.*
 
 ## Local Setup
 
