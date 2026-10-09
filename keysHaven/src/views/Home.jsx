@@ -20,7 +20,7 @@ export default function Home() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const [theme] = useState("bg-primary-dark");
+  const [theme] = useState("dark");
 
   const categories = useAppSelector(selectFeaturedCategories);
   const sellers = useAppSelector(selectTopSellers);
@@ -40,6 +40,9 @@ export default function Home() {
 
   const inputRef = useRef(null);
   const toolbarRef = useRef(null);
+  const pageRef = useRef(null);
+  const searchButtonRef = useRef(null);
+  const restoreSearchFocus = useRef(false);
   const [searchMode, setSearchMode] = useState(false);
   const [active, setActive] = useState("all");
   const icons = [
@@ -128,30 +131,36 @@ export default function Home() {
   }, [dispatch, products]);
 
   useEffect(() => {
-    if (searchMode && inputRef.current) inputRef.current.focus();
+    if (searchMode) inputRef.current?.focus();
+    else if (restoreSearchFocus.current) {
+      searchButtonRef.current?.focus();
+      restoreSearchFocus.current = false;
+    }
   }, [searchMode]);
 
   useEffect(() => {
-    const navbar = document.querySelector("nav.navbar");
-    const toolbar = toolbarRef.current;
-    if (!navbar || !toolbar) return;
-    const positionToolbar = () => {
-      const navHeight = navbar.getBoundingClientRect().height;
-      const top = window.innerWidth < 1200
-        ? navHeight - 72
-        : (navHeight - toolbar.getBoundingClientRect().height) / 2;
-      toolbar.style.top = `${Math.max(8, top)}px`;
-    };
-    const observer = new ResizeObserver(positionToolbar);
-    observer.observe(navbar);
-    observer.observe(toolbar);
-    window.addEventListener("resize", positionToolbar);
-    positionToolbar();
+    const page = pageRef.current;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!page || motion.matches || !("IntersectionObserver" in window)) return;
+    // Content stays visible; only animate once when a section enters the viewport.
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(({ target, isIntersecting }) => {
+        if (!isIntersecting) return;
+        target.classList.add("home-revealed");
+        observer.unobserve(target);
+      });
+    }, { threshold: 0.08 });
+    page.querySelectorAll(".home-reveal").forEach(section => observer.observe(section));
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", positionToolbar);
+      page.querySelectorAll(".home-revealed").forEach(section => section.classList.remove("home-revealed"));
     };
   }, []);
+
+  const closeSearch = () => {
+    restoreSearchFocus.current = true;
+    setSearchMode(false);
+  };
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -162,61 +171,45 @@ export default function Home() {
   }, []);
 
   return (
-    <div data-bs-theme={theme} className="home-page bg-body text-body">
+    <div data-bs-theme={theme} className="home-page bg-primary-dark text-body" ref={pageRef}>
       <div className="home-search-toolbar" ref={toolbarRef} aria-label="Plataformas y búsqueda">
-        <div className="d-inline-flex align-items-center rounded-pill bg-primary-mid bg-opacity-75 p-3 shadow-lg" style={{ backdropFilter: "blur(8px)", minWidth: "280px" }}>
-          {!searchMode && (
-            <>
-              <div className="d-flex align-items-center gap-4 pe-4">
-                {icons.map(({ id, icon }) => (
-                  <button
-                    key={id}
-                    aria-label={id === "all" ? "Todas las plataformas" : id}
-                    aria-pressed={active === id}
-                    onClick={() => setActive(id)}
-                    className={`btn border-0 bg-transparent p-0 text-center transition-all ${ active === id ? "text-primary opacity-100 scale-110" : "text-secondary opacity-50" }`}
-                  >
-                    <i className={`${icon} fs-3`}></i>
-                  </button>
-                ))}
-              </div>
-
-              <div className="d-flex align-items-center bg-primary rounded-pill px-4 ms-2">
-                <button aria-label="Buscar juegos" className="btn btn-link text-white fs-5 p-0" onClick={() => setSearchMode(true)}>
-                  <i className="fas fa-search"></i>
-                </button>
-              </div>
-            </>
-          )}
-
-          {searchMode && (
-            <div className="flex-grow-1 d-flex align-items-center px-2">
-              <i className="text-white me-2"></i>
-              <input
-                ref={inputRef}
-                aria-label="Buscar juegos por título"
-                type="text"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="form-control bg-dark text-light border-0 shadow-sm"
-                placeholder="Buscar juegos..."
-                style={{ width: "220px" }}
-                onKeyDown={(e) => { if (e.key === "Enter") { handleSearch(searchText); setSearchMode(false); } else if (e.key === "Escape") setSearchMode(false); }}
-              />
-              <button aria-label="Buscar" className="btn btn-link text-white ms-2 fs-5" onClick={() => { handleSearch(searchText); setSearchMode(false); }}>
-                <i className="fas fa-search"></i>
+        <div className={`home-search-pill ${searchMode ? "is-searching" : ""}`}>
+          <div className="home-platform-controls" inert={searchMode}>
+            {icons.map(({ id, icon }) => (
+              <button key={id} type="button"
+                aria-label={id === "all" ? "Todas las plataformas" : id}
+                aria-pressed={active === id}
+                onClick={() => setActive(id)}
+                className={`home-platform-button ${active === id ? "is-active" : ""}`}>
+                <i className={icon} aria-hidden="true" />
               </button>
-              <button aria-label="Cerrar búsqueda" className="btn btn-link text-white ms-2 fs-5" onClick={() => setSearchMode(false)}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-          )}
+            ))}
+            <button ref={searchButtonRef} type="button" aria-label="Buscar juegos"
+              aria-expanded={searchMode} aria-controls="home-search-form"
+              className="home-search-open" onClick={() => setSearchMode(true)}>
+              <i className="fas fa-search" aria-hidden="true" />
+            </button>
+          </div>
+          <form id="home-search-form" role="search" aria-label="Buscar juegos"
+            className="home-search-form" inert={!searchMode}
+            onSubmit={(e) => { e.preventDefault(); handleSearch(searchText); setSearchMode(false); }}>
+            <input ref={inputRef} aria-label="Buscar juegos por título" type="search"
+              value={searchText} onChange={(e) => setSearchText(e.target.value)}
+              className="form-control bg-dark text-light border-0"
+              placeholder="Buscar juegos..."
+              onKeyDown={(e) => { if (e.key === "Escape") closeSearch(); }} />
+            <button type="submit" aria-label="Buscar" className="home-search-action">
+              <i className="fas fa-search" aria-hidden="true" />
+            </button>
+            <button type="button" aria-label="Cerrar búsqueda" className="home-search-action" onClick={closeSearch}>
+              <i className="fas fa-times" aria-hidden="true" />
+            </button>
+          </form>
         </div>
       </div>
 
       {/* Hero */}
-      <section className="home-hero text-white" style={{ "--home-banner": `url(${HomeBanner})` }}>
-        <div className="home-hero-ambient" aria-hidden="true" />
+      <section className="home-hero text-white">
         <img className="home-hero-image" src={HomeBanner} alt="Jugador con auriculares frente a su computadora" />
         <div className="home-hero-shade" aria-hidden="true" />
         <div className="container home-hero-layout">
@@ -227,10 +220,10 @@ export default function Home() {
         </div>
       </section>
 
-      <FeaturedProductsCarousel />
+      <div className="home-reveal"><FeaturedProductsCarousel /></div>
 
       {/* Categories */}
-      <section className="py-5 bg-primary-dark">
+      <section className="home-reveal py-5 bg-primary-dark">
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Categorías Destacadas</h2>
           <div className="row g-4 justify-content-center">
@@ -260,7 +253,7 @@ export default function Home() {
       </section>
 
       {/* Top Sellers */}
-      <section className="py-5 bg-primary-dark">
+      <section className="home-reveal py-5 bg-primary-dark">
         <div className="container text-center">
           <h2 className="fw-bold mb-5 text-primary-light">Vendedores Más Elegidos</h2>
           <div className="row g-5 justify-content-center">
@@ -289,7 +282,7 @@ export default function Home() {
       </section>
 
       {/* Most Bought Products */}
-      <section className="py-5 bg-primary-dark">
+      <section className="home-reveal py-5 bg-primary-dark">
         <div className="container">
           <h2 className="fw-bold text-center mb-5 text-primary-light">Llaves Más Elegidas</h2>
 
@@ -316,7 +309,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <ReviewCarousel />
+      <div className="home-reveal"><ReviewCarousel /></div>
     </div>
   );
 }

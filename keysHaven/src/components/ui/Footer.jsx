@@ -1,18 +1,19 @@
 import bundledAsset0 from "../../assets/keyLogo.svg";
 import React from "react";
 import { Link } from "react-router-dom";
+import "../estilos/footer.css";
 
 export default function Footer() {
   return (
-    <footer className="border-top py-5 bg-primary-mid text-light">
-      <div className="container app-container text-center">
-        <div className="row g-4">
-          <div className="col-md-3">
+    <footer className="site-footer border-top bg-primary-mid text-light">
+      <div className="site-footer-container">
+        <div className="site-footer-grid">
+          <div className="site-footer-identity">
             <Link
               to="/"
               className="d-flex align-items-center gap-2 mb-3 text-decoration-none text-light"
             >
-              <img src={bundledAsset0} width={55} height={50} />
+              <img src={bundledAsset0} width={55} height={50} alt="" />
               <strong>KeysHaven</strong>
             </Link>
             <small className="text-light">
@@ -21,7 +22,7 @@ export default function Footer() {
             </small>
           </div>
 
-          <div className="col-md-2">
+          <div className="site-footer-links">
             <h6 className="fw-bold">Soporte</h6>
             <ul className="list-unstyled small">
               <li>
@@ -51,7 +52,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          <div className="col-md-2">
+          <div className="site-footer-links">
             <h6 className="fw-bold">Compañía</h6>
             <ul className="list-unstyled small">
               <li>

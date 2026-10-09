@@ -1,6 +1,6 @@
 import bundledAsset0 from "../../assets/keyLogo.svg";
 import React from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import "../estilos/Fondos.css";
 import { useCart } from "../../store/cart.jsx";
 import DoppyThumbsUp from "../../assets/doppyKnight/doppyThumbsUp.png";
@@ -11,6 +11,8 @@ import { selectUser, selectIsAuthenticated, logout } from "../../redux/slices/au
 export default function Navigation() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isHome = pathname === "/" || pathname === "/home";
 
   const user = useAppSelector(selectUser);
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
@@ -34,7 +36,7 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg sticky-top navbar-dark bg-primary-dark border-bottom border-light">
+    <nav className={`navbar navbar-expand-lg ${isHome ? "home-navbar" : "sticky-top"} navbar-dark bg-primary-dark border-bottom border-light`}>
       <div className="container-fluid">
         <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
           <img src={bundledAsset0} width={55} height={35} alt="KeysHaven" />
