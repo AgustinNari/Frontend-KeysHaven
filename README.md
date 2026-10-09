@@ -35,15 +35,15 @@ Screenshots of KeysHaven running locally with sample marketplace data.
 
 ### Storefront
 
-![KeysHaven storefront and home page](docs/screenshots/home.png)
+![KeysHaven storefront and home page](docs/screenshots/home.webp)
 
 ### Game Catalog
 
-![Game catalog with search, filters, and product listings](docs/screenshots/catalog.png)
+![Game catalog with search, filters, and product listings](docs/screenshots/catalog.webp)
 
 ### Product Details
 
-![Game details with image gallery, pricing, and purchase options](docs/screenshots/product-detail.png)
+![Game details with image gallery, pricing, and purchase options](docs/screenshots/product-detail.webp)
 
 *The screenshots use a local demonstration environment with synthetic accounts, orders, inventory, and reviews. Payments are simulated.*
 
