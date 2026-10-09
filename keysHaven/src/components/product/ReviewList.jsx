@@ -16,17 +16,14 @@ export default function ReviewList({ reviews = [], page = 1, setPage = () => {},
           <div key={r.id} className="review-item">
             <div style={{ width: 56 }}>
               <div className="review-avatar">
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 12 }}>Usuario</div>
-                  <div style={{ fontWeight: 700 }}>{r.buyerId}</div>
-                </div>
+                <i className="fa-solid fa-user" aria-hidden="true" />
               </div>
             </div>
 
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", alignItems: "baseline" }}>
                 <div>
-                  <div style={{ color: "var(--text)", fontWeight: 700 }}>{r.title || `Usuario ${r.buyerId}`}</div>
+                  <div style={{ color: "var(--text)", fontWeight: 700 }}>{r.title || "Opinión del comprador"}</div>
                   <div className="review-meta muted">{new Date(r.createdAt).toLocaleString()}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>

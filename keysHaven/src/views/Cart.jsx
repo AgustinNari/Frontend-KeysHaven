@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
+import "../components/estilos/cart.css";
 
 import DoppyCart from "../assets/doppyKnight/doppyShoppingCart.png"
 
@@ -93,7 +94,7 @@ export default function Cart() {
   }
 
   return (
-    <div>
+    <div className="cart-page">
       <h2>Carrito</h2>
 
       {msg && (
@@ -151,9 +152,9 @@ export default function Cart() {
                         src={it.image || it.imageUrl}
                         alt={it.title}
                         style={{
-                          width: 48,
+                          width: 32,
                           height: 48,
-                          objectFit: "cover",
+                          objectFit: "contain",
                           borderRadius: 6,
                         }}
                       />
@@ -384,7 +385,7 @@ export default function Cart() {
         </table>
       </div>
 
-      <div className="d-flex gap-2">
+      <div className="d-flex flex-wrap gap-2">
         <button className="btn btn-outline-secondary" onClick={clear}>
           Vaciar
         </button>

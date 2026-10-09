@@ -4,6 +4,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import cartReducer, { addOrUpdateItem, setCoupon, incItem, decItem } from '../src/redux/slices/cartSlice';
 import authReducer, { logout, setToken, setUser, loginThunk } from '../src/redux/slices/authSlice';
 import productReducer, { searchProducts } from '../src/redux/slices/productsSlice';
+import detailReducer, { fetchProductReviews, upsertProductDetail, setReviewsFromCache } from '../src/redux/slices/productDetailSlice';
 import apiClient, { configureSession } from '../src/api/apiClient';
 import productsService from '../src/services/productsService';
 import appStore from '../src/redux/store';
@@ -29,6 +30,18 @@ test('catalog ignores out-of-order responses', () => {
   state = productReducer(state, searchProducts.fulfilled({ key: 'new', resp: { content: [{ id: 2 }] } }, 'new', {}));
   state = productReducer(state, searchProducts.fulfilled({ key: 'old', resp: { content: [{ id: 1 }] } }, 'old', {}));
   assert.equal(state.searchResult.content[0].id, 2);
+});
+
+test('reviews arriving before the product remain available without replacing another product reviews', () => {
+  const response = { key: '7_0_5', resp: { content: [{ id: 21, productId: 7, rating: 9 }], totalElements: 1 } };
+  let state = detailReducer(undefined, fetchProductReviews.fulfilled(response, 'reviews', { productId: 7 }));
+  assert.deepEqual(state.reviews, []);
+  state = detailReducer(state, upsertProductDetail({ id: 7 }));
+  state = detailReducer(state, setReviewsFromCache('7_0_5'));
+  assert.equal(state.reviews[0].productId, 7);
+  state = detailReducer(state, fetchProductReviews.fulfilled(
+    { key: '8_0_5', resp: { content: [{ id: 22, productId: 8 }] } }, 'late', { productId: 8 }));
+  assert.equal(state.reviews[0].productId, 7);
 });
 
 test('login profile failure removes the provisional token', async () => {

@@ -1,0 +1,10 @@
+.cart-page { --bs-secondary-color: var(--muted); }
+.cart-page .table {
+  --bs-table-bg: var(--bg-elev);
+  --bs-table-color: var(--text);
+  --bs-table-border-color: rgba(185, 140, 255, .18);
+  min-width: 900px;
+}
+.cart-page .table-responsive { margin-bottom: 16px; }
+.cart-page .btn-outline-secondary { color: var(--muted); border-color: #8665a5; }
+.cart-page .btn-outline-secondary:hover { color: white; background: #573777; }

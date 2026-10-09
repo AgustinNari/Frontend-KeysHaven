@@ -93,12 +93,7 @@ export default function ProductCard({ product }) {
   return (
     <div className="product-card card" style={{ position: "relative" }}>
       {product.primaryImageUrl ? (
-        <div
-          className="media"
-          style={{
-            backgroundImage: `url(${product.primaryImageUrl})`,
-          }}
-        />
+        <img className="media" src={product.primaryImageUrl} alt={product.title} loading="lazy" />
       ) : (
         <div className="media no-image">
           <span>Imagen no disponible</span>
@@ -144,6 +139,9 @@ export default function ProductCard({ product }) {
               />
             </div>
             <div className="meta-bottom">{product.sold ?? 0} vend.</div>
+            {(product.availableStock ?? product.stock) != null && (
+              <div className="meta-bottom">{product.availableStock ?? product.stock} disponibles</div>
+            )}
           </div>
 
           <div className="actions d-flex align-items-center gap-2">

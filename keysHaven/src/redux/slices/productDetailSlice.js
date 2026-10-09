@@ -142,12 +142,12 @@ const productDetailSlice = createSlice({
       })
 
       .addCase(fetchProductReviews.fulfilled, (s, a) => {
-        if (Number(a.meta.arg.productId) !== Number(s.product?.id)) return;
         const key = a.payload?.key;
         const resp = a.payload?.resp ?? a.payload;
         if (key) {
           s.reviewsPages[key] = resp ?? { content: [], totalElements: 0 };
         }
+        if (Number(a.meta.arg.productId) !== Number(s.product?.id)) return;
         const items = resp?.content ?? (Array.isArray(resp) ? resp : []);
         s.reviews = items;
         s.reviewsMeta = { totalElements: resp?.totalElements ?? resp?.total ?? items.length };

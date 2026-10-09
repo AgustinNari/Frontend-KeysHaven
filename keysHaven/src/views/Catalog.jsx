@@ -246,8 +246,8 @@ export default function Catalog() {
               <p className="lead">Explora nuestra amplia selección — usa filtros para afinar resultados.</p>
             </div>
 
-            <div className="d-flex align-items-center justify-content-space-between gap-2">
-              <div className="search-bar-wrapper" style={{ minWidth: 260 }}>
+            <div className="catalog-controls d-flex align-items-center gap-2">
+              <div className="search-bar-wrapper">
                 <SearchBar value={searchText} onChange={setSearchText} onSearch={handleSearchSubmit} />
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

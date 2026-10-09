@@ -124,6 +124,11 @@ export default function ProductDetail() {
     setProductImages(imgs);
     setActiveImageIndex(0);
 
+  }, [product]);
+
+  useEffect(() => {
+    if (!product) return;
+
     const categoryIds = (product.categories || []).map(c => (c?.id ?? null)).filter(Boolean);
     if (categoryIds.length > 0) {
       const relatedKey = `${String(product.id ?? 'none')}_${categoryIds.join(',')}_6`;
