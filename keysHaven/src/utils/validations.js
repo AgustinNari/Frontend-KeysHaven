@@ -52,7 +52,7 @@ export const validations = {
 };
 
 export const validationMessages = {
-  email: "Por favor ingresa un email válido",
+  email: "Por favor ingresa un correo electrónico válido",
   phone: "Formato de teléfono inválido. Usa formato: +54 11 1234-5678",
   onlyText: "Este campo solo puede contener letras y espacios",
   onlyNumbers: "Este campo solo puede contener números",

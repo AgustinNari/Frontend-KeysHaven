@@ -8,6 +8,26 @@ import detailReducer, { fetchProductReviews, upsertProductDetail, setReviewsFrom
 import apiClient, { configureSession } from '../src/api/apiClient';
 import productsService from '../src/services/productsService';
 import appStore from '../src/redux/store';
+import { displayValue, localizeErrorMessage } from '../src/utils/displayText';
+
+test('Spanish error presentation preserves validation bounds and existing Spanish messages', () => {
+  assert.equal(localizeErrorMessage('Unauthorized'), 'Debes iniciar sesión.');
+  assert.equal(localizeErrorMessage('Failed to fetch'), 'No se pudo conectar con el servidor. Revisa tu conexión.');
+  assert.equal(localizeErrorMessage('password: size must be between 8 and 64'), 'La contraseña debe tener entre 8 y 64 caracteres.');
+  assert.equal(localizeErrorMessage('rating: must be less than or equal to 10'), 'La puntuación debe ser menor o igual que 10.');
+  assert.equal(localizeErrorMessage('email: must not be blank'), 'El correo electrónico es obligatorio.');
+  assert.equal(localizeErrorMessage('El cupón ya fue utilizado.'), 'El cupón ya fue utilizado.');
+});
+
+test('Spanish enum labels leave API values and unknown values intact', () => {
+  const order = { status: 'COMPLETED', role: 'BUYER' };
+  assert.equal(displayValue(order.status), 'Completado');
+  assert.equal(displayValue(order.role), 'Comprador');
+  assert.deepEqual(order, { status: 'COMPLETED', role: 'BUYER' });
+  assert.equal(displayValue('CUSTOM_STATUS'), 'CUSTOM_STATUS');
+  assert.equal(displayValue('toString'), 'toString');
+  assert.equal(localizeErrorMessage('constructor'), 'constructor');
+});
 
 test('cart refuses negative/fractional quantities and invalidates coupons on quantity changes', () => {
   let state = cartReducer(undefined, addOrUpdateItem({ item: { id: 1, price: 10 }, qty: -1 }));

@@ -11,7 +11,7 @@ export default function PlaceholderGrid({ count = 6 }) {
                 <div className="placeholder-glow">
                 <p className="placeholder col-6"></p>
                 </div>
-                <p className="small text-muted">Descripción corta (placeholder)</p>
+                <p className="small text-muted">Descripción corta (contenido de ejemplo)</p>
             </div>
             </div>
         ))}

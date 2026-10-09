@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useState, useEffect } from "react";
 import ConfirmModal from "./ConfirmModal";
 
@@ -85,7 +86,7 @@ export default function ChangePasswordModal({ show, onClose, onChangePassword })
           <input name="confirmNewPassword" type="password" className="form-control" value={form.confirmNewPassword} onChange={handleChange} />
         </div>
 
-        {error && <div className="mt-2" style={{ color: "#ffb4d2" }}>{error}</div>}
+        {error && <div className="mt-2" style={{ color: "#ffb4d2" }}>{localizeErrorMessage(error)}</div>}
 
         <div className="mt-3 d-flex gap-2 justify-content-end">
           <button className="btn btn-outline-secondary" onClick={() => onClose && onClose()}>Cancelar</button>

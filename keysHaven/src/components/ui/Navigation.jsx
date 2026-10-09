@@ -50,7 +50,7 @@ export default function Navigation() {
           data-bs-target="#nav"
           aria-controls="nav"
           aria-expanded="false"
-          aria-label="Toggle navigation"
+          aria-label="Abrir o cerrar navegación"
         >
           <span className="navbar-toggler-icon"></span>
         </button>
@@ -63,7 +63,7 @@ export default function Navigation() {
 
             {!isAuthenticated && (
               <>
-                <li className="nav-item"><NavLink to="/login" className="nav-link">Login</NavLink></li>
+                <li className="nav-item"><NavLink to="/login" className="nav-link">Iniciar sesión</NavLink></li>
                 <li className="nav-item"><NavLink to="/register" className="nav-link">Registro</NavLink></li>
               </>
             )}
@@ -84,7 +84,7 @@ export default function Navigation() {
             )}
 
             {isAuthenticated && user?.role === "SELLER" && (
-              <NavLink to="/sellerdashboard" className="nav-link" aria-label="Seller dashboard" title="Seller dashboard">
+              <NavLink to="/sellerdashboard" className="nav-link" aria-label="Panel de vendedor" title="Panel de vendedor">
                 <button className="btn btn-outline-success rounded-circle p-2" style={{ borderColor: "rgba(90, 200, 150, 0.12)" }}>
                   <span className="material-symbols-outlined">storefront</span>
                 </button>
@@ -92,7 +92,7 @@ export default function Navigation() {
             )}
 
             {isAuthenticated && user?.role === "ADMIN" && (
-              <NavLink to="/adminpanel" className="nav-link" aria-label="Admin panel" title="Admin panel">
+              <NavLink to="/adminpanel" className="nav-link" aria-label="Panel de administración" title="Panel de administración">
                 <button className="btn btn-outline-warning rounded-circle p-2" style={{ borderColor: "rgba(255,200,0,0.12)" }}>
                   <span className="material-symbols-outlined">admin_panel_settings</span>
                 </button>

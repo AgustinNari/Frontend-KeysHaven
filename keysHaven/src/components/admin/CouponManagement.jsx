@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
@@ -151,7 +152,7 @@ export default function CouponManagement() {
     if (formData.minPrice !== '' && formData.maxPrice !== '') {
       const minP = parseFloat(formData.minPrice);
       const maxP = parseFloat(formData.maxPrice);
-      if (isNaN(minP) || isNaN(maxP)) { setError('Min/Max price inválidos.'); return false; }
+      if (isNaN(minP) || isNaN(maxP)) { setError("Los precios mínimo y máximo son inválidos."); return false; }
       if (minP > maxP) { setError('El precio mínimo no puede ser mayor al máximo.'); return false; }
     }
     if (formData.value === '' || isNaN(Number(formData.value))) { setError('El valor del descuento es obligatorio y debe ser numérico.'); return false; }
@@ -259,7 +260,7 @@ export default function CouponManagement() {
       </div>
 
       <div className="card-body">
-        {error && <div className="alert alert-danger">{error}</div>}
+        {error && <div className="alert alert-danger">{localizeErrorMessage(error)}</div>}
 
         {showForm && (
           <div className="card bg-dark border-secondary mb-4">
@@ -351,7 +352,7 @@ export default function CouponManagement() {
                 <th>Tipo</th>
                 <th>Valor</th>
                 <th>Categoría</th>
-                <th>Target</th>
+                <th>Destino</th>
                 <th>Válido Hasta</th>
                 <th>Estado</th>
                 <th>Acciones</th>

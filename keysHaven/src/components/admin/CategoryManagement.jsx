@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import PaginationBar from '../catalog/PaginationBar';
@@ -112,7 +113,7 @@ export default function CategoryManagement() {
         </button>
       </div>
       <div className="card-body">
-        {error && <div className="alert alert-danger">{error}</div>}
+        {error && <div className="alert alert-danger">{localizeErrorMessage(error)}</div>}
 
         {showForm && (
           <div className="card bg-dark border-secondary mb-4">

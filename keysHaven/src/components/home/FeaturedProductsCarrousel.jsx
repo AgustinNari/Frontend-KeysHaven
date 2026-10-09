@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Loading from "../../assets/doppyKnight/doppyTimeCheck.png";
@@ -73,9 +74,9 @@ export default function FeaturedProductsCarousel() {
           <h2 className="fw-bold text-center mb-5 text-primary-light">Productos Destacados</h2>
           <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
             <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}>
-              <span className="visually-hidden">Loading...</span>
+              <span className="visually-hidden">Cargando...</span>
             </div>
-            <img src={Loading} alt="Loading..." style={{ width: "120px", height: "160px" }} />
+            <img src={Loading} alt="Cargando..." style={{ width: "120px", height: "160px" }} />
           </div>
         </div>
       </section>
@@ -88,7 +89,7 @@ export default function FeaturedProductsCarousel() {
         <div className="container">
           <h2 className="fw-bold text-center mb-5 text-primary-light">Productos Destacados</h2>
           <div className="col-12 text-center" style={{ height: "40px", color: "red" }}>
-            <p>Error cargando productos destacados: {error}</p>
+            <p>Error cargando productos destacados: {localizeErrorMessage(error)}</p>
           </div>
         </div>
       </section>
@@ -186,7 +187,7 @@ export default function FeaturedProductsCarousel() {
                           <span className="text text-decoration-line-through" style={{ fontSize: "1rem" }}>${Number(currentProduct.price).toFixed(2)}</span>
                         )}
                       </div>
-                      {(currentProduct.discountPctDisplay ?? 0) > 0 && (<span className="badge bg-success">{currentProduct.discountPctDisplay}% OFF</span>)}
+                      {(currentProduct.discountPctDisplay ?? 0) > 0 && (<span className="badge bg-success">{currentProduct.discountPctDisplay}% de descuento</span>)}
                     </div>
                   </div>
                 </div>

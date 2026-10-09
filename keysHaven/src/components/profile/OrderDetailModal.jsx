@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useState, useEffect } from "react";
 import ReviewForm from "./ReviewForm";
 import ConfirmModal from "./ConfirmModal";
@@ -244,7 +245,7 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
         </div>
 
         <div>
-          <h5>Items</h5>
+          <h5>Productos</h5>
           {items.map(item => {
             const orderItemId = getOrderItemId(item);
             const productTitle = item.productTitle ?? item.title ?? item.product?.title ?? item.product_title ?? `#${item.productId ?? item.product?.id ?? '-'}`;
@@ -301,7 +302,7 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
 
                 <ul className="list-group" style={{ marginTop: 8 }}>
                   {(getKeysForItem(activeItem) ?? []).length === 0 && !loadingKeysByItemId[getOrderItemId(activeItem)] && (
-                    <li className="list-group-item">No hay claves disponibles para este item.</li>
+                    <li className="list-group-item">No hay claves disponibles para este producto.</li>
                   )}
 
                   {(getKeysForItem(activeItem) ?? []).map((k, i) => {
@@ -345,7 +346,7 @@ export default function OrderDetailModal({ show, order, onClose, onSaveReview, o
                   <div style={{ minWidth: 0 }}>
                     {reviewError && (
                       <div className="alert alert-danger" style={{ marginBottom: 12 }}>
-                        {reviewError}
+                        {localizeErrorMessage(reviewError)}
                       </div>
                     )}
 

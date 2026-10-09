@@ -35,7 +35,7 @@ export default function HelpCenter() {
               <p className="text-light">
                 Actualmente podes comunicarte con nuestro equipo a traves de:
                 <br />
-                - Email de soporte:{" "}
+                - Correo electrónico de soporte:{" "}
                 <strong className="text-primary-light">contacto@keyshaven.com</strong> <br />
                 - Teléfono:{" "}
                 <strong className="text-primary-light">+54 11 3306-8080</strong> horarios de llamada de 9 a 16<br />
@@ -72,7 +72,7 @@ export default function HelpCenter() {
               </p>
 
               <div className="alert alert-warning mt-4" role="alert">
-                <strong>Tip:</strong> Adjuntar capturas de pantalla del problema
+                <strong>Consejo:</strong> Adjuntar capturas de pantalla del problema
                 suele acelerar mucho la resolucion y evita idas y vueltas
                 innecesarias.
               </div>

@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../utils/displayText';
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
@@ -292,7 +293,7 @@ export default function ProductDetail() {
     <div className="product-page" style={{ position: "relative" }}>
       <nav aria-label="breadcrumb" className="mb-3">
         <ol className="breadcrumb">
-          <li className="breadcrumb-item"><Link to="/">Home</Link></li>
+          <li className="breadcrumb-item"><Link to="/">Inicio</Link></li>
           <li className="breadcrumb-item"><Link to="/catalog">Catálogo</Link></li>
           <li className="breadcrumb-item active" aria-current="page">{product.title}</li>
         </ol>
@@ -334,7 +335,7 @@ export default function ProductDetail() {
                   <h5 className="text-primary">Acerca del juego</h5>
                   <p className="muted">{product.description}</p>
                   <p className="muted">Desarrollador: <strong style={{ color: "var(--text)" }}>{product.developer}</strong></p>
-                  <p className="muted">Publisher: <strong style={{ color: "var(--text)" }}>{product.publisher}</strong></p>
+                  <p className="muted">Editor: <strong style={{ color: "var(--text)" }}>{product.publisher}</strong></p>
                   <p className="muted">Categorías: <strong style={{ color: "var(--text)" }}>{(product.categories || []).map(c => c?.description ?? "").join(", ")}</strong></p>
                 </>
               )}
@@ -393,9 +394,9 @@ export default function ProductDetail() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <h4 style={{ margin: 0, color: "var(--text)" }}>{product.title}</h4>
               {discountPctDisplay != null ? (
-                <div className="badge-off">{discountPctDisplay}% OFF</div>
+                <div className="badge-off">{discountPctDisplay}% de descuento</div>
               ) : (fixedOffAmount != null ? (
-                <div className="badge-off">${Number(fixedOffAmount).toFixed(2)} OFF</div>
+                <div className="badge-off">${Number(fixedOffAmount).toFixed(2)} de descuento</div>
               ) : null)}
             </div>
 
@@ -471,7 +472,7 @@ export default function ProductDetail() {
           minWidth: 220
         }}>
           <div className={`alert ${toast.type === "warn" ? "alert-warning" : "alert-info"} py-2 mb-0`} role="alert">
-            <small style={{ fontWeight: 600 }}>{toast.text}</small>
+            <small style={{ fontWeight: 600 }}>{localizeErrorMessage(toast.text)}</small>
           </div>
         </div>
       )}

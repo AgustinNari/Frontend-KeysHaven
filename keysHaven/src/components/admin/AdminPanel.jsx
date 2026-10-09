@@ -52,13 +52,13 @@ export default function AdminPanel() {
 
   const getSectionTitle = () => {
     switch (activeSection) {
-      case 'dashboard': return 'Dashboard de Administración';
+      case 'dashboard': return "Resumen de administración";
       case 'users': return 'Gestión de Usuarios';
       case 'products': return 'Gestión Global de Productos';
       case 'categories': return 'Gestión de Categorías';
       case 'coupons': return 'Cupones Globales';
       case 'reviews': return 'Gestión de Reseñas';
-      default: return 'Dashboard de Administración';
+      default: return "Resumen de administración";
     }
   };
 
@@ -80,7 +80,7 @@ export default function AdminPanel() {
 
                 <nav className="nav flex-column">
                   {[
-                    { id: 'dashboard', icon: 'fas fa-chart-bar', label: 'Dashboard' },
+                    { id: 'dashboard', icon: 'fas fa-chart-bar', label: "Resumen" },
                     { id: 'users', icon: 'fas fa-users', label: 'Usuarios' },
                     { id: 'products', icon: 'fas fa-gamepad', label: 'Productos' },
                     { id: 'categories', icon: 'fas fa-tags', label: 'Categorías' },

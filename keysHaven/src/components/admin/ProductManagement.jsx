@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
@@ -174,7 +175,7 @@ export default function ProductManagement() {
         <h5 className="text-primary-light mb-0"><i className="fas fa-gamepad me-2"></i> Gestión Global de Productos</h5>
       </div>
       <div className="card-body">
-        {error && <div className="alert alert-danger">{error}</div>}
+        {error && <div className="alert alert-danger">{localizeErrorMessage(error)}</div>}
 
         {/* Filtros y Búsqueda */}
         <div className="row mb-4">

@@ -1,3 +1,4 @@
+import { displayValue } from '../../utils/displayText';
 import React, { useState } from "react";
 import PaginationBar from "../catalog/PaginationBar";
 import OrderDetailModal from "./OrderDetailModal";
@@ -26,7 +27,7 @@ export default function OrdersTab({ ordersPage, onPageChange, onSaveReview, onDe
                   <div>
                     <strong>Orden #{o.id}</strong>
                     <div style={{ color: "#e6dbff" }}>Creada: {o.createdAt ? new Date(o.createdAt).toLocaleString() : (o.created_at ? new Date(o.created_at).toLocaleString() : "")}</div>
-                    <div className="small">Estado: {o.status}</div>
+                    <div className="small">Estado: {displayValue(o.status)}</div>
                   </div>
                   <div className="text-end">
                     <div><strong>${o.totalAmount ?? o.total ?? '-'}</strong></div>

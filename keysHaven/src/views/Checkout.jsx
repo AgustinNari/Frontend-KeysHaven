@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../utils/displayText';
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "../store/cart.jsx";
@@ -118,7 +119,7 @@ export default function Checkout() {
   if (!hasItems) {
     return (
       <div className="container py-4">
-        <h2>Checkout</h2>
+        <h2>Finalizar compra</h2>
         <div className="alert alert-info mt-3">
           Tu carrito está vacío.{" "}
           <Link to="/catalog" className="alert-link">
@@ -132,9 +133,9 @@ export default function Checkout() {
 
   return (
     <div className="container py-4">
-      <h2>Checkout</h2>
+      <h2>Finalizar compra</h2>
 
-      {errorMsg && <div className="alert alert-danger">{errorMsg}</div>}
+      {errorMsg && <div className="alert alert-danger">{localizeErrorMessage(errorMsg)}</div>}
 
       <div className="row mt-3">
         <div className="col-lg-8">

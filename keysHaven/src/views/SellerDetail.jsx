@@ -225,16 +225,16 @@ export default function SellerDetail() {
           <div className="card shadow-sm p-3 mb-3">
             <h6 style={{ color: "var(--text)" }}>Resumen del vendedor</h6>
             <div className="meta mt-2">
-              <div>Rating: <strong style={{ color: "var(--text)" }}>{Number(avgRating/2).toFixed(1)}</strong></div>
+              <div>Puntuación: <strong style={{ color: "var(--text)" }}>{Number(avgRating/2).toFixed(1)}</strong></div>
               <div>Reseñas: <strong style={{ color: "var(--text)" }}>{ratingCount}</strong></div>
-              <div>Keys vendidas: <strong style={{ color: "var(--text)" }}>{soldKeys.toLocaleString()}</strong></div>
+              <div>Claves vendidas: <strong style={{ color: "var(--text)" }}>{soldKeys.toLocaleString()}</strong></div>
             </div>
           </div>
 
           <div className="card shadow-sm p-3 mb-3">
             <h6 style={{ color: "var(--text)" }}>Información de contacto</h6>
             <div className="meta mt-2">
-              {seller.email && <div>Email: <strong style={{ color: "var(--text)" }}>{seller.email}</strong></div>}
+              {seller.email && <div>Correo electrónico: <strong style={{ color: "var(--text)" }}>{seller.email}</strong></div>}
               {seller.country && <div>País: <strong style={{ color: "var(--text)" }}>{seller.country}</strong></div>}
             </div>
           </div>

@@ -120,7 +120,7 @@ export default function ProductList({ onEditProduct }) {
           <table className="table table-dark table-borderless mb-0">
             <thead>
               <tr>
-                <th>Producto</th><th>Precio</th><th>Stock</th><th>Categorías</th><th>Rating</th><th>Ventas</th><th>Estado</th><th>Destacado</th><th>Acciones</th>
+                <th>Producto</th><th>Precio</th><th>Stock</th><th>Categorías</th><th>Puntuación</th><th>Ventas</th><th>Estado</th><th>Destacado</th><th>Acciones</th>
               </tr>
             </thead>
             <tbody>

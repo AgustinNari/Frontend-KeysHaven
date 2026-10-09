@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../utils/displayText';
 import bundledAsset0 from "../assets/doppyKnight/paisaje.jpg";
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -50,7 +51,7 @@ export default function NotFound() {
 
   if (location.pathname === "/400") {
     imageBottom = Number400;
-    messageText = "400 - BAD_REQUEST";
+    messageText = "400 - Solicitud inválida";
   } else if (location.pathname === "/401") {
     imageBottom = Number401;
     messageText = "401 - Acceso No Autorizado";
@@ -88,10 +89,10 @@ export default function NotFound() {
         <div style={{ position: "relative", zIndex: 2}}>
           <div style={{ position: "relative", zIndex: 2000}}>
             <h2 className="text-primary">{messageText}</h2>
-            <h3 className="text-primary">{error?.message || "Error Grave......GRAVÍSIMO!!!!!!!"}</h3>
+            <h3 className="text-primary">{localizeErrorMessage(error?.message || "Error Grave......GRAVÍSIMO!!!!!!!")}</h3>
             <p>
               <Link to="/home" className="text-primary"  style={{textDecoration: "hover-underline"}}>
-                Volver al Home
+                Volver al inicio
               </Link>
             </p>
             </div>
@@ -107,7 +108,7 @@ export default function NotFound() {
               {imageBottom &&(
                 <img
                   src={imageBottom}
-                  alt={imageBottom ? "NumberError" : null}
+                  alt={imageBottom ? "Código de error" : null}
                   width={350}
                   height={170}
                   style={{ display: "block", margin: "0 auto", marginTop: "-805px"}}

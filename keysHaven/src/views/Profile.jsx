@@ -1,3 +1,4 @@
+import { localizeErrorMessage, displayValue } from '../utils/displayText';
 import bundledAsset1 from "../assets/doppyKnight/doppyThumbsUp.png";
 import React, { useEffect, useState, useRef } from "react";
 import "../components/estilos/profile.css";
@@ -258,7 +259,7 @@ export default function Profile() {
               ...toastBase,
               background: toast.type === "success" ? "#28a745" : "#dc3545"
             }}>
-              {toast.text}
+              {localizeErrorMessage(toast.text)}
             </div>
           </div>
         )}
@@ -288,7 +289,7 @@ export default function Profile() {
 
               <div style={{ marginTop: 10, fontSize: 13 }}>
                 <div className="small">Miembro desde: <span style={{ color: "#e6dbff" }}>{formatDate(profile.createdAt)}</span></div>
-                <div className="small">Último login: <span style={{ color: "#e6dbff" }}>{profile.lastLogin ? new Date(profile.lastLogin).toLocaleString() : ''}</span></div>
+                <div className="small">Último acceso: <span style={{ color: "#e6dbff" }}>{profile.lastLogin ? new Date(profile.lastLogin).toLocaleString() : ''}</span></div>
                 {!isAdmin && (
                   <div className="small">Saldo: <span style={{ color: "#e6dbff" }}>${profile.buyerBalance ?? 0}</span></div>
                 )}
@@ -308,7 +309,7 @@ export default function Profile() {
 
             <div>
               <div className="card p-2">
-                <div className="small">Rol: <span style={{ color: "#e6dbff" }}>{profile.role}</span></div>
+                <div className="small">Rol: <span style={{ color: "#e6dbff" }}>{displayValue(profile.role)}</span></div>
               </div>
             </div>
           </aside>

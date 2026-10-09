@@ -262,7 +262,7 @@ export default function Catalog() {
           {loading ? (
             <div className="d-flex justify-content-center align-items-center" style={{ height: 200 }}>
               <div className="spinner-border text-primary" role="status"><span className="visually-hidden">Cargando...</span></div>
-              <img src={Loading} alt="Loading..." style={{ width: "120px", height: "160px" }} />
+              <img src={Loading} alt="Cargando..." style={{ width: "120px", height: "160px" }} />
             </div>
           ) : (
             <>

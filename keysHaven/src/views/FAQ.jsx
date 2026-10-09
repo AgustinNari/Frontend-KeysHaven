@@ -9,7 +9,7 @@ export default function FAQ() {
       <div className="row justify-content-center">
         <div className="col-12 col-md-10 col-lg-8">
           <div className="card shadow-lg p-4 bg-dark text-white">
-            <h4 className="fw-bold text-primary text-center mb-4">Preguntas Frecuentes (FAQ)</h4>
+            <h4 className="fw-bold text-primary text-center mb-4">Preguntas frecuentes</h4>
             <p className="text-center text-muted mb-4">
               Encuentra respuestas a las preguntas más comunes sobre nuestra plataforma.
             </p>

@@ -53,8 +53,8 @@ export default function SidebarFilters({
       <div className="mb-3">
         <label className="form-label">Precio</label>
         <div className="d-flex gap-2">
-          <input type="number" className="form-control" placeholder="Min" value={workingFilters.minPrice ?? ""} onChange={e => setField("minPrice", e.target.value ? Number(e.target.value) : null)} />
-          <input type="number" className="form-control" placeholder="Max" value={workingFilters.maxPrice ?? ""} onChange={e => setField("maxPrice", e.target.value ? Number(e.target.value) : null)} />
+          <input type="number" className="form-control" placeholder="Mínimo" value={workingFilters.minPrice ?? ""} onChange={e => setField("minPrice", e.target.value ? Number(e.target.value) : null)} />
+          <input type="number" className="form-control" placeholder="Máximo" value={workingFilters.maxPrice ?? ""} onChange={e => setField("maxPrice", e.target.value ? Number(e.target.value) : null)} />
         </div>
       </div>
 
@@ -94,7 +94,7 @@ export default function SidebarFilters({
       />
 
       <FilterGroup
-        title="Publisher"
+        title="Editor"
         singleSelect
         options={publisherOptions.length ? publisherOptions : []}
         selected={workingFilters.publisher ? [workingFilters.publisher] : []}
@@ -105,8 +105,8 @@ export default function SidebarFilters({
       <div className="mb-3">
         <label className="form-label">Metacritic (min / max)</label>
         <div className="d-flex gap-2">
-          <input type="number" className="form-control" placeholder="Min" value={workingFilters.minMetacritic ?? ""} onChange={e => setField("minMetacritic", e.target.value ? Number(e.target.value) : null)} />
-          <input type="number" className="form-control" placeholder="Max" value={workingFilters.maxMetacritic ?? ""} onChange={e => setField("maxMetacritic", e.target.value ? Number(e.target.value) : null)} />
+          <input type="number" className="form-control" placeholder="Mínimo" value={workingFilters.minMetacritic ?? ""} onChange={e => setField("minMetacritic", e.target.value ? Number(e.target.value) : null)} />
+          <input type="number" className="form-control" placeholder="Máximo" value={workingFilters.maxMetacritic ?? ""} onChange={e => setField("maxMetacritic", e.target.value ? Number(e.target.value) : null)} />
         </div>
       </div>
 

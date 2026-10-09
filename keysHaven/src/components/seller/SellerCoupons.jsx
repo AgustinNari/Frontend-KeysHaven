@@ -1,3 +1,4 @@
+import { localizeErrorMessage, displayValue } from '../../utils/displayText';
 import React, { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
@@ -235,7 +236,7 @@ export default function SellerCoupons() {
       </div>
 
       <div className="card-body">
-        {error && <div className="alert alert-danger">{error}</div>}
+        {error && <div className="alert alert-danger">{localizeErrorMessage(error)}</div>}
 
         {showForm && (
           <div className="card bg-dark border-secondary mb-4">
@@ -319,7 +320,7 @@ export default function SellerCoupons() {
           <table className="table table-dark table-borderless">
             <thead>
               <tr>
-                <th>Código</th><th>Tipo</th><th>Valor</th><th>Alcance</th><th>Target</th><th>Válido Hasta</th><th>Estado</th><th>Acciones</th>
+                <th>Código</th><th>Tipo</th><th>Valor</th><th>Alcance</th><th>Destino</th><th>Válido Hasta</th><th>Estado</th><th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -330,7 +331,7 @@ export default function SellerCoupons() {
                   <td className="font-monospace">{d.code || '-'}</td>
                   <td>{d.type}</td>
                   <td>{d.type === 'PERCENT' ? `${d.value}%` : `$${d.value}`}</td>
-                  <td>{d.scope}</td>
+                  <td>{displayValue(d.scope)}</td>
                   <td>{d.scope === 'PRODUCT' ? (products.find(p => p.id === d.targetProductId)?.title || `#${d.targetProductId}`) : 'Mi tienda'}</td>
                   <td>{d.endsAt ? new Date(d.endsAt).toLocaleString() : 'Sin límite'}</td>
                   <td><span className={`badge ${d.active ? 'bg-success' : 'bg-danger'}`}>{d.active ? 'Activo' : 'Inactivo'}</span></td>

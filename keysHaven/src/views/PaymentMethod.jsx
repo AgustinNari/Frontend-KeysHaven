@@ -71,7 +71,7 @@ function PaymentDetails({ method, onChange, values, errors }) {
           <h6 className="text-white">Mercado Pago</h6>
 
           <div className="mb-2">
-            <label className="form-label text-muted">Email *</label>
+            <label className="form-label text-muted">Correo electrónico *</label>
             <input
               value={values.mpEmail || ""}
               onChange={onInput("mpEmail")}
@@ -104,7 +104,7 @@ function PaymentDetails({ method, onChange, values, errors }) {
           <h6 className="text-white">PayPal</h6>
 
           <div className="mb-2">
-            <label className="form-label text-muted">Email de PayPal *</label>
+            <label className="form-label text-muted">Correo electrónico de PayPal *</label>
             <input
               value={values.ppEmail || ""}
               onChange={onInput("ppEmail")}
@@ -174,7 +174,7 @@ export default function PaymentMethods() {
         
       case "mercado-pago":
         if (!formValues.mpEmail) {
-          newErrors.mpEmail = "El email es requerido";
+          newErrors.mpEmail = "El correo electrónico es obligatorio";
         } else if (!validations.email(formValues.mpEmail)) {
           newErrors.mpEmail = validationMessages.email;
         }
@@ -186,7 +186,7 @@ export default function PaymentMethods() {
         
       case "paypal":
         if (!formValues.ppEmail) {
-          newErrors.ppEmail = "El email de PayPal es requerido";
+          newErrors.ppEmail = "El correo electrónico de PayPal es obligatorio";
         } else if (!validations.email(formValues.ppEmail)) {
           newErrors.ppEmail = validationMessages.email;
         }

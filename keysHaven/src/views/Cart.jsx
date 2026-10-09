@@ -73,7 +73,7 @@ export default function Cart() {
       <div>
         <h2>Carrito</h2>
         <div className="card p-3">
-          <p>No hay items todavía — Ir al catálogo para agregarlos.</p>
+          <p>No hay productos todavía — Ir al catálogo para agregarlos.</p>
           <Link to="/catalog" className="btn btn-link" style = {{ color: "#8a4ff0" }}>
             Ir al catálogo
           </Link>

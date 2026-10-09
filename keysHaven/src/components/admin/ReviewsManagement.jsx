@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
@@ -149,7 +150,7 @@ export default function ReviewsManagement() {
       </div>
 
       <div className="card-body">
-        {error && <div className="alert alert-danger">{error}</div>}
+        {error && <div className="alert alert-danger">{localizeErrorMessage(error)}</div>}
 
         <div className="table-responsive">
           <table className="table table-dark table-borderless">
@@ -157,7 +158,7 @@ export default function ReviewsManagement() {
               <tr>
                 <th>Producto</th>
                 <th>Comprador</th>
-                <th>Rating</th>
+                <th>Puntuación</th>
                 <th>Título</th>
                 <th>Comentario</th>
                 <th>Visible</th>

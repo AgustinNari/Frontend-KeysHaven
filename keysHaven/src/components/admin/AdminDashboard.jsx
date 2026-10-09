@@ -1,3 +1,4 @@
+import { displayValue } from '../../utils/displayText';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { fetchAdminStats, fetchPlatformMetrics, fetchRecentActivity } from '../../redux/slices/adminPanelSlice';
@@ -49,7 +50,7 @@ export default function AdminDashboard() {
         <div className="spinner-border" role="status">
           <span className="visually-hidden">Cargando...</span>
         </div>
-        <div className="mt-2">Cargando dashboard...</div>
+        <div className="mt-2">Cargando resumen...</div>
       </div>
     );
   }
@@ -111,7 +112,7 @@ export default function AdminDashboard() {
               <span className="badge bg-warning">{stats.totalReviews}</span>
             </div>
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <span className="text-primary-light">Productos Activos en Stock</span>
+              <span className="text-primary-light">Productos activos disponibles</span>
               <span className="badge bg-info">{stats.totalActiveProducts}</span>
             </div>
             <div className="d-flex justify-content-between align-items-center">
@@ -148,7 +149,7 @@ export default function AdminDashboard() {
                       {activity.user}
                       {activity.product && ` • ${activity.product}`}
                       {activity.amount && ` • ${activity.amount}`}
-                      {activity.role && ` • ${activity.role}`}
+                      {activity.role && ` • ${displayValue(activity.role)}`}
                     </small>
                   </div>
                   <div className="text-muted small">
@@ -170,10 +171,10 @@ export default function AdminDashboard() {
           <div className="card-header bg-primary-mid"><h6 className="text-primary-light mb-0">Métricas de la Plataforma</h6></div>
           <div className="card-body">
             <div className="row text-center">
-              <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.uptime}%</div><small className="text-muted">Uptime</small></div>
+              <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.uptime}%</div><small className="text-muted">Tiempo de actividad</small></div>
               <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.responseTime}s</div><small className="text-muted">Tiempo Respuesta</small></div>
               <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.dailyVisits}</div><small className="text-muted">Visitas Hoy</small></div>
-              <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.platformRating}</div><small className="text-muted">Rating Plataforma</small></div>
+              <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.platformRating}</div><small className="text-muted">Puntuación de la plataforma</small></div>
               <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.activeSupport}</div><small className="text-muted">Soporte Activo</small></div>
               <div className="col-md-2"><div className="text-primary-light h4 mb-1">{platformMetrics.incidents}</div><small className="text-muted">Incidentes</small></div>
             </div>

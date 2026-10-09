@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React from 'react';
 
 export default class ErrorBoundary extends React.Component {
@@ -19,7 +20,7 @@ export default class ErrorBoundary extends React.Component {
       return (
         <div className="card bg-danger text-white p-3">
           <h5>Ocurrió un error en este componente</h5>
-          <pre style={{whiteSpace:'pre-wrap', color:'#fff'}}>{String(this.state.error)}</pre>
+          <pre style={{whiteSpace:'pre-wrap', color:'#fff'}}>{localizeErrorMessage(String(this.state.error))}</pre>
           <button className="btn btn-light btn-sm mt-2" onClick={() => this.setState({ hasError: false, error: null })}>Intentar de nuevo</button>
         </div>
       );

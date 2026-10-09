@@ -205,7 +205,7 @@ export const getRecentActivity = async () => {
           id: `review-${r.id}`,
           type: 'review',
           action: `Reseña (${r.rating ?? '—'}★)`,
-          user: r.buyerDisplayName ?? `Buyer ${r.buyerId}`,
+          user: r.buyerDisplayName ?? `Comprador ${r.buyerId}`,
           product: r.productTitle ?? `Producto ${r.productId}`,
           amount: null,
           time: r.createdAt ?? null
@@ -224,7 +224,7 @@ export const getRecentActivity = async () => {
           id: `product-${p.id}`,
           type: 'product',
           action: p.active === false ? 'Producto desactivado' : 'Producto publicado',
-          user: p.sellerDisplayName ?? `Seller ${p.sellerId}`,
+          user: p.sellerDisplayName ?? `Vendedor ${p.sellerId}`,
           product: p.title ?? `#${p.id}`,
           amount: null,
           time: p.createdAt ?? p.updatedAt ?? null

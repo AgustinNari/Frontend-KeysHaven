@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useEffect, useCallback } from 'react';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { selectUser } from '../../redux/slices/authSlice';
@@ -121,7 +122,7 @@ export default function KeyManagement() {
       </div>
 
       <div className="card-body">
-        {error && (<div className="alert alert-danger" role="alert">{error}</div>)}
+        {error && (<div className="alert alert-danger" role="alert">{localizeErrorMessage(error)}</div>)}
 
         <div className="row mb-4">
           <div className="col-md-6">

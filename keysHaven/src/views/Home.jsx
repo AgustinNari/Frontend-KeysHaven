@@ -1,9 +1,11 @@
+import { localizeErrorMessage } from '../utils/displayText';
 import bundledAsset0 from "../assets/react.svg";
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../components/estilos/Fondos.css";
 import "../components/estilos/home.css";
 import HomeBanner from '../assets/homeImage.png';
+import HomePanorama from '../assets/home-hero-panorama.webp';
 import Loading from "../assets/doppyKnight/doppyTimeCheck.png";
 import ReviewCarousel from "../components/home/ReviewCarousel";
 import FeaturedProductsCarousel from "../components/home/FeaturedProductsCarrousel";
@@ -210,9 +212,11 @@ export default function Home() {
 
       {/* Hero */}
       <section className="home-hero text-white">
-        <img className="home-hero-image" src={HomeBanner} alt="Jugador con auriculares frente a su computadora" />
-        <div className="home-hero-shade" aria-hidden="true" />
-        <div className="container home-hero-layout">
+        <picture className="home-hero-media">
+          <source media="(max-width: 575px)" srcSet={HomeBanner} />
+          <img className="home-hero-image" src={HomePanorama} alt="Jugador con auriculares frente a su computadora" />
+        </picture>
+        <div className="home-hero-layout">
           <div className="home-hero-copy">
             <h1 className="fw-bold">La clave para jugar sin límites</h1>
             <p className="lead mt-3 text-light">Explora el catálogo de videojuegos y encuentra tu próxima aventura.</p>
@@ -229,13 +233,13 @@ export default function Home() {
           <div className="row g-4 justify-content-center">
             {loadingCategories && (
               <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
-                <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Loading...</span></div>
-                <img src={Loading} alt="Loading..." style={{ width: "120px", height: "160px" }} />
+                <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Cargando...</span></div>
+                <img src={Loading} alt="Cargando..." style={{ width: "120px", height: "160px" }} />
               </div>
             )}
 
             {!loadingCategories && !categoriesError && (!categories || categories.length === 0) && (
-              <p className="text-light">No categories found.</p>
+              <p className="text-light">No se encontraron categorías.</p>
             )}
 
             {!loadingCategories && !categoriesError && categories.map((cat, i) => (
@@ -259,14 +263,14 @@ export default function Home() {
           <div className="row g-5 justify-content-center">
             {loadingSellers && (
               <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
-                <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Loading...</span></div>
-                <img src={Loading} alt="Loading..." style={{ width: "120px", height: "160px" }} />
+                <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Cargando...</span></div>
+                <img src={Loading} alt="Cargando..." style={{ width: "120px", height: "160px" }} />
               </div>
             )}
 
-            {sellersError && (<p className="text-danger">Error: {sellersError}</p>)}
+            {sellersError && (<p className="text-danger">Error: {localizeErrorMessage(sellersError)}</p>)}
 
-            {!loadingSellers && !sellersError && (!sellers || sellers.length === 0) && (<p className="text-light">No sellers found.</p>)}
+            {!loadingSellers && !sellersError && (!sellers || sellers.length === 0) && (<p className="text-light">No se encontraron vendedores.</p>)}
 
             {!loadingSellers && !sellersError && sellers.map((seller, i) => (
               <div key={seller.id ?? i} className="col-6 col-md-3 text-center">
@@ -288,21 +292,21 @@ export default function Home() {
 
           {loadingProducts && (
             <div className="col-12 d-flex justify-content-center align-items-center" style={{ height: "40px" }}>
-              <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Loading...</span></div>
-              <img src={Loading} alt="Loading..." style={{ width: "120px", height: "160px" }} />
+              <div className="spinner-border text-primary ms-3" role="status" style={{ width: "1.5rem", height: "1.5rem" }}><span className="visually-hidden">Cargando...</span></div>
+              <img src={Loading} alt="Cargando..." style={{ width: "120px", height: "160px" }} />
             </div>
           )}
-          {productsError && <p className="text-danger text-center">Error: {productsError}</p>}
-          {!loadingProducts && !productsError && (!products || products.length === 0) && (<p className="text-light text-center">No games found.</p>)}
+          {productsError && <p className="text-danger text-center">Error: {localizeErrorMessage(productsError)}</p>}
+          {!loadingProducts && !productsError && (!products || products.length === 0) && (<p className="text-light text-center">No se encontraron juegos.</p>)}
 
           <div className="row g-4 justify-content-center">
             {!loadingProducts && !productsError && (products || []).map((p, i) => (
               <div key={p.id ?? i} className="col-6 col-md-4 col-lg-3">
                 <a href={`/product/${p.id}`} className="text-decoration-none text-primary-light">
                   <img src={p.primaryImageUrl || HomeBanner} className="home-product-cover w-100 rounded" alt={p.title || "Videojuego"} />
-                  <h6 className="mt-2 mb-0 fw-semibold text-primary-light">{p.title || "Unnamed"}</h6>
+                  <h6 className="mt-2 mb-0 fw-semibold text-primary-light">{p.title || "Juego sin título"}</h6>
                   <small className="text-primary-light">{p.amountSold ?? 0} ventas</small>
-                  {(p.discountPctDisplay ?? 0) > 0 && (<div className="text-success fw-bold small">-{p.discountPctDisplay}% off</div>)}
+                  {(p.discountPctDisplay ?? 0) > 0 && (<div className="text-success fw-bold small">-{p.discountPctDisplay}% de descuento</div>)}
                 </a>
               </div>
             ))}

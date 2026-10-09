@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../utils/displayText';
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
@@ -93,7 +94,7 @@ export default function Register() {
     }
 
     if (!email) {
-      newErrors.email = "El email es requerido";
+      newErrors.email = "El correo electrónico es obligatorio";
     } else if (!validations.email(email)) {
       newErrors.email = validationMessages.email;
     }
@@ -141,7 +142,7 @@ export default function Register() {
       if (!termsAccepted) {
         setLocalError("Debes aceptar los Términos y Condiciones para continuar.");
       } else {
-        setLocalError("Completa nombre, email y contraseña (min 8 caracteres).");
+        setLocalError("Completa el nombre, el correo electrónico y la contraseña (mínimo 8 caracteres).");
       }
       return;
     }
@@ -249,9 +250,9 @@ export default function Register() {
                       type="email"
                       className={`form-control bg-dark border-secondary text-white ${errors.email ? 'is-invalid' : ''}`}
                       id="emailInput"
-                      placeholder="Email address"
+                      placeholder="Correo electrónico"
                     />
-                    <label htmlFor="emailInput" className="text-muted">Dirección de Email *</label>
+                    <label htmlFor="emailInput" className="text-muted">Correo electrónico *</label>
                     {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                   </div>
 
@@ -262,7 +263,7 @@ export default function Register() {
                       type="password"
                       className={`form-control bg-dark border-secondary text-white ${errors.password ? 'is-invalid' : ''}`}
                       id="passwordInput"
-                      placeholder="Password"
+                      placeholder="Contraseña"
                     />
                     <label htmlFor="passwordInput" className="text-muted">Contraseña (mín 8 caracteres) *</label>
                     {errors.password && <div className="invalid-feedback">{errors.password}</div>}
@@ -306,7 +307,7 @@ export default function Register() {
                   </div>
                 </div>
 
-                {(localError || authError) && <div className="alert alert-danger">{localError || authError?.message || authError}</div>}
+                {(localError || authError) && <div className="alert alert-danger">{localizeErrorMessage(localError || authError?.message || authError)}</div>}
 
                 <button
                   className="btn btn-primary btn-lg w-100 py-2 fw-bold mb-4"
@@ -375,7 +376,7 @@ export default function Register() {
                     onChange={(e)=>setSellerDescription(e.target.value)} 
                     className="form-control bg-dark border-secondary text-white" 
                     rows="2" 
-                    placeholder="Descripción (si sos seller)">
+                    placeholder="Descripción (si sos vendedor)">
                   </textarea>
                   <label className="text-muted">Descripción de vendedor (opcional)</label>
                 </div>
@@ -383,12 +384,12 @@ export default function Register() {
                 <div className="mb-3">
                   <label className="form-label small text-muted">Seleccionar rol</label>
                   <select className="form-select" value={role} onChange={(e)=>setRole(e.target.value)}>
-                    <option value="BUYER">Buyer</option>
-                    <option value="SELLER">Seller</option>
+                    <option value="BUYER">Comprador</option>
+                    <option value="SELLER">Vendedor</option>
                   </select>
                 </div>
 
-                {(localError || authError) && <div className="alert alert-danger">{localError || authError?.message || authError}</div>}
+                {(localError || authError) && <div className="alert alert-danger">{localizeErrorMessage(localError || authError?.message || authError)}</div>}
 
                 <div className="d-flex gap-2">
                   <button type="button" className="btn btn-outline-secondary flex-grow-1" onClick={onBackToStep1} disabled={submitting || loading}>

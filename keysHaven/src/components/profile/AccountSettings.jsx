@@ -104,7 +104,7 @@ export default function AccountSettings({ user, onSave }) {
     }
     
     if (!form.displayName) {
-      alert("Display name no puede estar vacío");
+      alert("El nombre de usuario no puede estar vacío");
       return;
     }
     
@@ -127,7 +127,7 @@ export default function AccountSettings({ user, onSave }) {
       </div>
 
       <div className="mt-3">
-        <label className="form-label">Display name *</label>
+        <label className="form-label">Nombre de usuario *</label>
         {!editing ? (
           <div className="readonly-field">{form.displayName}</div>
         ) : (

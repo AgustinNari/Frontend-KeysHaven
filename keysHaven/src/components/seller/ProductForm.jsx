@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
@@ -337,7 +338,7 @@ export default function ProductForm({ product: suppliedProduct, onSuccess }) {
         <h5 className="text-primary-light mb-0">{product ? 'Editar Producto' : 'Crear Nuevo Producto'}</h5>
       </div>
       <div className="card-body">
-        {error && <div className="alert alert-danger">{error}</div>}
+        {error && <div className="alert alert-danger">{localizeErrorMessage(error)}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="row">
@@ -370,7 +371,7 @@ export default function ProductForm({ product: suppliedProduct, onSuccess }) {
               <input className="form-control bg-dark border-secondary text-white" value={formData.developer} onChange={(e)=>setFormData({...formData, developer:e.target.value})} disabled={loading} />
             </div>
             <div className="col-md-6 mb-3">
-              <label className="form-label text-primary-light">Publicador</label>
+              <label className="form-label text-primary-light">Editor</label>
               <input className="form-control bg-dark border-secondary text-white" value={formData.publisher} onChange={(e)=>setFormData({...formData, publisher:e.target.value})} disabled={loading} />
             </div>
 

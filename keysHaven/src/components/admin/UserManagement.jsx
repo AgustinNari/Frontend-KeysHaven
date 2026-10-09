@@ -1,3 +1,4 @@
+import { localizeErrorMessage, displayValue } from '../../utils/displayText';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import ConfirmModal from '../profile/ConfirmModal';
@@ -111,12 +112,12 @@ export default function UserManagement() {
         <h5 className="text-primary-light mb-0">Gestión de Usuarios</h5>
       </div>
       <div className="card-body">
-        {error && <div className="alert alert-danger">{error}</div>}
+        {error && <div className="alert alert-danger">{localizeErrorMessage(error)}</div>}
 
         <div className="row mb-4">
           <div className="col-md-4">
             <label className="form-label text-primary-light">Buscar</label>
-            <input type="text" className="form-control bg-dark border-secondary text-white" placeholder="Nombre o email..." value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} />
+            <input type="text" className="form-control bg-dark border-secondary text-white" placeholder="Nombre o correo electrónico..." value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} />
           </div>
           <div className="col-md-3">
             <label className="form-label text-primary-light">Rol</label>
@@ -149,7 +150,7 @@ export default function UserManagement() {
                 <th>Usuario</th>
                 <th>Rol</th>
                 <th>Estado</th>
-                <th>Último Login</th>
+                <th>Último acceso</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -204,10 +205,10 @@ export default function UserManagement() {
                 </div>
                 <div className="modal-body">
                   <p><strong>Nombre:</strong> {viewingUser.displayName || `${viewingUser.firstName} ${viewingUser.lastName}`}</p>
-                  <p><strong>Email:</strong> {viewingUser.email}</p>
-                  <p><strong>Rol:</strong> {viewingUser.role}</p>
+                  <p><strong>Correo electrónico:</strong> {viewingUser.email}</p>
+                  <p><strong>Rol:</strong> {displayValue(viewingUser.role)}</p>
                   <p><strong>País:</strong> {viewingUser.country}</p>
-                  <p><strong>Phone:</strong> {viewingUser.phone}</p>
+                  <p><strong>Teléfono:</strong> {viewingUser.phone}</p>
                   <p><strong>Descripción vendedor:</strong> {viewingUser.sellerDescription}</p>
                   <p><strong>Activo:</strong> {viewingUser.active ? 'Sí' : 'No'}</p>
                 </div>

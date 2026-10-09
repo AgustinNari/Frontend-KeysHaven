@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React from "react";
 
 /**
@@ -23,13 +24,13 @@ export default function ApiErrorAlert({ error, onRetry, onClose, className = "" 
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Mensaje principal para el usuario */}
-        <div className="fw-bold mb-1">{userMessage}</div>
+        <div className="fw-bold mb-1">{localizeErrorMessage(userMessage)}</div>
 
         {/* Mensaje técnico (solo si es diferente y útil para debugging) */}
         {message && message !== userMessage && (
           <div className="mb-2">
             <small className="text-muted" style={{ wordBreak: "break-word" }}>
-              {message}
+              {localizeErrorMessage(message)}
             </small>
           </div>
         )}
@@ -50,7 +51,7 @@ export default function ApiErrorAlert({ error, onRetry, onClose, className = "" 
             <ul className="mb-0 ps-3" style={{ fontSize: "0.875rem" }}>
               {details.map((detail, index) => (
                 <li key={index} style={{ wordBreak: "break-word" }}>
-                  <small>{String(detail)}</small>
+                  <small>{localizeErrorMessage(String(detail))}</small>
                 </li>
               ))}
             </ul>

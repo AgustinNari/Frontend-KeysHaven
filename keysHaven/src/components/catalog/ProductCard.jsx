@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Rating from "./Rating";
@@ -176,7 +177,7 @@ export default function ProductCard({ product }) {
           minWidth: 220
         }}>
           <div className={`alert ${toast.type === "warn" ? "alert-warning" : "alert-info"} py-2 mb-0`} role="alert" style={{ margin: 0 }}>
-            <small style={{ fontWeight: 600 }}>{toast.text}</small>
+            <small style={{ fontWeight: 600 }}>{localizeErrorMessage(toast.text)}</small>
           </div>
         </div>
       )}

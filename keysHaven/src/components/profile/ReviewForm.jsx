@@ -21,7 +21,7 @@ export default function ReviewForm({ initial, onSave, onCancel, onDelete }) {
   }
 
   function submit() {
-    if (!form.rating || form.rating < 1 || form.rating > 10) return alert("Rating entre 1 y 10");
+    if (!form.rating || form.rating < 1 || form.rating > 10) return alert("La puntuación debe estar entre 1 y 10");
     onSave(form);
   }
 

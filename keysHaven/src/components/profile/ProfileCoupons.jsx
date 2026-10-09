@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import PaginationBar from "../catalog/PaginationBar";
 import productsService from "../../services/productsService";
@@ -282,7 +283,7 @@ export default function ProfileCoupons({ profile }) {
           </div>
         </div>
 
-        {error && <div className="alert alert-danger mt-3">{error}</div>}
+        {error && <div className="alert alert-danger mt-3">{localizeErrorMessage(error)}</div>}
       </div>
     </div>
   );

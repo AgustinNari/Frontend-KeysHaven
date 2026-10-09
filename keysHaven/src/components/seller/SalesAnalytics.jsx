@@ -1,3 +1,4 @@
+import { displayValue } from '../../utils/displayText';
 import React, { useEffect, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../../redux/hooks';
 import { fetchSellerStats, fetchSellerOrders } from '../../redux/slices/sellerPanelSlice';
@@ -77,7 +78,7 @@ export default function SalesAnalytics({ sellerId: suppliedSellerId }) {
     return (
       <div className="text-center text-muted py-5">
         <div className="spinner-border" role="status"></div>
-        <div className="mt-2">Cargando datos del dashboard...</div>
+        <div className="mt-2">Cargando datos del resumen...</div>
       </div>
     );
   }
@@ -140,7 +141,7 @@ export default function SalesAnalytics({ sellerId: suppliedSellerId }) {
           <div className="card-body text-center">
             <div className="text-primary mb-2"><i className="fas fa-star fa-2x"></i></div>
             <h3 className="text-primary-light">{(stats.avgRating/2 || 0).toFixed(1)}/5</h3>
-            <p className="text-muted mb-0">Rating Promedio</p>
+            <p className="text-muted mb-0">Puntuación promedio</p>
           </div>
         </div>
       </div>
@@ -178,7 +179,7 @@ export default function SalesAnalytics({ sellerId: suppliedSellerId }) {
                         <td className="text-muted">{dateStr}</td>
                         <td>
                           <span className={`badge ${order.status === 'COMPLETED' ? 'bg-success' : order.status === 'PENDING' ? 'bg-warning' : 'bg-secondary'}`}>
-                            {order.status ?? '—'}
+                            {displayValue(order.status) ?? '—'}
                           </span>
                         </td>
                       </tr>

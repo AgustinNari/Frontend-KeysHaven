@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../utils/displayText';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductList from './ProductList';
@@ -102,7 +103,7 @@ export default function SellerDashboard() {
                 )}
               </div>
               <div className="card-body">
-                {descriptionError && <div className="alert alert-danger">{descriptionError}</div>}
+                {descriptionError && <div className="alert alert-danger">{localizeErrorMessage(descriptionError)}</div>}
                 {isEditingDescription ? (
                   <div>
                     <textarea className="form-control bg-dark border-secondary text-white" rows="4" value={sellerData.sellerDescription} onChange={(e) => setSellerData({ ...sellerData, sellerDescription: e.target.value })} />
@@ -128,7 +129,7 @@ export default function SellerDashboard() {
                       <p className="text-white">{sellerData.displayName}</p>
                     </div>
                     <div className="mb-3">
-                      <label className="form-label text-primary-light small mb-1">Email</label>
+                      <label className="form-label text-primary-light small mb-1">Correo electrónico</label>
                       <p className="text-white">{sellerData.email}</p>
                     </div>
                   </div>
@@ -200,7 +201,7 @@ export default function SellerDashboard() {
                 </div>
                 <nav className="nav flex-column">
                   {[
-                    { id: 'dashboard', icon: 'fas fa-chart-bar', label: 'Dashboard' },
+                    { id: 'dashboard', icon: 'fas fa-chart-bar', label: "Resumen" },
                     { id: 'products', icon: 'fas fa-boxes', label: 'Mis Productos' },
                     { id: 'add-product', icon: 'fas fa-plus', label: 'Crear Producto' },
                     { id: 'keys', icon: 'fas fa-key', label: 'Gestión de Claves' },
@@ -217,7 +218,7 @@ export default function SellerDashboard() {
 
           <div className="col-md-9 col-lg-10">
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <h1 className="text-primary-light">{activeSection === 'add-product' ? (editingProduct ? 'Editar Producto' : 'Crear Producto') : (activeSection === 'products' ? 'Mis Productos' : activeSection === 'dashboard' ? 'Dashboard de Ventas' : 'Dashboard')}</h1>
+              <h1 className="text-primary-light">{activeSection === 'add-product' ? (editingProduct ? 'Editar Producto' : 'Crear Producto') : (activeSection === 'products' ? 'Mis Productos' : activeSection === 'dashboard' ? 'Resumen de ventas' : "Resumen")}</h1>
               {activeSection === 'add-product' && editingProduct && (
                 <button className="btn btn-outline-secondary" onClick={() => { setEditingProduct(null); setActiveSection('products'); }}>← Volver a productos</button>
               )}

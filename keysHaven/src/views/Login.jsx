@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../utils/displayText';
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
@@ -31,7 +32,7 @@ export default function Login() {
     const newErrors = {};
 
     if (!email) {
-      newErrors.email = "El email es requerido";
+      newErrors.email = "El correo electrónico es obligatorio";
     } else if (!validations.email(email)) {
       newErrors.email = validationMessages.email;
     }
@@ -54,7 +55,7 @@ export default function Login() {
 
 
     if (!email || !password) {
-      setLocalError("Completa email y contraseña");
+      setLocalError("Completa el correo electrónico y la contraseña");
       return;
     }
 
@@ -64,7 +65,7 @@ export default function Login() {
         navigate(destination, { replace: true });
       } else {
         const payload = resultAction.payload || resultAction.error;
-        setLocalError(payload?.message || payload?.error?.message || "Email o contraseña inválidos");
+        setLocalError(payload?.message || payload?.error?.message || "Correo electrónico o contraseña inválidos");
       }
     } catch (err) {
       setLocalError(err?.message || "Error de conexión");
@@ -89,9 +90,9 @@ export default function Login() {
                     type="email" 
                     className={`form-control bg-dark border-secondary text-white ${errors.email ? 'is-invalid' : ''}`} 
                     id="emailInput" 
-                    placeholder="Email address" 
+                    placeholder="Correo electrónico"
                   />
-                  <label htmlFor="emailInput" className="text-muted">Dirección de Email</label>
+                  <label htmlFor="emailInput" className="text-muted">Correo electrónico</label>
                   {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                 </div>
 
@@ -102,14 +103,14 @@ export default function Login() {
                     type="password" 
                     className={`form-control bg-dark border-secondary text-white ${errors.password ? 'is-invalid' : ''}`} 
                     id="passwordInput" 
-                    placeholder="Password" 
+                    placeholder="Contraseña"
                   />
                   <label htmlFor="passwordInput" className="text-muted">Contraseña</label>
                   {errors.password && <div className="invalid-feedback">{errors.password}</div>}
                 </div>
               </div>
 
-              {(localError || authError) && <div className="alert alert-danger">{localError || authError?.message || authError}</div>}
+              {(localError || authError) && <div className="alert alert-danger">{localizeErrorMessage(localError || authError?.message || authError)}</div>}
 
               <button type="submit" className="btn btn-primary btn-lg w-100 py-2 fw-bold mb-4" disabled={submitDisabled}>
                 {submitDisabled ? "Iniciando..." : "Continuar"}
